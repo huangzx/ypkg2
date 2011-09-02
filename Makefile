@@ -1,11 +1,11 @@
 YPKG=ypkg2
 YPKGIMPORT=ypkg2-import
 OBJS= download.o util.o db.o archive.o xml.o package.o 
-DESTDIR=/tmp/ypkg
+DESTDIR=
 BINDIR= $(DESTDIR)/usr/bin
 LANGDIR= $(DESTDIR)/usr/share/locale/zh_CN/LC_MESSAGES
-DATADIR= $(DESTDIR)/var/ypkg
-TMPDIR= $(DESTDIR)/tmp
+DATADIR= $(DESTDIR)/var/ypkg/db
+TMPDIR=/tmp
 
 LIBS= -lcurl -lsqlite3 -larchive -lxml2 -lpthread
 
@@ -48,7 +48,7 @@ install: all
 	cp $(YPKG) $(BINDIR)
 	cp $(YPKGIMPORT) $(BINDIR) 
 	cp data/db_create.sql $(TMPDIR)
-	sqlite3 $(DATADIR)/db/package.db ".read $(TMPDIR)/db_create.sql"
+	sqlite3 $(DATADIR)/package.db ".read $(TMPDIR)/db_create.sql"
 	#cp po/zh_CN.mo $(LANGDIR)/ypkg.mo
 
 clean:
