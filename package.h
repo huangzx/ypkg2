@@ -15,11 +15,14 @@
 
 #define CONFIG_FILE "/etc/yget.conf"
 #define PACKAGE_DB_DIR  "/var/ypkg/db"
-#define DB_NAME "/tmp/soft_manager.db"
+#define DB_NAME "/var/ypkg/db/package.db"
 #define UPDATE_DIR "updates"
 #define LIST_FILE "updates.list"
 #define LIST_DATE_FILE "updates.date"
 #define PACKAGE_ATTRS_LINE_LEN 1024
+
+#define LOCAL_UNIVERSE "/var/ypkg/packages/universe"
+#define LOCAL_WORLD "/var/ypkg/db/world"
 
 typedef struct {
     char    *source_uri;
@@ -70,6 +73,7 @@ void packages_manager_cleanup( PACKAGE_MANAGER *pm );
  */
 int packages_check_update( PACKAGE_MANAGER *pm );
 int packages_update( PACKAGE_MANAGER *pm );
+int packages_import_local_data( PACKAGE_MANAGER *pm );
 
 /*
  * get package infomations

@@ -13,6 +13,12 @@ PACKAGE_MANAGER *packages_manager_init()
     if( !pm )
         return NULL;
 
+    if( access( CONFIG_FILE, R_OK ) )
+        return NULL;
+
+    if( access( DB_NAME, R_OK ) )
+        return NULL;
+
     config_file = CONFIG_FILE;
 
     pm->source_uri = util_get_config( config_file, "YPPATH_URI" );
@@ -81,6 +87,226 @@ int packages_check_update( PACKAGE_MANAGER *pm )
     free(content.text);
     free(target_url);
     target_url = NULL;
+    return 0;
+}
+
+int packages_import_local_data( PACKAGE_MANAGER *pm )
+{
+    int                 xml_ret, db_ret, is_desktop, i, list_len;
+    char                xml_value, *sql, *sql_data, *sql_filelist, *package_name, *idx, *data_key, *file_path, *file_path_sub, *list_line;
+    char                *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime;
+    char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
+    DIR                 *dir, *dir_sub;
+    struct dirent       *entry, *entry_sub;
+    struct stat         statbuf, statbuf_sub;
+    FILE                *fp;
+    XML_READER_HANDLE   xml_handle;
+    DB                  db;
+
+    //init
+    db_init( &db, pm->db_name, OPEN_WRITE );
+
+    printf( "Start ...\n" );
+
+
+    printf( "Import universe  ...\n" );
+    //import universe
+    reader_open( LOCAL_UNIVERSE,  &xml_handle );
+    sql = "replace into universe (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+    while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
+    {
+        is_desktop = (int)reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
+        package_name = reader_get_value2( &xml_handle, "name" );
+        printf( "%s\n", package_name );
+
+        //universe
+        db_ret = db_exec( &db, sql,  
+                package_name, //name
+                is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
+                is_desktop ? "1" : "0", //desktop
+                reader_get_value2( &xml_handle, "category" ), //category
+                reader_get_value2( &xml_handle, "arch" ), //arch
+                reader_get_value2( &xml_handle, "version" ), //version
+                reader_get_value2( &xml_handle, "priority" ), //priority
+                reader_get_value2( &xml_handle, "install" ), //install
+                reader_get_value2( &xml_handle, "license" ), //license
+                reader_get_value2( &xml_handle, "homepage" ), //homepage
+                reader_get_value2( &xml_handle, "repo" ), //repo
+                reader_get_value2( &xml_handle, "size" ), //size
+                reader_get_value2( &xml_handle, "sha" ), //sha
+                reader_get_value2( &xml_handle, "build_date" ), //build_date
+                reader_get_value2( &xml_handle, "uri" ), //uri
+                is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
+                reader_get_value2( &xml_handle, "data_count" ), //data_count
+                NULL);
+    
+        //universe_data
+        db_exec( &db, "delete from universe_data where name=?", package_name, NULL );  
+
+        sql_data = "insert into universe_data (name, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        data_key = (char *)malloc( 32 );
+        for( i = 0; ; i++ )
+        {
+            idx = util_int_to_str( i );
+            if( !reader_get_value( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ) )
+            {
+                free( idx );
+                break;
+            }
+            db_exec( &db, sql_data,  
+                    package_name, //name
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                    NULL);
+            free( idx );
+        }
+        free( data_key );
+    }
+    reader_cleanup( &xml_handle );
+
+    //world
+    printf( "Import world  ...\n" );
+    reader_open( LOCAL_WORLD,  &xml_handle );
+    sql = "replace into world (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+    while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
+    {
+        is_desktop = (int)reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
+        package_name = reader_get_value2( &xml_handle, "name" );
+        printf( "%s\n", package_name );
+
+        //world
+        db_ret = db_exec( &db, sql,  
+                package_name, //name
+                is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
+                is_desktop ? "1" : "0", //desktop
+                reader_get_value2( &xml_handle, "category" ), //category
+                reader_get_value2( &xml_handle, "arch" ), //arch
+                reader_get_value2( &xml_handle, "version" ), //version
+                reader_get_value2( &xml_handle, "priority" ), //priority
+                reader_get_value2( &xml_handle, "install" ), //install
+                reader_get_value2( &xml_handle, "license" ), //license
+                reader_get_value2( &xml_handle, "homepage" ), //homepage
+                reader_get_value2( &xml_handle, "repo" ), //repo
+                reader_get_value2( &xml_handle, "size" ), //size
+                reader_get_value2( &xml_handle, "sha" ), //sha
+                reader_get_value2( &xml_handle, "build_date" ), //build_date
+                reader_get_value2( &xml_handle, "uri" ), //uri
+                is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
+                reader_get_value2( &xml_handle, "data_count" ), //data_count
+                NULL);
+    
+        //world_data
+        db_exec( &db, "delete from world_data where name=?", package_name, NULL );  
+
+        sql_data = "insert into world_data (name, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        data_key = (char *)malloc( 32 );
+        for( i = 0; ; i++ )
+        {
+            idx = util_int_to_str( i );
+            if( !reader_get_value( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ) )
+            {
+                free( idx );
+                break;
+            }
+            db_exec( &db, sql_data,  
+                    package_name, //name
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                    NULL);
+            free( idx );
+        }
+        free( data_key );
+    }
+    reader_cleanup( &xml_handle );
+
+    //world_file
+    printf( "Import file list  ...\n" );
+    dir = opendir( PACKAGE_DB_DIR );
+    if( !dir )
+        return -1;
+
+    while( entry = readdir( dir ) )
+    {
+        if( !strcmp( entry->d_name, "." ) || !strcmp( entry->d_name, ".." ) )
+        {
+            continue;
+        }
+
+        file_path = util_strcat( PACKAGE_DB_DIR, "/", entry->d_name, NULL );
+        if( !stat( file_path, &statbuf ) && S_ISDIR( statbuf.st_mode ) )
+        {
+            //sub dir
+            dir_sub = opendir( file_path );
+            if( dir_sub )
+            {
+                while( entry_sub = readdir( dir_sub ) )
+                {
+                    if( strstr(entry_sub->d_name, ".list") )
+                    {
+                        file_path_sub = util_strcat( file_path, "/", entry_sub->d_name, NULL );
+                        package_name = entry->d_name;
+                        printf( "%s\n", package_name );
+
+                        db_exec( &db, "delete from world_file where name=?", package_name, NULL );  
+                        sql_filelist = "insert into world_file (name, type, file, size, perms, uid, gid, mtime) values (?, ?, ?, ?, ?, ?, ?, ?)"; 
+
+                        fp = fopen( file_path_sub, "r" );
+                        list_line = NULL;
+                        while( getline( &list_line, &list_len, fp ) != -1 )
+                        {
+                            if( list_line[0] != 'I' )
+                            {
+                                file_type = strtok( list_line, " ,");
+                                file_file = strtok( NULL, " ,");
+                                file_size = strtok( NULL, " ,");
+                                file_perms = strtok( NULL, " ,");
+                                file_uid = strtok( NULL, " ,");
+                                file_gid = strtok( NULL, " ,");
+                                file_mtime = strtok( NULL, " ,");
+
+                                db_ret = db_exec( &db, sql_filelist, 
+                                        package_name,
+                                        file_type ? file_type : "",
+                                        file_file ? file_file : "",
+                                        file_size ? file_size : "",
+                                        file_perms ? file_perms : "",
+                                        file_uid ? file_uid : "",
+                                        file_gid ? file_gid : "",
+                                        file_mtime ? file_mtime : "",
+                                        NULL );
+                            }
+
+                        }
+                        if( list_line )
+                            free( list_line );
+
+                        fclose( fp );
+                        free( file_path_sub );
+                    }
+                }
+            }
+        }
+        free( file_path );
+    }
+    closedir( dir );
+
+    printf( "Done!\n" );
+    //clean up
+    db_close( &db );
     return 0;
 }
 
@@ -1625,8 +1851,10 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
     sql_filelist = "insert into world_file (name, type, file, size, perms, uid, gid, mtime) values (?, ?, ?, ?, ?, ?, ?, ?)"; 
 
     list_line = util_mem_gets( filelist );
-    while( list_line && list_line[0] != 'I' )
+    while( list_line )
     {
+        if( list_line[0] != 'I' )
+        {
             file_type = strtok( list_line, " ,");
             file_file = strtok( NULL, " ,");
             file_size = strtok( NULL, " ,");
@@ -1646,6 +1874,7 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
                     file_gid ? file_gid : "",
                     file_mtime ? file_mtime : "",
                     NULL );
+        }
 
         free( list_line );
         list_line = util_mem_gets( NULL );

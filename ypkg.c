@@ -45,7 +45,7 @@ Commands:\n\
 
 int main( int argc, char **argv )
 {
-    int             c, i, j, ret;
+    int             c, done, i, j, ret, err;
     char            *depend;
     PACKAGE_MANAGER *pm;
     PACKAGE_DATA    *pkg_data;
@@ -55,11 +55,19 @@ int main( int argc, char **argv )
     if( argc == 1 )
     {
         usage();
-        return 0;
+        return 1;
     }
 
+    err = 0;
+    done = 0;
     pm = packages_manager_init();
-    while( ( c = getopt_long( argc, argv, ":hCiclkxbLsSm", longopts, NULL ) ) != -1 )
+    if( !pm )
+    {
+        fprintf( stderr, "Error: Can not open database.\n" );
+        return 1;
+    }
+
+    while( !done && ( c = getopt_long( argc, argv, ":hCiclkxbLsSm", longopts, NULL ) ) != -1 )
     {
         switch( c )
         {
@@ -68,112 +76,154 @@ int main( int argc, char **argv )
              */
             case 'h':
                 usage();
+                done = 1;
                 break;
 
             /*
              * remove package
              */
             case 'C':
-
-                for( i = optind; i < argc; i++)
+                if( argc < 3 )
                 {
-                    printf("removing %s ... ", argv[i]);
-                    ret = packages_remove_package( pm, argv[i] );
-                    printf( "%s\n", ret < 0 ? "failed" : "successed" );
+                    err = 1;
                 }
-
+                else if( geteuid() )
+                {
+                    err = 2;
+                }
+                else
+                {
+                    for( i = optind; i < argc; i++)
+                    {
+                        printf("removing %s ... ", argv[i]);
+                        ret = packages_remove_package( pm, argv[i] );
+                        printf( "%s\n", ret < 0 ? "failed" : "successed" );
+                    }
+                }
+                done = 1;
                 break;
 
             /*
              * install package
              */
             case 'i':
-
-                for( i = optind; i < argc; i++)
+                if( argc < 3 )
                 {
-                    printf("installing %s ... ", argv[i]);
-                    packages_install_local_package( pm, argv[i], "/" );
-                    printf( "%s\n", ret < 0 ? "failed" : "successed" );
+                    err = 1;
                 }
-
+                else if( geteuid() )
+                {
+                    err = 2;
+                }
+                else
+                {
+                    for( i = optind; i < argc; i++)
+                    {
+                        printf("installing %s ... ", argv[i]);
+                        packages_install_local_package( pm, argv[i], "/" );
+                        printf( "%s\n", ret < 0 ? "failed" : "successed" );
+                    }
+                }
+                done = 1;
                 break;
 
             /*
              * check dependencies, conlicts and so on of package
              */
             case 'c':
-
-                for( i = optind; i < argc; i++)
+                if( argc < 3 )
                 {
-                    printf("checking %s ... ", argv[i]);
-                    ret = packages_check_package( pm, argv[i] );
-                    switch( ret )
+                    err = 1;
+                }
+                else
+                {
+                    for( i = optind; i < argc; i++)
                     {
-                        case 0:
-                            printf( "ok.\n" );
-                            break;
-                        case -1:
-                            printf( "invalid format or file not found.\n" );
-                            break;
-                        case -2:
-                            printf( "has been installed.\n" );
-                            break;
-                        case -3:
-                            printf( "missing runtime deps.\n" );
-                            break;
-                        case -4:
-                            printf( "conflicting deps.\n" );
-                            break;
-                        default:
-                            printf( "unknown error.\n" );
+                        printf("checking %s ... ", argv[i]);
+                        ret = packages_check_package( pm, argv[i] );
+                        switch( ret )
+                        {
+                            case 0:
+                                printf( "ok.\n" );
+                                break;
+                            case -1:
+                                printf( "invalid format or file not found.\n" );
+                                break;
+                            case -2:
+                                printf( "has been installed.\n" );
+                                break;
+                            case -3:
+                                printf( "missing runtime deps.\n" );
+                                break;
+                            case -4:
+                                printf( "conflicting deps.\n" );
+                                break;
+                            default:
+                                printf( "unknown error.\n" );
+                        }
                     }
                 }
 
+                done = 1;
                 break;
             /*
              * list all files of installed package
              */
             case 'l':
-
-                for( i = optind; i < argc; i++)
+                if( argc < 3 )
                 {
-                    printf("\n%s 's file list:\n\n", argv[i]);
-                    pkg_file = packages_get_package_file( pm, argv[i] );
-
-                    for( j = 0; j < pkg_file->cnt; j++ )
+                    err = 1;
+                }
+                else
+                {
+                    for( i = optind; i < argc; i++)
                     {
-                        printf( "%s\n",  packages_get_package_attr( pkg_file->file[j], "file") );
+                        printf("\n%s 's file list:\n\n", argv[i]);
+                        pkg_file = packages_get_package_file( pm, argv[i] );
+
+                        for( j = 0; j < pkg_file->cnt; j++ )
+                        {
+                            printf( "%s\n",  packages_get_package_attr( pkg_file->file[j], "file") );
+                        }
+                        packages_free_package_file( pkg_file );
                     }
-                    packages_free_package_file( pkg_file );
                 }
 
+                done = 1;
                 break;
 
             /*
              * show dependency of package
              */
             case 'k':
-                if( pkg_data = packages_get_package_data( pm, argv[2], 1 ) )
+                if( argc != 3 )
                 {
-
-                    for( i = 0; i < pkg_data->cnt; i++ )
+                    err = 1;
+                }
+                else
+                {
+                    if( pkg_data = packages_get_package_data( pm, argv[2], 1 ) )
                     {
-                        depend = packages_get_package_attr( pkg_data->data[i], "data_depend");
-                        if( depend )
+
+                        for( i = 0; i < pkg_data->cnt; i++ )
                         {
-                            printf( "%s\n",  depend );
+                            depend = packages_get_package_attr( pkg_data->data[i], "data_depend");
+                            if( depend )
+                            {
+                                printf( "%s\n",  depend );
+                            }
                         }
+                        packages_free_package_data( pkg_data );
                     }
-                    packages_free_package_data( pkg_data );
                 }
 
+                done = 1;
                 break;
 
             /*
              * list all installed packages  
              */
             case 'L':
-
                 pkg_list = packages_get_list( pm, 2000, 0, NULL, NULL, 0, 1 );
 
                 if( pkg_list )
@@ -185,46 +235,71 @@ int main( int argc, char **argv )
                     }
                     packages_free_list( pkg_list );
                 }
+                done = 1;
                 break;
 
             /*
              * show which package needs package
              */
             case 's':
-                pkg_list = packages_get_list_by_depend( pm, 2000, 0, argv[2], 1 );
-                if( pkg_list )
+                if( argc != 3 )
                 {
-                    printf( "Package Version Description\n" );
-                    for( i = 0; i < pkg_list->cnt; i++ )
+                    err = 1;
+                }
+                else
+                {
+                    pkg_list = packages_get_list_by_depend( pm, 2000, 0, argv[2], 1 );
+                    if( pkg_list )
                     {
-                        printf( "%s %s %s\n",  packages_get_package_attr( pkg_list->list[i], "name"), packages_get_package_attr( pkg_list->list[i], "version"), packages_get_package_attr( pkg_list->list[i], "description") );
+                        printf( "Package Version Description\n" );
+                        for( i = 0; i < pkg_list->cnt; i++ )
+                        {
+                            printf( "%s %s %s\n",  packages_get_package_attr( pkg_list->list[i], "name"), packages_get_package_attr( pkg_list->list[i], "version"), packages_get_package_attr( pkg_list->list[i], "description") );
+                        }
+                        packages_free_list( pkg_list );
                     }
-                    packages_free_list( pkg_list );
                 }
 
+                done = 1;
                 break;
 
             /*
              * search which package provide this file
              */
             case 'S':
-                pkg_list = packages_get_list_by_file( pm, 2000, 0, argv[2] );
-                if( pkg_list )
+                if( argc != 3 )
                 {
-                    printf( "Package Version Description\n" );
-                    for( i = 0; i < pkg_list->cnt; i++ )
-                    {
-                        printf( "%s %s %s\n",  packages_get_package_attr( pkg_list->list[i], "name"), packages_get_package_attr( pkg_list->list[i], "version"), packages_get_package_attr( pkg_list->list[i], "description") );
-                    }
-                    packages_free_list( pkg_list );
+                    err = 1;
                 }
+                else
+                {
+                    pkg_list = packages_get_list_by_file( pm, 2000, 0, argv[2] );
+                    if( pkg_list )
+                    {
+                        printf( "Package Version Description\n" );
+                        for( i = 0; i < pkg_list->cnt; i++ )
+                        {
+                            printf( "%s %s %s\n",  packages_get_package_attr( pkg_list->list[i], "name"), packages_get_package_attr( pkg_list->list[i], "version"), packages_get_package_attr( pkg_list->list[i], "description") );
+                        }
+                        packages_free_list( pkg_list );
+                    }
+                }
+                done = 1;
                 break;
 
             /*
              * unpack ypk package
              */
             case 'x':
-                packages_unpack_package( pm, argv[2], argv[3] );
+                if( argc != 4 )
+                {
+                    err = 1;
+                }
+                else
+                {
+                    packages_unpack_package( pm, argv[2], argv[3] );
+                }
+                done = 1;
                 break;
 
             /*
@@ -232,6 +307,7 @@ int main( int argc, char **argv )
              */
             case 'b':
                 printf("^_^\n");
+                done = 1;
                 break;
 
             /*
@@ -239,12 +315,18 @@ int main( int argc, char **argv )
              */
             case 'm':
                 printf("^_^\n");
+                done = 1;
                 break;
             default:
                 usage();
+                done = 1;
         }
     }
     packages_manager_cleanup( pm );
 
-    return 0;
+    if( err == 1 )
+        usage();
+    else if( err == 2 )
+        fprintf( stderr, "Permission Denied!\n" );
+    return err;
 }
