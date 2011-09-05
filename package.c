@@ -105,6 +105,7 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
 
     //init
     db_init( &db, pm->db_name, OPEN_WRITE );
+    db_exec( &db, "begin", NULL );  
 
     printf( "Start ...\n" );
 
@@ -304,6 +305,7 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
     }
     closedir( dir );
 
+    db_exec( &db, "end", NULL );  
     printf( "Done!\n" );
     //clean up
     db_close( &db );
@@ -1633,13 +1635,11 @@ int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
             token = strtok( depend, " ,");
             while( token )
             {
-                //xxxx
-                if( 0 && !packages_has_installed( pm, packages_get_package_attr( pkg_data->data[i], token ) ) )
+                if( !packages_has_installed( pm, packages_get_package_attr( pkg_data->data[i], token ) ) )
                 {
                     return_code = -3; 
                     goto return_point;
                 }
-                //xxxx
                 token = strtok( NULL, " ,");
             }
         }
@@ -1651,8 +1651,7 @@ int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
             token = strtok( conflict, " ,");
             while( token )
             {
-                //xxxx
-                if( 0 && packages_has_installed( pm, packages_get_package_attr( pkg_data->data[i], token ) ) )
+                if( packages_has_installed( pm, packages_get_package_attr( pkg_data->data[i], token ) ) )
                 {
                     return_code = -4; 
                     goto return_point;
