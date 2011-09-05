@@ -240,6 +240,7 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
     if( !dir )
         return -1;
 
+    i = 0;
     while( entry = readdir( dir ) )
     {
         if( !strcmp( entry->d_name, "." ) || !strcmp( entry->d_name, ".." ) )
@@ -258,6 +259,12 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
                 {
                     if( strstr(entry_sub->d_name, ".list") )
                     {
+                        if( i > 1000 )
+                        {
+                            db_exec( &db, "end", NULL );  
+                            db_exec( &db, "begin", NULL );  
+                            i = 0;
+                        }
                         file_path_sub = util_strcat( file_path, "/", entry_sub->d_name, NULL );
                         package_name = entry->d_name;
                         printf( "%s\n", package_name );
@@ -297,6 +304,7 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
 
                         fclose( fp );
                         free( file_path_sub );
+                        i++;
                     }
                 }
             }
