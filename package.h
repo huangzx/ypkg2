@@ -16,6 +16,7 @@
 #define CONFIG_FILE "/etc/yget.conf"
 #define PACKAGE_DB_DIR  "/var/ypkg/db"
 #define DB_NAME "/var/ypkg/db/package.db"
+//#define DB_NAME "/tmp/soft_manager.db"
 #define UPDATE_DIR "updates"
 #define LIST_FILE "updates.list"
 #define LIST_DATE_FILE "updates.date"
@@ -97,7 +98,14 @@ PACKAGE_LIST *packages_get_list( PACKAGE_MANAGER *pm, int limit, int offset, cha
 
 PACKAGE_LIST *packages_get_list2( PACKAGE_MANAGER *pm, int page_size, int page_no, char *key, char *keyword, int wildcards, int installed );
 
+PACKAGE_LIST *packages_get_list_with_data( PACKAGE_MANAGER *pm, int limit, int offset, char *key, char *keyword, int installed );
+
 PACKAGE_LIST *packages_get_list_by_depend( PACKAGE_MANAGER *pm, int limit, int offset, char *depend, int installed );
+
+PACKAGE_LIST *packages_get_list_by_conflict( PACKAGE_MANAGER *pm, int limit, int offset, char *conflict, int installed );
+
+PACKAGE_LIST *packages_get_list_by_recommended( PACKAGE_MANAGER *pm, int limit, int offset, char *recommended, int installed );
+
 PACKAGE_LIST *packages_get_list_by_file( PACKAGE_MANAGER *pm, int limit, int offset, char *file );
 
 void packages_free_list( PACKAGE_LIST *pkg_list );
@@ -110,6 +118,7 @@ char *packages_get_package_attr2( HASH_TABLE *ht, char *key );
  */
 int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path );
 int packages_unpack_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir );
+int packages_pack_package( PACKAGE_MANAGER *pm, char *source_dir, char *ypk_path );
 int packages_install_package( PACKAGE_MANAGER *pm, char *package_name );
 int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir );
 int packages_remove_package( PACKAGE_MANAGER *pm, char *package_name );

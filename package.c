@@ -94,7 +94,7 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
 {
     int                 xml_ret, db_ret, is_desktop, i, list_len;
     char                xml_value, *sql, *sql_data, *sql_filelist, *package_name, *idx, *data_key, *file_path, *file_path_sub, *list_line;
-    char                *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime;
+    char                *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra;
     char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
     DIR                 *dir, *dir_sub;
     struct dirent       *entry, *entry_sub;
@@ -263,7 +263,7 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
                         printf( "%s\n", package_name );
 
                         db_exec( &db, "delete from world_file where name=?", package_name, NULL );  
-                        sql_filelist = "insert into world_file (name, type, file, size, perms, uid, gid, mtime) values (?, ?, ?, ?, ?, ?, ?, ?)"; 
+                        sql_filelist = "insert into world_file (name, type, file, size, perms, uid, gid, mtime, extra) values (?, ?, ?, ?, ?, ?, ?, ?, ?)"; 
 
                         fp = fopen( file_path_sub, "r" );
                         list_line = NULL;
@@ -278,6 +278,7 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
                                 file_uid = strtok( NULL, " ,");
                                 file_gid = strtok( NULL, " ,");
                                 file_mtime = strtok( NULL, " ,");
+                                file_extra = strtok( NULL, " ,");
 
                                 db_ret = db_exec( &db, sql_filelist, 
                                         package_name,
@@ -288,6 +289,7 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
                                         file_uid ? file_uid : "",
                                         file_gid ? file_gid : "",
                                         file_mtime ? file_mtime : "",
+                                        file_extra ? file_extra : "",
                                         NULL );
                             }
 
@@ -1306,9 +1308,9 @@ PACKAGE_LIST *packages_get_list2( PACKAGE_MANAGER *pm, int page_size, int page_n
 }
 
 /*
- * packages_get_list_by_depend
+ * packages_get_list_with_data
  */
-PACKAGE_LIST *packages_get_list_by_depend( PACKAGE_MANAGER *pm, int limit, int offset, char *depend, int installed )
+PACKAGE_LIST *packages_get_list_with_data( PACKAGE_MANAGER *pm, int limit, int offset, char *key, char *keyword, int installed )
 {    
     int                     ret, buf_size, cur_len, cur_pos, cur_pkg_index;
     char                    *table, *table_data, *sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
@@ -1318,7 +1320,7 @@ PACKAGE_LIST *packages_get_list_by_depend( PACKAGE_MANAGER *pm, int limit, int o
     HASH_TABLE              *cur_pkg;
     ENTRY                   item, *itemp;
 
-    if( !depend )
+    if( !key || !keyword )
         return NULL;
 
     if( offset < 0 )
@@ -1333,9 +1335,10 @@ PACKAGE_LIST *packages_get_list_by_depend( PACKAGE_MANAGER *pm, int limit, int o
     table = installed ? "world" : "universe";
     table_data = installed ? "world_data" : "universe_data";
 
+
     ret = db_init( &db, pm->db_name, OPEN_READ );
-    sql = util_strcat( "select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and data_depend like '%'||?||'%' limit ? offset ?", NULL );
-    db_query( &db, sql, depend, limit_str, offset_str, NULL);
+    sql = util_strcat( "select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " = ? ", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like ?||',%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?||',%'", " limit ? offset ?", NULL );
+    db_query( &db, sql, keyword, keyword, keyword, keyword, limit_str, offset_str, NULL);
     free( sql );
     free( limit_str );
     free( offset_str );
@@ -1396,13 +1399,37 @@ PACKAGE_LIST *packages_get_list_by_depend( PACKAGE_MANAGER *pm, int limit, int o
 }
 
 /*
+ * packages_get_list_by_recommended
+ */
+PACKAGE_LIST *packages_get_list_by_recommended( PACKAGE_MANAGER *pm, int limit, int offset, char *recommended, int installed )
+{
+    return packages_get_list_with_data( pm, limit, offset, "data_recommended", recommended, installed );
+}
+
+/*
+ * packages_get_list_by_conflict
+ */
+PACKAGE_LIST *packages_get_list_by_conflict( PACKAGE_MANAGER *pm, int limit, int offset, char *conflict, int installed )
+{
+    return packages_get_list_with_data( pm, limit, offset, "data_conflict", conflict,installed );
+}
+
+/*
+ * packages_get_list_by_depend
+ */
+PACKAGE_LIST *packages_get_list_by_depend( PACKAGE_MANAGER *pm, int limit, int offset, char *depend, int installed )
+{
+    return packages_get_list_with_data( pm, limit, offset, "data_depend", depend,installed );
+}
+
+/*
  * packages_get_list_by_file
  */
 PACKAGE_LIST *packages_get_list_by_file( PACKAGE_MANAGER *pm, int limit, int offset, char *file )
 {    
     int                     ret, buf_size, cur_len, cur_pos, cur_pkg_index;
     char                    *sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
-    char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", NULL  }; 
+    char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", "file", "type", "extra", NULL  }; 
     DB                      db;
     PACKAGE_LIST            *pkg_list;
     HASH_TABLE              *cur_pkg;
@@ -1421,7 +1448,7 @@ PACKAGE_LIST *packages_get_list_by_file( PACKAGE_MANAGER *pm, int limit, int off
     limit_str = util_int_to_str( limit );
 
     ret = db_init( &db, pm->db_name, OPEN_READ );
-    sql = util_strcat( "select distinct world.* from world,world_file where world.name=world_file.name and type='F' and file like '%/'||? limit ? offset ?", NULL );
+    sql = util_strcat( "select distinct * from world,world_file where world.name=world_file.name  and file like '%'||? limit ? offset ?", NULL );
     db_query( &db, sql, file, limit_str, offset_str, NULL);
     free( sql );
     free( limit_str );
@@ -1720,7 +1747,7 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
     void                *pkginfo = NULL, *filelist = NULL;
     size_t              pkginfo_len, filelist_len;
     char                *sql, *sql_data, *sql_filelist, *package_name, *install_file, *cmd, *list_line;
-    char                *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime;
+    char                *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra;
     char                tmp_ypk_install[] = "/tmp/ypkinstall.XXXXXX";
     PACKAGE             *pkg = NULL;
     PACKAGE_DATA        *pkg_data = NULL;
@@ -1862,6 +1889,7 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
             file_uid = strtok( NULL, " ,");
             file_gid = strtok( NULL, " ,");
             file_mtime = strtok( NULL, " ,");
+            file_extra = strtok( NULL, " ,");
 
 
             ret = db_exec( &db, sql_filelist, 
@@ -1872,7 +1900,7 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
                     file_perms ? file_perms : "",
                     file_uid ? file_uid : "",
                     file_gid ? file_gid : "",
-                    file_mtime ? file_mtime : "",
+                    file_extra ? file_extra : "",
                     NULL );
         }
 

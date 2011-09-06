@@ -52,7 +52,7 @@ install: all
 	#cp po/zh_CN.mo $(LANGDIR)/ypkg.mo
 
 clean:
-	rm -f $(OBJS) $(YPKG) $(YPKGIMPORT) $(TMPDIR)/db_create.sql
+	rm -f *.o $(YPKG) $(YPKGIMPORT) $(TMPDIR)/db_create.sql
 
 remove:
 	rm -f $(BINDIR)/$(YPKG) 
