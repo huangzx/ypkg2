@@ -232,3 +232,23 @@ int util_remove_dir( char *dir_path )
 
     return rmdir( dir_path );
 }
+
+char *util_time_to_str( time_t time )
+{
+    char        *result;
+    struct tm   *tmp;
+
+    tmp = localtime( &time );
+    if( !tmp )
+        return NULL;
+
+    result = malloc( 20 );
+    memset( result, '\0', 20 );
+    if( strftime( result, 20, "%Y-%m-%d %H:%M:%S", tmp) == 0 ) 
+    {
+        free( result );
+        return NULL;
+    }
+
+    return result;
+}

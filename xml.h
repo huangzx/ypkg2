@@ -22,8 +22,8 @@ char *xpath_get_node( xmlDocPtr doc, xmlChar *xpath );
 /**
  * xmlTextReader
  */
-#define HASH_TABLE_SIZE 32
-#define HASH_FULL_KEY_LEN 64
+#define XML_HASH_TABLE_SIZE 32
+#define XML_HASH_FULL_KEY_LEN 64
 typedef struct _XML_READER_HANDLE{
     xmlTextReaderPtr    reader;
     xmlHashTablePtr     ht;

@@ -12,7 +12,7 @@
 #define OPEN_READ       1
 #define OPEN_WRITE      2
 
-#define HASH_TABLE_SIZE 32
+#define DB_HASH_TABLE_SIZE 32
 
 #define RESULT_NUM      1
 #define RESULT_ASSOC    2

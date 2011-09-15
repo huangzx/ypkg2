@@ -1,4 +1,5 @@
 #include <getopt.h>
+#include <time.h>
 #include "package.h"
 
 #define COLOR_RED "\e[31;49m"
@@ -58,9 +59,10 @@ Options:\n\
 
 int main( int argc, char **argv )
 {
-    int             c, action, ret, err, flag, i, j;
-    char            *package_name, *depend,  *infile, *outfile, *file_type;
+    int             c, i, j, action, ret, err, flag, len;
+    char            *tmp, *package_name, *file_name, *install_time, *version, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type;
     PACKAGE_MANAGER *pm;
+    PACKAGE         *pkg;
     PACKAGE_DATA    *pkg_data;
     PACKAGE_FILE    *pkg_file;
     PACKAGE_LIST    *pkg_list;
@@ -221,15 +223,28 @@ int main( int argc, char **argv )
             {
                 for( i = optind; i < argc; i++)
                 {
-                    pkg_file = packages_get_package_file( pm, argv[i] );
+                    package_name = argv[i];
+                    len = strlen( package_name );
+                    if( strncmp( package_name+len-4, ".ypk", 4 ) || access( package_name, R_OK ) )
+                        pkg_file = packages_get_package_file( pm, package_name );
+                    else
+                        pkg_file =  packages_get_package_file_from_ypk( package_name );
+
                     if( pkg_file )
                     {
-                        printf("\n%s 's file list:\n\n", argv[i]);
+                        printf( COLOR_YELLO "* Contents of %s:\n" COLOR_RESET, package_name );
                         for( j = 0; j < pkg_file->cnt; j++ )
                         {
-                            printf( "%s\n",  packages_get_package_attr( pkg_file->file[j], "file") );
+                            printf( "%s|%10s| %s\n",  packages_get_package_file_attr( pkg_file, j, "type"), packages_get_package_file_attr( pkg_file, j, "size"), packages_get_package_file_attr( pkg_file, j, "file") );
                         }
                         packages_free_package_file( pkg_file );
+
+                        printf( "\nFile: %d, Dir: %d, Link: %d, Size: %dK\n", pkg_file->cnt_file,  pkg_file->cnt_dir, pkg_file->cnt_link, pkg_file->size );
+                        printf( COLOR_YELLO "--- Contents of %s ---\n" COLOR_RESET, package_name );
+                    }
+                    else
+                    {
+                        printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
                     }
                 }
             }
@@ -246,19 +261,50 @@ int main( int argc, char **argv )
             }
             else
             {
-                if( pkg_data = packages_get_package_data( pm, argv[2], 1 ) )
+                package_name = argv[optind];
+                if( pkg = packages_get_package( pm, package_name, 1 ) )
+                {
+                    version = packages_get_package_attr( pkg, "version");
+                }
+                else
+                {
+                    printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                    break;
+                }
+
+                if( pkg_data = packages_get_package_data( pm, package_name, 1 ) )
                 {
 
                     for( i = 0; i < pkg_data->cnt; i++ )
                     {
-                        depend = packages_get_package_attr( pkg_data->data[i], "data_depend");
+                        printf( ">> Dependencies of " COLOR_WHILE "%s_%s" COLOR_RESET " data %d:\n",  package_name, version, i );
+                        bdepend = packages_get_package_data_attr( pkg_data, i, "data_bdepend");
+                        if( bdepend )
+                        {
+                            printf( COLOR_GREEN "* Build_time"  COLOR_RESET  "\n%s\n",  bdepend );
+                        }
+
+                        depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
                         if( depend )
                         {
-                            printf( "%s\n",  depend );
+                            printf( COLOR_GREEN "* Run_time"  COLOR_RESET  "\n%s\n",  depend );
+                        }
+
+                        recommended = packages_get_package_data_attr( pkg_data, i, "data_recommended");
+                        if( recommended )
+                        {
+                            printf( COLOR_GREEN "* Recommend"  COLOR_RESET  "\n%s\n",  recommended );
+                        }
+
+                        conflict = packages_get_package_data_attr( pkg_data, i, "data_conflict");
+                        if( conflict )
+                        {
+                            printf( COLOR_GREEN "* Conflict"  COLOR_RESET  "\n%s\n",  conflict );
                         }
                     }
                     packages_free_package_data( pkg_data );
                 }
+                packages_free_package( pkg );
             }
 
             break;
@@ -267,14 +313,21 @@ int main( int argc, char **argv )
          * list all installed packages  
          */
         case 'L':
-            pkg_list = packages_get_list( pm, 2000, 0, NULL, NULL, 0, 1 );
-
+            pkg_list = packages_get_list( pm, 50000, 0, NULL, NULL, 0, 1 );
             if( pkg_list )
             {
-                printf( "Package Version Description\n" );
                 for( i = 0; i < pkg_list->cnt; i++ )
                 {
-                    printf( "%s %s %s\n",  packages_get_package_attr( pkg_list->list[i], "name"), packages_get_package_attr( pkg_list->list[i], "version"), packages_get_package_attr( pkg_list->list[i], "description") );
+                    tmp = packages_get_list_attr( pkg_list, i, "install_time" );
+                    if( tmp )
+                        install_time = util_time_to_str( atoi( tmp ) );
+                    else
+                        install_time = NULL;
+
+                    printf( COLOR_GREEN "[I] "  COLOR_RESET  "%s_%s\t%s\t%s\nDescription: %s\n", packages_get_list_attr( pkg_list, i, "name"), packages_get_list_attr( pkg_list, i, "version"), install_time ? install_time : "0", packages_get_list_attr( pkg_list, i, "size"), packages_get_list_attr( pkg_list, i, "description") );
+
+                    if( install_time )
+                        free( install_time );
                 }
                 packages_free_list( pkg_list );
             }
@@ -292,7 +345,7 @@ int main( int argc, char **argv )
             {
                 package_name = argv[optind];
                 //depend
-                printf( "* [R] stand for runtime depend, [A] for recommoneded, [C] for conflict.\n" );
+                printf( "* [R] stand for runtime depend, [B] for build, [A] for recommoneded, [C] for conflict.\n" );
                 pkg_list = packages_get_list_by_depend( pm, 2000, 0, package_name, 1 );
                 if( pkg_list )
                 {
@@ -303,7 +356,23 @@ int main( int argc, char **argv )
                     }
                     for( i = 0; i < pkg_list->cnt; i++ )
                     {
-                        printf( COLOR_BLUE "[R]" COLOR_RESET " %s\n",  packages_get_package_attr( pkg_list->list[i], "name") );
+                        printf( COLOR_BLUE "[R]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                    }
+                    packages_free_list( pkg_list );
+                }
+
+                //bdepend
+                pkg_list = packages_get_list_by_bdepend( pm, 2000, 0, package_name, 1 );
+                if( pkg_list )
+                {
+                    if( !flag )
+                    {
+                        flag = 1;
+                        printf( COLOR_YELLO "* %s is related with:\n" COLOR_RESET,  package_name );
+                    }
+                    for( i = 0; i < pkg_list->cnt; i++ )
+                    {
+                        printf( COLOR_BLUE "[B]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
                     }
                     packages_free_list( pkg_list );
                 }
@@ -319,7 +388,7 @@ int main( int argc, char **argv )
                     }
                     for( i = 0; i < pkg_list->cnt; i++ )
                     {
-                        printf( COLOR_BLUE "[A]" COLOR_RESET " %s\n",  packages_get_package_attr( pkg_list->list[i], "name") );
+                        printf( COLOR_BLUE "[A]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
                     }
                     packages_free_list( pkg_list );
                 }
@@ -335,7 +404,7 @@ int main( int argc, char **argv )
                     }
                     for( i = 0; i < pkg_list->cnt; i++ )
                     {
-                        printf( COLOR_BLUE "[C]" COLOR_RESET " %s\n",  packages_get_package_attr( pkg_list->list[i], "name") );
+                        printf( COLOR_BLUE "[C]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
                     }
                     packages_free_list( pkg_list );
                 }
@@ -358,24 +427,24 @@ int main( int argc, char **argv )
             }
             else
             {
-                package_name = argv[optind];
-                printf( "* Searching for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  package_name );
-                pkg_list = packages_get_list_by_file( pm, 2000, 0, package_name );
+                file_name = argv[optind];
+                printf( "* Searching for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  file_name );
+                pkg_list = packages_get_list_by_file( pm, 2000, 0, file_name );
                 if( pkg_list )
                 {
                     for( i = 0; i < pkg_list->cnt; i++ )
                     {
-                        file_type = packages_get_package_attr( pkg_list->list[i], "type");
-                        printf( "%s_%s: %s, " COLOR_WHILE "%s" COLOR_RESET,  packages_get_package_attr( pkg_list->list[i], "name"), packages_get_package_attr( pkg_list->list[i], "version"), file_type, packages_get_package_attr( pkg_list->list[i], "file") );
+                        file_type = packages_get_list_attr( pkg_list, i, "type");
+                        printf( "%s_%s: %s, " COLOR_WHILE "%s" COLOR_RESET,  packages_get_list_attr( pkg_list, i, "name"), packages_get_list_attr( pkg_list, i, "version"), file_type, packages_get_list_attr( pkg_list, i, "file") );
                         if( file_type[0] == 'S' )
-                            printf( " -> %s", packages_get_package_attr( pkg_list->list[i], "extra") );
-                        printf( " ...\n" );
+                            printf( " -> %s", packages_get_list_attr( pkg_list, i, "extra") );
+                        printf( "\n" );
                     }
                     packages_free_list( pkg_list );
                 }
                 else
                 {
-                    printf( COLOR_RED "* /home/eric/workspace/c/sm/ypkg not owned by any packages.\n" COLOR_RESET,  package_name );
+                    printf( COLOR_RED "* /home/eric/workspace/c/sm/ypkg not owned by any packages.\n" COLOR_RESET,  file_name );
                 }
             }
             break;

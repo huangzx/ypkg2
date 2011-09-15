@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -32,6 +33,7 @@ char *util_strcpy( char *src );
 char *util_strcat(char *first, ...);
 char *util_strcat2( char *dest, int size, char *first, ...);
 char *util_int_to_str( int i );
+char *util_time_to_str( time_t time );
 
 
 void util_log( char *log, char *msg );

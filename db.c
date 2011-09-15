@@ -91,7 +91,7 @@ static int db_create_hash_table( DB *db )
 {
     db->ht = malloc( sizeof( struct hsearch_data ) );
     memset(db->ht, '\0',  sizeof( struct hsearch_data ) );
-    return hcreate_r( HASH_TABLE_SIZE, db->ht );
+    return hcreate_r( DB_HASH_TABLE_SIZE, db->ht );
 }
 
 static void db_destory_hash_table( DB *db )

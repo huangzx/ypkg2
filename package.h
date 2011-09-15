@@ -10,6 +10,7 @@
 #include "download.h"
 #include "util.h"
 #include "db.h"
+#include "data.h"
 #include "archive.h"
 #include "xml.h"
 
@@ -32,30 +33,27 @@ typedef struct {
     char    *db_name;
 }PACKAGE_MANAGER;
 
-
-typedef struct hsearch_data HASH_TABLE;
-
 typedef struct {
-    HASH_TABLE          *pkg;
-    char                *buf;
+    HASH_TABLE              *ht;
 }PACKAGE;
 
 typedef struct {
     int                     cnt;
-    HASH_TABLE              **data;
-    char                    *buf;
+    HASH_TABLE_LIST         *htl;
 }PACKAGE_DATA;
 
 typedef struct {
     int                     cnt;
-    HASH_TABLE              **file;
-    char                    *buf;
+    int                     cnt_file;
+    int                     cnt_link;
+    int                     cnt_dir;
+    int                     size;
+    HASH_TABLE_LIST         *htl;
 }PACKAGE_FILE;
 
 typedef struct {
     int                     cnt;
-    HASH_TABLE              **list;
-    char                    *buf;
+    HASH_TABLE_LIST         *htl;
 }PACKAGE_LIST;
 
 
@@ -79,28 +77,41 @@ int packages_import_local_data( PACKAGE_MANAGER *pm );
 /*
  * get package infomations
  */
-int packages_get_count( PACKAGE_MANAGER *pm, char *key, char *keyword, int wildcards );
+int packages_get_count( PACKAGE_MANAGER *pm, char *key, char *keyword, int wildcards, int installed );
 int packages_has_installed( PACKAGE_MANAGER *pm, char *name );
 
+int packages_get_package_from_ypk( char *ypk_path, PACKAGE **package, PACKAGE_DATA **package_data );
+
 PACKAGE *packages_get_package( PACKAGE_MANAGER *pm, char *name, int installed );
+char *packages_get_package_attr( PACKAGE *ht, char *key );
+char *packages_get_package_attr2( PACKAGE *ht, char *key );
 void packages_free_package( PACKAGE *pkg );
 
 
 PACKAGE_DATA *packages_get_package_data( PACKAGE_MANAGER *pm, char *name, int installed );
+char *packages_get_package_data_attr( PACKAGE_DATA *pkg_data, int index, char *key );
+char *packages_get_package_data_attr2( PACKAGE_DATA *pkg_data, int index, char *key );
 void packages_free_package_data( PACKAGE_DATA *pkg_data );
 
-int packages_get_package_from_ypk( char *ypk_path, PACKAGE **package, PACKAGE_DATA **package_data );
 
+/* file info */
 PACKAGE_FILE *packages_get_package_file( PACKAGE_MANAGER *pm, char *name );
+PACKAGE_FILE *packages_get_package_file_from_ypk( char *ypk_path );
+char *packages_get_package_file_attr( PACKAGE_FILE *pkg_file, int index, char *key );
+char *packages_get_package_file_attr2( PACKAGE_FILE *pkg_file, int index, char *key );
 void packages_free_package_file( PACKAGE_FILE *pkg_file );
 
 PACKAGE_LIST *packages_get_list( PACKAGE_MANAGER *pm, int limit, int offset, char *key, char *keyword, int wildcards, int installed );
 
 PACKAGE_LIST *packages_get_list2( PACKAGE_MANAGER *pm, int page_size, int page_no, char *key, char *keyword, int wildcards, int installed );
 
+//PACKAGE_LIST *packages_get_history_list( PACKAGE_MANAGER *pm, char *name );
+
 PACKAGE_LIST *packages_get_list_with_data( PACKAGE_MANAGER *pm, int limit, int offset, char *key, char *keyword, int installed );
 
 PACKAGE_LIST *packages_get_list_by_depend( PACKAGE_MANAGER *pm, int limit, int offset, char *depend, int installed );
+
+PACKAGE_LIST *packages_get_list_by_bdepend( PACKAGE_MANAGER *pm, int limit, int offset, char *bdepend, int installed );
 
 PACKAGE_LIST *packages_get_list_by_conflict( PACKAGE_MANAGER *pm, int limit, int offset, char *conflict, int installed );
 
@@ -108,10 +119,10 @@ PACKAGE_LIST *packages_get_list_by_recommended( PACKAGE_MANAGER *pm, int limit, 
 
 PACKAGE_LIST *packages_get_list_by_file( PACKAGE_MANAGER *pm, int limit, int offset, char *file );
 
+char *packages_get_list_attr( PACKAGE_LIST *pkg_list, int index, char *key );
+char *packages_get_list_attr2( PACKAGE_LIST *pkg_list, int index, char *key );
 void packages_free_list( PACKAGE_LIST *pkg_list );
 
-char *packages_get_package_attr( HASH_TABLE *ht, char *key );
-char *packages_get_package_attr2( HASH_TABLE *ht, char *key );
 
 /*
  * package install & remove & update
@@ -120,6 +131,7 @@ int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path );
 int packages_unpack_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir );
 int packages_pack_package( PACKAGE_MANAGER *pm, char *source_dir, char *ypk_path );
 int packages_install_package( PACKAGE_MANAGER *pm, char *package_name );
+//int packages_install_history_package( PACKAGE_MANAGER *pm, char *package_name, char *yversion );
 int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir );
 int packages_remove_package( PACKAGE_MANAGER *pm, char *package_name );
 //int packages_update_package( PACKAGE_MANAGER *pm );

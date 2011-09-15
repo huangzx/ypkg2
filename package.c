@@ -93,12 +93,12 @@ int packages_check_update( PACKAGE_MANAGER *pm )
 int packages_import_local_data( PACKAGE_MANAGER *pm )
 {
     int                 xml_ret, db_ret, is_desktop, i, list_len;
-    char                xml_value, *sql, *sql_data, *sql_filelist, *package_name, *idx, *data_key, *file_path, *file_path_sub, *list_line;
-    char                *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra;
+    char                xml_value, *sql, *sql_history, *sql_data, *sql_history_data, *sql_filelist, *idx, *data_key, *file_path, *file_path_sub, *list_line;
+    char                *package_name, *yversion, *install_time, *install_size, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra;
     char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
-    DIR                 *dir, *dir_sub;
-    struct dirent       *entry, *entry_sub;
     struct stat         statbuf, statbuf_sub;
+    struct dirent       *entry, *entry_sub;
+    DIR                 *dir, *dir_sub;
     FILE                *fp;
     XML_READER_HANDLE   xml_handle;
     DB                  db;
@@ -113,17 +113,43 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
     printf( "Import universe  ...\n" );
     //import universe
     reader_open( LOCAL_UNIVERSE,  &xml_handle );
-    sql = "replace into universe (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    sql = "replace into universe (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
+    sql_history = "replace into universe_history (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
     while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
     {
         is_desktop = (int)reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
         package_name = reader_get_value2( &xml_handle, "name" );
-        printf( "%s\n", package_name );
+        yversion = reader_get_value( &xml_handle, "yversion" );
+        if( !yversion )
+            yversion = "0";
 
         //universe
         db_ret = db_exec( &db, sql,  
                 package_name, //name
+                yversion, //yversion
+                is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
+                is_desktop ? "1" : "0", //desktop
+                reader_get_value2( &xml_handle, "category" ), //category
+                reader_get_value2( &xml_handle, "arch" ), //arch
+                reader_get_value2( &xml_handle, "version" ), //version
+                reader_get_value2( &xml_handle, "priority" ), //priority
+                reader_get_value2( &xml_handle, "install" ), //install
+                reader_get_value2( &xml_handle, "license" ), //license
+                reader_get_value2( &xml_handle, "homepage" ), //homepage
+                reader_get_value2( &xml_handle, "repo" ), //repo
+                reader_get_value2( &xml_handle, "size" ), //size
+                reader_get_value2( &xml_handle, "sha" ), //sha
+                reader_get_value2( &xml_handle, "build_date" ), //build_date
+                reader_get_value2( &xml_handle, "uri" ), //uri
+                is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
+                reader_get_value2( &xml_handle, "data_count" ), //data_count
+                NULL);
+
+        //universe_history
+        db_ret = db_exec( &db, sql_history,  
+                package_name, //name
+                yversion, //yversion
                 is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
                 is_desktop ? "1" : "0", //desktop
                 reader_get_value2( &xml_handle, "category" ), //category
@@ -143,9 +169,13 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
                 NULL);
     
         //universe_data
-        db_exec( &db, "delete from universe_data where name=?", package_name, NULL );  
+        db_exec( &db, "delete from universe_data where name=?", package_name, yversion, NULL );  
 
-        sql_data = "insert into universe_data (name, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        db_exec( &db, "delete from universe_history_data where name=? and yversion=?", package_name, yversion, NULL );  
+
+        sql_data = "insert into universe_data (name, yversion, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+        sql_history_data = "insert into universe_history_data (name, yversion, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
         data_key = (char *)malloc( 32 );
         for( i = 0; ; i++ )
         {
@@ -157,6 +187,20 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
             }
             db_exec( &db, sql_data,  
                     package_name, //name
+                    yversion, //yversion
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                    NULL);
+
+            db_exec( &db, sql_history_data,  
+                    package_name, //name
+                    yversion, //yversion
                     reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
                     reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
                     reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
@@ -175,17 +219,20 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
     //world
     printf( "Import world  ...\n" );
     reader_open( LOCAL_WORLD,  &xml_handle );
-    sql = "replace into world (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    sql = "replace into world (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
     {
         is_desktop = (int)reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
         package_name = reader_get_value2( &xml_handle, "name" );
-        printf( "%s\n", package_name );
+        yversion = reader_get_value( &xml_handle, "yversion" );
+        if( !yversion )
+            yversion = "0";
 
         //world
         db_ret = db_exec( &db, sql,  
                 package_name, //name
+                yversion, //yversion
                 is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
                 is_desktop ? "1" : "0", //desktop
                 reader_get_value2( &xml_handle, "category" ), //category
@@ -207,7 +254,7 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
         //world_data
         db_exec( &db, "delete from world_data where name=?", package_name, NULL );  
 
-        sql_data = "insert into world_data (name, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        sql_data = "insert into world_data (name, yversion, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
         data_key = (char *)malloc( 32 );
         for( i = 0; ; i++ )
         {
@@ -219,6 +266,7 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
             }
             db_exec( &db, sql_data,  
                     package_name, //name
+                    yversion, //yversion
                     reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
                     reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
                     reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
@@ -247,6 +295,8 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
             continue;
         }
 
+        package_name = entry->d_name;
+        //printf( "%s\n", package_name );
         file_path = util_strcat( PACKAGE_DB_DIR, "/", entry->d_name, NULL );
         if( !stat( file_path, &statbuf ) && S_ISDIR( statbuf.st_mode ) )
         {
@@ -256,11 +306,32 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
             {
                 while( entry_sub = readdir( dir_sub ) )
                 {
+                    if( strstr(entry_sub->d_name, ".desc") )
+                    {
+                        file_path_sub = util_strcat( file_path, "/", entry_sub->d_name, NULL );
+                        install_time = util_get_config( file_path_sub, "INSTALL_TIME" );
+                        install_size = util_get_config( file_path_sub, "INSTALL_SIZE" );
+                        if( install_time )
+                        {
+                            db_exec( &db, "update world set install_time=?, size=? where name=?", install_time, install_size ? install_size : "0", package_name, NULL );  
+                        }
+                        else
+                        {
+                            db_exec( &db, "update world set install_time=strftime('%s','now'), size=? where name=?", package_name,  install_size ? install_size : "0", NULL );  
+                        }
+
+                        if( install_time )
+                            free( install_time );
+
+                        if( install_size )
+                            free( install_size );
+
+                        free( file_path_sub );
+                    }
+
                     if( strstr(entry_sub->d_name, ".list") )
                     {
                         file_path_sub = util_strcat( file_path, "/", entry_sub->d_name, NULL );
-                        package_name = entry->d_name;
-                        printf( "%s\n", package_name );
 
                         db_exec( &db, "delete from world_file where name=?", package_name, NULL );  
                         sql_filelist = "insert into world_file (name, type, file, size, perms, uid, gid, mtime, extra) values (?, ?, ?, ?, ?, ?, ?, ?, ?)"; 
@@ -373,7 +444,7 @@ int packages_update( PACKAGE_MANAGER *pm )
 static int packages_update_single_xml( PACKAGE_MANAGER *pm, char *xml_file, char *sum )
 {
     int                 xml_ret, db_ret, is_desktop, i;
-    char                *target_url, xml_value, *sql, *sql_data, *package_name, *idx, *data_key;
+    char                *target_url, xml_value, *sql, *sql_data, *sql_history, *sql_history_data, *package_name, *yversion, *idx, *data_key;
     char                tmp_bz2[] = "/tmp/tmp_bz2.XXXXXX";
     char                tmp_xml[] = "/tmp/tmp_xml.XXXXXX";
     char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
@@ -430,18 +501,47 @@ static int packages_update_single_xml( PACKAGE_MANAGER *pm, char *xml_file, char
     reader_open( tmp_xml,  &xml_handle );
     db_init( &db, pm->db_name, OPEN_WRITE );
 
-    sql = "replace into universe (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    sql = "replace into universe (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-    sql_data = "insert into universe_data (name, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    sql_history = "replace into universe_history (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+    sql_data = "insert into universe_data (name, yversion, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+    sql_history_data = "insert into universe_history_data (name, yversion, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
     {
         is_desktop = (int)reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
         package_name = reader_get_value2( &xml_handle, "name" );
+        yversion = reader_get_value( &xml_handle, "yversion" );
+        if( !yversion )
+            yversion = "0";
 
         //universe
         db_ret = db_exec( &db, sql,  
                 package_name, //name
+                yversion, //yversion
+                is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
+                is_desktop ? "1" : "0", //desktop
+                reader_get_value2( &xml_handle, "category" ), //category
+                reader_get_value2( &xml_handle, "arch" ), //arch
+                reader_get_value2( &xml_handle, "version" ), //version
+                reader_get_value2( &xml_handle, "priority" ), //priority
+                reader_get_value2( &xml_handle, "install" ), //install
+                reader_get_value2( &xml_handle, "license" ), //license
+                reader_get_value2( &xml_handle, "homepage" ), //homepage
+                reader_get_value2( &xml_handle, "repo" ), //repo
+                reader_get_value2( &xml_handle, "size" ), //size
+                reader_get_value2( &xml_handle, "sha" ), //sha
+                reader_get_value2( &xml_handle, "build_date" ), //build_date
+                reader_get_value2( &xml_handle, "uri" ), //uri
+                is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
+                reader_get_value2( &xml_handle, "data_count" ), //data_count
+                NULL);
+
+        db_ret = db_exec( &db, sql_history,  
+                package_name, //name
+                yversion, //yversion
                 is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
                 is_desktop ? "1" : "0", //desktop
                 reader_get_value2( &xml_handle, "category" ), //category
@@ -461,7 +561,10 @@ static int packages_update_single_xml( PACKAGE_MANAGER *pm, char *xml_file, char
                 NULL);
     
         //universe_data
-        db_exec( &db, "delete from universe_data where name=?", package_name, NULL );  
+        db_exec( &db, "delete from universe_data where name=?", package_name, yversion, NULL );  
+
+        db_exec( &db, "delete from universe_history_data where name=? and yversion=?", package_name, yversion, NULL );  
+
         data_key = (char *)malloc( 32 );
         for( i = 0; ; i++ )
         {
@@ -473,6 +576,7 @@ static int packages_update_single_xml( PACKAGE_MANAGER *pm, char *xml_file, char
             }
             db_exec( &db, sql_data,  
                     package_name, //name
+                    yversion, //yversion
                     reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
                     reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
                     reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
@@ -482,6 +586,20 @@ static int packages_update_single_xml( PACKAGE_MANAGER *pm, char *xml_file, char
                     reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
                     reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
                     NULL);
+
+            db_exec( &db, sql_history_data,  
+                    package_name, //name
+                    yversion, //yversion
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
+                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                    NULL);
+
             free( idx );
         }
         free( data_key );
@@ -586,31 +704,39 @@ static int packages_set_last_update_timestamp( PACKAGE_MANAGER *pm, int last_upd
     return -1;
 }
 
-int packages_get_count( PACKAGE_MANAGER *pm, char *key, char *keyword, int wildcards )
+int packages_get_count( PACKAGE_MANAGER *pm, char *key, char *keyword, int wildcards, int installed  )
 {
     DB      db;
     int     count;
-    char    *sql;
+    char    *sql, *table;
 
     if( !pm )
         return -1;
 
+    table = installed ? "world" : "universe";
+
     db_init( &db, pm->db_name, OPEN_READ );
     if( !key || !keyword )
     {
-        db_query( &db, "select count(*) from universe", NULL);
+        sql = util_strcat( "select count(*) from ", table, NULL );
+        db_query( &db, sql, NULL);
+        free( sql );
     }
     else if( key[0] == '*' && wildcards )
     {
-        db_query( &db, "select count(*) from universe where name like '%'||?||'%' or generic_name like  '%'||?||'%'  or description like '%'||?||'%'", keyword, keyword, keyword, NULL);
+        sql = util_strcat( "select count(*) from ", table, " where name like '%'||?||'%' or generic_name like  '%'||?||'%'  or description like '%'||?||'%'", NULL );
+        db_query( &db, sql, keyword, keyword, keyword, NULL);
+        free( sql );
     }
     else if( key[0] == '*' )
     {
-        db_query( &db, "select count(*) from universe where name = ? or generic_name = ? or description = ?", keyword, keyword, keyword, NULL);
+        sql = util_strcat( "select count(*) from ", table, " where name = ? or generic_name = ? or description = ?", NULL );
+        db_query( &db, sql, keyword, keyword, keyword, NULL);
+        free( sql );
     }
     else
     {
-        sql = util_strcat( "select count(*) from universe where ", key, wildcards ? " like '%'||?||'%'" : " = ?", NULL );
+        sql = util_strcat( "select count(*) from ", table, " where ", key, wildcards ? " like '%'||?||'%'" : " = ?", NULL );
         db_query( &db, sql, keyword, NULL );
         free( sql );
     }
@@ -642,12 +768,10 @@ int packages_has_installed( PACKAGE_MANAGER *pm, char *name )
 
 PACKAGE *packages_get_package( PACKAGE_MANAGER *pm, char *name, int installed )
 {
-    int                     buf_size, cur_len, cur_pos;
     char                    *sql, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "uri", "size", "install", "data_count", NULL  }; 
     DB                      db;
     PACKAGE                 *pkg = NULL;
-    ENTRY                   item, *itemp;
 
     if( !pm || !name )
     {
@@ -662,40 +786,13 @@ PACKAGE *packages_get_package( PACKAGE_MANAGER *pm, char *name, int installed )
     if( db_fetch_assoc( &db ) )
     {
         pkg = (PACKAGE *)malloc( sizeof( PACKAGE ) );
-        pkg->pkg = (HASH_TABLE *)malloc( sizeof( HASH_TABLE ) );
-        memset( pkg->pkg, '\0',  sizeof( HASH_TABLE )  );
-        hcreate_r( 8, pkg->pkg );
-
-        buf_size = PACKAGE_ATTRS_LINE_LEN;
-        pkg->buf = (char *)malloc( buf_size );
-        memset( pkg->buf, '\0',  buf_size  );
+        pkg->ht = hash_table_init( );
 
         attr_keys_offset = attr_keys;
-        cur_pos = 0;
         while( cur_key = *attr_keys_offset++ )
         {
             cur_value = db_get_value_by_key( &db, cur_key );
-            if( cur_value )
-            {
-                cur_len = strlen( cur_value );
-                if( cur_pos + cur_len + 1 > buf_size )
-                {
-                    buf_size += cur_len + PACKAGE_ATTRS_LINE_LEN;
-                    pkg->buf = realloc( pkg->buf, buf_size );
-                }
-
-                memcpy( pkg->buf + cur_pos, cur_value, cur_len );
-                pkg->buf[cur_pos + cur_len] = '\0';
-                item.data = (void *)(pkg->buf + cur_pos);
-                cur_pos += cur_len + 1;
-            }
-            else
-            {
-                item.data = "";
-            }
-
-            item.key = cur_key;
-            hsearch_r( item, ENTER, &itemp, pkg->pkg );
+            hash_table_add_data( pkg->ht, cur_key, cur_value );
         }
     }
 
@@ -709,20 +806,18 @@ PACKAGE *packages_get_package( PACKAGE_MANAGER *pm, char *name, int installed )
  */
 int packages_get_package_from_ypk( char *ypk_path, PACKAGE **package, PACKAGE_DATA **package_data )
 {
-    int                 i, buf_size, cur_len, cur_pos, ret, return_code = 0, cur_data_index, data_count;
+    int                 i, ret, return_code = 0, cur_data_index, data_count;
     void                *pkginfo = NULL, *control = NULL;
     size_t              pkginfo_len = 0, control_len = 0;
     char                *cur_key, *cur_value, *cur_xpath, **attr_keys_offset, **attr_xpath_offset, *idx, *data_key;
-    char                *attr_keys[] = { "name", "generic_name", "category", "arch", "priority", "version", "install", "license", "homepage", "repo", "description", "sha", "size", "build_date", "uri", "data_count", "is_desktop", NULL  }; 
-    char                *attr_xpath[] = { "//Package/@name", "//genericname/keyword", "//category", "//arch", "//priority", "//version", "//install", "//license", "//homepage", "//repo", "//description/keyword", "//sha", "//size", "//build_date", "//uri", "//data_count", "//genericname[@type='desktop']", NULL  }; 
+    char                *attr_keys[] = { "name", "yversion", "generic_name", "category", "arch", "priority", "version", "install", "license", "homepage", "repo", "description", "sha", "size", "build_date", "uri", "data_count", "is_desktop", NULL  }; 
+    char                *attr_xpath[] = { "//Package/@name", "//yversion", "//genericname/keyword", "//category", "//arch", "//priority", "//version", "//install", "//license", "//homepage", "//repo", "//description/keyword", "//sha", "//size", "//build_date", "//uri", "//data_count", "//genericname[@type='desktop']", NULL  }; 
     char                *data_attr_keys[] = { "data_name", "data_format", "data_size", "data_install_size", "data_depend", "data_bdepend", "data_recommended", "data_conflict", NULL  }; 
     char                *data_attr_xpath[] = { "name", "format", "size", "install_size", "depend", "bdepend", "recommended", "conflict", NULL  }; 
     xmlDocPtr           xmldoc = NULL;
     xmlXPathObjectPtr   xpath;
     PACKAGE             *pkg;
     PACKAGE_DATA        *pkg_data;
-    HASH_TABLE          *cur_data;
-    ENTRY               item, *itemp;
 
 
     if( !package && !package_data )
@@ -768,60 +863,27 @@ int packages_get_package_from_ypk( char *ypk_path, PACKAGE **package, PACKAGE_DA
     if( package )
     {
         pkg = (PACKAGE *)malloc( sizeof( PACKAGE ) );
-        pkg->pkg = (HASH_TABLE *)malloc( sizeof( HASH_TABLE ) );
-        memset( pkg->pkg, '\0',  sizeof( HASH_TABLE )  );
-        hcreate_r( 8, pkg->pkg );
-
-        buf_size = PACKAGE_ATTRS_LINE_LEN;
-        pkg->buf = (char *)malloc( buf_size );
-        memset( pkg->buf, '\0',  buf_size  );
+        pkg->ht = hash_table_init( );
 
         attr_keys_offset = attr_keys;
         attr_xpath_offset = attr_xpath;
-        cur_pos = 0;
         while( cur_key = *attr_keys_offset++ )
         {
             cur_xpath = *attr_xpath_offset++;
             cur_value =  xpath_get_node( xmldoc, cur_xpath );
 
+            hash_table_add_data( pkg->ht, cur_key, cur_value );
             if( cur_value )
-            {
-                cur_len = strlen( cur_value );
-                if( cur_pos + cur_len + 1 > buf_size )
-                {
-                    buf_size += cur_len + PACKAGE_ATTRS_LINE_LEN;
-                    pkg->buf = realloc( pkg->buf, buf_size );
-                }
-
-                memcpy( pkg->buf + cur_pos, cur_value, cur_len );
-                pkg->buf[cur_pos + cur_len] = '\0';
-                item.key = cur_key;
-                if( cur_key[0] == 'i' && cur_key[1] == 's' )
-                    item.data = "1";
-                else
-                    item.data = (void *)(pkg->buf + cur_pos);
-                hsearch_r( item, ENTER, &itemp, pkg->pkg );
-                cur_pos += cur_len + 1;
                 free( cur_value );
-            }
-            else
-            {
-                item.key = cur_key;
-                if( cur_key[0] == 'i' && cur_key[1] == 's' )
-                    item.data = "0";
-                else
-                    item.data = NULL;
-                hsearch_r( item, ENTER, &itemp, pkg->pkg );
-            }
         }
         *package = pkg;
     }
 
     if( package_data )
     {
-        if( package && packages_get_package_attr( (*package)->pkg, "data_count") )
+        if( package && packages_get_package_attr( (*package), "data_count") )
         {
-            cur_value = packages_get_package_attr( (*package)->pkg, "data_count");
+            cur_value = packages_get_package_attr( (*package), "data_count");
             data_count =  cur_value ? atoi( cur_value ) : 1;
         }
         else
@@ -833,16 +895,9 @@ int packages_get_package_from_ypk( char *ypk_path, PACKAGE **package, PACKAGE_DA
         data_count = data_count ? data_count : 1;
 
         pkg_data = (PACKAGE_DATA *)malloc( sizeof( PACKAGE_DATA ) );
+        pkg_data->htl = hash_table_list_init( data_count );
         
-        pkg_data->data = (HASH_TABLE **)malloc( sizeof( HASH_TABLE * ) * data_count );
-        memset( pkg_data->data, '\0',  sizeof( HASH_TABLE * ) * data_count  );
-
-        buf_size = PACKAGE_ATTRS_LINE_LEN * data_count;
-        pkg_data->buf = (char *)malloc( buf_size );
-        memset( pkg_data->buf, '\0',  buf_size  );
-
         cur_data_index = 0;
-        cur_pos = 0;
         pkg_data->cnt = 0;
 
         data_key = (char *)malloc( 32 );
@@ -857,51 +912,25 @@ int packages_get_package_from_ypk( char *ypk_path, PACKAGE **package, PACKAGE_DA
             }
             free( cur_value );
 
-            cur_data = (HASH_TABLE *)malloc( sizeof( HASH_TABLE ) );
-            pkg_data->data[cur_data_index++] = cur_data;
-            memset( cur_data, '\0',  sizeof( HASH_TABLE )  );
-            hcreate_r( 8, cur_data );
-
             attr_keys_offset = data_attr_keys;
             attr_xpath_offset = data_attr_xpath;
-            cur_pos = 0;
             while( cur_key = *attr_keys_offset++ )
             {
                 cur_xpath = *attr_xpath_offset++;
                 cur_value = xpath_get_node( xmldoc, util_strcat2( data_key, 32, "//data[@id='", idx, "']/", cur_xpath, NULL ) );
+                hash_table_list_add_data( pkg_data->htl, cur_data_index, cur_key, cur_value );
                 if( cur_value  )
-                {
-                    cur_len = strlen( cur_value );
-                    if( cur_pos + cur_len + 1 > buf_size )
-                    {
-                        buf_size += cur_len + PACKAGE_ATTRS_LINE_LEN * data_count / 4;
-                        pkg_data->buf = realloc( pkg_data->buf, buf_size );
-                    }
-
-                    memcpy( pkg_data->buf + cur_pos, cur_value, cur_len );
-                    pkg_data->buf[cur_pos + cur_len] = '\0';
-                    item.key = cur_key;
-                    item.data = (void *)(pkg_data->buf + cur_pos);
-                    hsearch_r( item, ENTER, &itemp, cur_data );
-                    cur_pos += cur_len + 1;
                     free( cur_value );
-                }
-                else
-                {
-                    item.key = cur_key;
-                    item.data = NULL;
-                    hsearch_r( item, ENTER, &itemp, cur_data );
-                }
             }
             free( idx );
+            cur_data_index++;
         }
         free( data_key );
         pkg_data->cnt = cur_data_index;
 
         if( pkg_data->cnt == 0 )
         {
-            free( pkg_data->data );
-            free( pkg_data->buf );
+            hash_table_list_cleanup( pkg_data->htl );
             free( pkg_data );
             *package_data =  NULL;
         }
@@ -939,6 +968,28 @@ return_point:
 }
 
 /*
+ * packages_get_package_attr
+ */
+char *packages_get_package_attr( PACKAGE *pkg, char *key )
+{
+    if( !pkg || !key )
+        return NULL;
+
+    return hash_table_get_data( pkg->ht, key );
+}
+
+char *packages_get_package_attr2( PACKAGE *pkg, char *key )
+{
+    char *result;
+
+    if( !pkg || !key )
+        return NULL;
+
+    result = hash_table_get_data( pkg->ht, key );
+    return result ? result : "";
+}
+
+/*
  * packages_free_package
  */
 void packages_free_package( PACKAGE *pkg )
@@ -946,15 +997,7 @@ void packages_free_package( PACKAGE *pkg )
     if( !pkg )
         return;
 
-    if( pkg->pkg )
-    {
-        hdestroy_r( pkg->pkg );
-        free( pkg->pkg );
-    }
-
-    if( pkg->buf );
-        free( pkg->buf );
-
+    hash_table_cleanup( pkg->ht );
     free( pkg );
 }
 
@@ -963,13 +1006,11 @@ void packages_free_package( PACKAGE *pkg )
  */
 PACKAGE_DATA *packages_get_package_data( PACKAGE_MANAGER *pm, char *name, int installed )
 {
-    int                     data_count, buf_size, cur_len, cur_pos, cur_data_index;
+    int                     data_count, cur_data_index;
     char                    *sql, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "data_name", "data_format", "data_size", "data_install_size", "data_depend", "data_bdepend", "data_recommended", "data_conflict", NULL  }; 
     DB                      db;
     PACKAGE_DATA            *pkg_data = NULL;
-    HASH_TABLE              *cur_data;
-    ENTRY                   item, *itemp;
 
     if( !pm || !name )
     {
@@ -990,50 +1031,28 @@ PACKAGE_DATA *packages_get_package_data( PACKAGE_MANAGER *pm, char *name, int in
     free( sql );
 
     pkg_data = (PACKAGE_DATA *)malloc( sizeof( PACKAGE_DATA ) );
-
-    pkg_data->data = (HASH_TABLE **)malloc( sizeof( HASH_TABLE * ) * data_count );
-
-    buf_size = PACKAGE_ATTRS_LINE_LEN * data_count;
-    pkg_data->buf = (char *)malloc( buf_size );
-    memset( pkg_data->buf, '\0',  buf_size  );
+    pkg_data->htl = hash_table_list_init( data_count );
 
     cur_data_index = 0;
-    cur_pos = 0;
     pkg_data->cnt = 0;
 
     while( db_fetch_assoc( &db ) )
     {
-        cur_data = (HASH_TABLE *)malloc( sizeof( HASH_TABLE ) );
-        pkg_data->data[cur_data_index++] = cur_data;
-        memset( cur_data, '\0',  sizeof( HASH_TABLE )  );
-        hcreate_r( 8, cur_data );
 
         attr_keys_offset = attr_keys;
         while( cur_key = *attr_keys_offset++ )
         {
             cur_value = db_get_value_by_key( &db, cur_key );
-            cur_len = strlen( cur_value );
-            if( cur_pos + cur_len + 1 > buf_size )
-            {
-                buf_size += cur_len + PACKAGE_ATTRS_LINE_LEN * data_count / 4;
-                pkg_data->buf = realloc( pkg_data->buf, buf_size );
-            }
-
-            memcpy( pkg_data->buf + cur_pos, cur_value, cur_len );
-            pkg_data->buf[cur_pos + cur_len] = '\0';
-            item.key = cur_key;
-            item.data = (void *)(pkg_data->buf + cur_pos);
-            hsearch_r( item, ENTER, &itemp, cur_data );
-            cur_pos += cur_len + 1;
+            hash_table_list_add_data( pkg_data->htl, cur_data_index, cur_key, cur_value );
         }
+        cur_data_index++;
     }
     pkg_data->cnt = cur_data_index;
 
     db_close( &db );
     if( pkg_data->cnt == 0 )
     {
-        free( pkg_data->data );
-        free( pkg_data->buf );
+        hash_table_list_cleanup( pkg_data->htl );
         free( pkg_data );
         return NULL;
     }
@@ -1042,31 +1061,29 @@ PACKAGE_DATA *packages_get_package_data( PACKAGE_MANAGER *pm, char *name, int in
 }
 
 /*
+ * packages_get_package_data_attr
+ */
+char *packages_get_package_data_attr( PACKAGE_DATA *pkg_data, int index, char *key )
+{
+    return hash_table_list_get_data( pkg_data->htl, index, key );
+}
+
+char *packages_get_package_data_attr2( PACKAGE_DATA *pkg_data, int index, char *key )
+{
+    char *result;
+
+    result = hash_table_list_get_data( pkg_data->htl, index, key );
+    return result ? result : "";
+}
+/*
  * packages_free_package_data
  */
 void packages_free_package_data( PACKAGE_DATA *pkg_data )
 {
-    int i;
-
     if( !pkg_data )
         return;
 
-    if( pkg_data->data )
-    {
-        for( i = 0; i < pkg_data->cnt; i++ )
-        {
-            if( pkg_data->data[i] )
-            {
-                hdestroy_r( pkg_data->data[i] );
-                free( pkg_data->data[i] );
-            }
-        }
-        free( pkg_data->data );
-    }
-
-    if( pkg_data->buf );
-        free( pkg_data->buf );
-
+    hash_table_list_cleanup( pkg_data->htl );
     free( pkg_data );
 }
 
@@ -1075,7 +1092,7 @@ void packages_free_package_data( PACKAGE_DATA *pkg_data )
  */
 PACKAGE_FILE *packages_get_package_file( PACKAGE_MANAGER *pm, char *name )
 {
-    int                     file_count, buf_size, cur_len, cur_pos, cur_file_index;
+    int                     file_count, file_type, buf_size, cur_len, cur_pos, cur_file_index;
     char                    *sql, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "file", "type", "size", "perms", "uid", "gid", "mtime", NULL  }; 
     DB                      db;
@@ -1100,48 +1117,147 @@ PACKAGE_FILE *packages_get_package_file( PACKAGE_MANAGER *pm, char *name )
     db_query( &db, "select * from world_file where name=?", name, NULL);
 
     pkg_file = (PACKAGE_FILE *)malloc( sizeof( PACKAGE_FILE ) );
-    pkg_file->file = (HASH_TABLE **)malloc( sizeof( HASH_TABLE * ) * file_count );
-    buf_size = PACKAGE_ATTRS_LINE_LEN * file_count;
-    pkg_file->buf = (char *)malloc( buf_size );
-    memset( pkg_file->buf, '\0',  buf_size  );
+    pkg_file->htl = hash_table_list_init( file_count );
 
     cur_file_index = 0;
-    cur_pos = 0;
     pkg_file->cnt = 0;
+    pkg_file->cnt_file = 0;
+    pkg_file->cnt_dir = 0;
+    pkg_file->cnt_link = 0;
+    pkg_file->size = 0;
 
     while( db_fetch_assoc( &db ) )
     {
-        cur_file = (HASH_TABLE *)malloc( sizeof( HASH_TABLE ) );
-        pkg_file->file[cur_file_index++] = cur_file;
-        memset( cur_file, '\0',  sizeof( HASH_TABLE )  );
-        hcreate_r( 8, cur_file );
-
         attr_keys_offset = attr_keys;
         while( cur_key = *attr_keys_offset++ )
         {
             cur_value = db_get_value_by_key( &db, cur_key );
-            cur_len = strlen( cur_value );
-            if( cur_pos + cur_len + 1 > buf_size )
-            {
-                buf_size += cur_len + PACKAGE_ATTRS_LINE_LEN * file_count / 4;
-                pkg_file->buf = realloc( pkg_file->buf, buf_size );
-            }
+            hash_table_list_add_data( pkg_file->htl, cur_file_index, cur_key, cur_value );
 
-            memcpy( pkg_file->buf + cur_pos, cur_value, cur_len );
-            pkg_file->buf[cur_pos + cur_len] = '\0';
-            item.key = cur_key;
-            item.data = (void *)(pkg_file->buf + cur_pos);
-            hsearch_r( item, ENTER, &itemp, cur_file );
-            cur_pos += cur_len + 1;
+            //counter
+            if( cur_key[0] == 't' && cur_value ) //type
+            {
+                switch( cur_value[0] )
+                {
+                    case 'F':
+                        pkg_file->cnt_file++;
+                        file_type = 1;
+                        break;
+                    case 'D':
+                        pkg_file->cnt_dir++;
+                        file_type = 2;
+                        break;
+                    case 'L':
+                        pkg_file->cnt_link++;
+                        file_type = 3;
+                        break;
+                }
+            }
+            else if( cur_key[0] == 's' && file_type == 1 ) //size
+            {
+                pkg_file->size += atoi( cur_value );
+            }
         }
+        cur_file_index++;
     }
     pkg_file->cnt = cur_file_index;
 
     db_close( &db );
     if( pkg_file->cnt == 0 )
     {
-        free( pkg_file->file );
-        free( pkg_file->buf );
+        hash_table_list_cleanup( pkg_file->htl );
+        free( pkg_file );
+        return NULL;
+    }
+
+    pkg_file->size = pkg_file->size / 1024;
+    return pkg_file;
+}
+
+/*
+ * packages_get_package_file_from_ypk
+ */
+PACKAGE_FILE *packages_get_package_file_from_ypk( char *ypk_path )
+{
+    int                 ret, file_count, cur_file_index;
+    size_t              pkginfo_len = 0, filelist_len = 0;
+    void                *pkginfo = NULL, *filelist = NULL;
+    char                *package_name, *yversion, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra;
+    char                *list_line, *cur_key, *cur_value, **attr_keys_offset;
+    char                *attr_keys[] = { "type", "file", "size", "perms", "uid", "gid", "mtime", "extra", NULL  }; 
+    PACKAGE_FILE        *pkg_file = NULL;
+
+    if( access( ypk_path, R_OK ) )
+        return NULL;
+
+
+    //unzip info
+    ret = archive_extract_file2( ypk_path, "pkginfo", &pkginfo, &pkginfo_len );
+    if( ret == -1 || pkginfo_len == 0 )
+    {
+        goto return_point;
+    }
+
+    ret = archive_extract_file4( pkginfo, pkginfo_len, "filelist", &filelist, &filelist_len );
+    if( ret == -1 ||  filelist_len == 0)
+    {
+        goto return_point;
+    }
+
+    file_count = 500;
+    pkg_file = (PACKAGE_FILE *)malloc( sizeof( PACKAGE_FILE ) );
+    pkg_file->htl = hash_table_list_init( file_count );
+
+    cur_file_index = 0;
+    pkg_file->cnt = 0;
+
+    list_line = util_mem_gets( filelist );
+    while( list_line )
+    {
+        if( list_line[0] != 'I' )
+        {
+            if( cur_file_index + 1 > file_count )
+            {
+                file_count += 500;
+                hash_table_list_extend( pkg_file->htl, file_count );
+            }
+
+            attr_keys_offset = attr_keys;
+            cur_value = strtok( list_line, " ,");
+            while( cur_key = *attr_keys_offset++ )
+            {
+                hash_table_list_add_data( pkg_file->htl, cur_file_index, cur_key, cur_value );
+                cur_value =  strtok( NULL, " ,");
+            }
+            cur_file_index++;
+        }
+        else
+        {
+            strtok( list_line, " ,");
+            pkg_file->cnt_file = atoi( strtok( NULL, " ,") );
+            pkg_file->cnt_dir = atoi( strtok( NULL, " ,") );
+            pkg_file->cnt_link = atoi( strtok( NULL, " ,") );
+            strtok( NULL, " ,");
+            pkg_file->size = atoi( strtok( NULL, " ,") );
+        }
+        free( list_line );
+        list_line = util_mem_gets( NULL );
+    }
+    pkg_file->cnt = cur_file_index;
+
+return_point:
+    if( pkginfo )
+        free( pkginfo );
+
+    if( filelist )
+        free( filelist );
+
+    if( !pkg_file )
+        return NULL;
+
+    if( pkg_file->cnt == 0 )
+    {
+        hash_table_list_cleanup( pkg_file->htl );
         free( pkg_file );
         return NULL;
     }
@@ -1150,7 +1266,23 @@ PACKAGE_FILE *packages_get_package_file( PACKAGE_MANAGER *pm, char *name )
 }
 
 /*
- * packages_free_package_data
+ * packages_get_package_file_attr
+ */
+char *packages_get_package_file_attr( PACKAGE_FILE *pkg_file, int index, char *key )
+{
+    return hash_table_list_get_data( pkg_file->htl, index, key );
+}
+
+char *packages_get_package_file_attr2( PACKAGE_FILE *pkg_file, int index, char *key )
+{
+    char *result;
+
+    result = hash_table_list_get_data( pkg_file->htl, index, key );
+    return result ? result : "";
+}
+
+/*
+ * packages_free_package_file
  */
 void packages_free_package_file( PACKAGE_FILE *pkg_file )
 {
@@ -1159,22 +1291,7 @@ void packages_free_package_file( PACKAGE_FILE *pkg_file )
     if( !pkg_file )
         return;
 
-    if( pkg_file->file )
-    {
-        for( i = 0; i < pkg_file->cnt; i++ )
-        {
-            if( pkg_file->file[i] )
-            {
-                hdestroy_r( pkg_file->file[i] );
-                free( pkg_file->file[i] );
-            }
-        }
-        free( pkg_file->file );
-    }
-
-    if( pkg_file->buf );
-        free( pkg_file->buf );
-
+    hash_table_list_cleanup( pkg_file->htl );
     free( pkg_file );
 }
 
@@ -1183,13 +1300,11 @@ void packages_free_package_file( PACKAGE_FILE *pkg_file )
  */
 PACKAGE_LIST *packages_get_list( PACKAGE_MANAGER *pm, int limit, int offset, char *key, char *keyword, int wildcards, int installed )
 {
-    int                     ret, buf_size, cur_len, cur_pos, cur_pkg_index;
+    int                     ret, cur_pkg_index;
     char                    *table,*sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
-    char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", NULL  }; 
+    char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", "install_time", NULL  }; 
     DB                      db;
     PACKAGE_LIST            *pkg_list;
-    HASH_TABLE              *cur_pkg;
-    ENTRY                   item, *itemp;
 
 
     if( offset < 0 )
@@ -1232,43 +1347,21 @@ PACKAGE_LIST *packages_get_list( PACKAGE_MANAGER *pm, int limit, int offset, cha
     free( offset_str );
 
     pkg_list = (PACKAGE_LIST *)malloc( sizeof( PACKAGE_LIST ) );
-
-
-    pkg_list->list = (HASH_TABLE **)malloc( sizeof( HASH_TABLE * ) * limit );
-
-    buf_size = PACKAGE_ATTRS_LINE_LEN * limit;
-    pkg_list->buf = (char *)malloc( buf_size );
-    memset( pkg_list->buf, '\0',  buf_size  );
+    pkg_list->htl = hash_table_list_init( limit );
 
     cur_pkg_index = 0;
-    cur_pos = 0;
     pkg_list->cnt = 0;
 
     while( db_fetch_assoc( &db ) )
     {
-        cur_pkg = (HASH_TABLE *)malloc( sizeof( HASH_TABLE ) );
-        pkg_list->list[cur_pkg_index++] = cur_pkg;
-        memset( cur_pkg, '\0',  sizeof( HASH_TABLE )  );
-        hcreate_r( 8, cur_pkg );
 
         attr_keys_offset = attr_keys;
         while( cur_key = *attr_keys_offset++ )
         {
             cur_value = db_get_value_by_key( &db, cur_key );
-            cur_len = strlen( cur_value );
-            if( cur_pos + cur_len + 1 > buf_size )
-            {
-                buf_size += cur_len + PACKAGE_ATTRS_LINE_LEN * limit / 4;
-                pkg_list->buf = realloc( pkg_list->buf, buf_size );
-            }
-
-            memcpy( pkg_list->buf + cur_pos, cur_value, cur_len );
-            pkg_list->buf[cur_pos + cur_len] = '\0';
-            item.key = cur_key;
-            item.data = (void *)(pkg_list->buf + cur_pos);
-            hsearch_r( item, ENTER, &itemp, cur_pkg );
-            cur_pos += cur_len + 1;
+            hash_table_list_add_data( pkg_list->htl, cur_pkg_index, cur_key, cur_value );
         }
+        cur_pkg_index++;
     }
     pkg_list->cnt = cur_pkg_index;
 
@@ -1276,8 +1369,7 @@ PACKAGE_LIST *packages_get_list( PACKAGE_MANAGER *pm, int limit, int offset, cha
 
     if( pkg_list->cnt == 0 )
     {
-        free( pkg_list->list );
-        free( pkg_list->buf );
+        hash_table_list_cleanup( pkg_list->htl );
         free( pkg_list );
         return NULL;
     }
@@ -1312,13 +1404,11 @@ PACKAGE_LIST *packages_get_list2( PACKAGE_MANAGER *pm, int page_size, int page_n
  */
 PACKAGE_LIST *packages_get_list_with_data( PACKAGE_MANAGER *pm, int limit, int offset, char *key, char *keyword, int installed )
 {    
-    int                     ret, buf_size, cur_len, cur_pos, cur_pkg_index;
+    int                     ret, cur_pkg_index;
     char                    *table, *table_data, *sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", NULL  }; 
     DB                      db;
     PACKAGE_LIST            *pkg_list;
-    HASH_TABLE              *cur_pkg;
-    ENTRY                   item, *itemp;
 
     if( !key || !keyword )
         return NULL;
@@ -1344,43 +1434,20 @@ PACKAGE_LIST *packages_get_list_with_data( PACKAGE_MANAGER *pm, int limit, int o
     free( offset_str );
 
     pkg_list = (PACKAGE_LIST *)malloc( sizeof( PACKAGE_LIST ) );
-
-
-    pkg_list->list = (HASH_TABLE **)malloc( sizeof( HASH_TABLE * ) * limit );
-
-    buf_size = PACKAGE_ATTRS_LINE_LEN * limit;
-    pkg_list->buf = (char *)malloc( buf_size );
-    memset( pkg_list->buf, '\0',  buf_size  );
+    pkg_list->htl = hash_table_list_init( limit );
 
     cur_pkg_index = 0;
-    cur_pos = 0;
     pkg_list->cnt = 0;
 
     while( db_fetch_assoc( &db ) )
     {
-        cur_pkg = (HASH_TABLE *)malloc( sizeof( HASH_TABLE ) );
-        pkg_list->list[cur_pkg_index++] = cur_pkg;
-        memset( cur_pkg, '\0',  sizeof( HASH_TABLE )  );
-        hcreate_r( 8, cur_pkg );
-
         attr_keys_offset = attr_keys;
         while( cur_key = *attr_keys_offset++ )
         {
             cur_value = db_get_value_by_key( &db, cur_key );
-            cur_len = strlen( cur_value );
-            if( cur_pos + cur_len + 1 > buf_size )
-            {
-                buf_size += cur_len + PACKAGE_ATTRS_LINE_LEN * limit / 4;
-                pkg_list->buf = realloc( pkg_list->buf, buf_size );
-            }
-
-            memcpy( pkg_list->buf + cur_pos, cur_value, cur_len );
-            pkg_list->buf[cur_pos + cur_len] = '\0';
-            item.key = cur_key;
-            item.data = (void *)(pkg_list->buf + cur_pos);
-            hsearch_r( item, ENTER, &itemp, cur_pkg );
-            cur_pos += cur_len + 1;
+            hash_table_list_add_data( pkg_list->htl, cur_pkg_index, cur_key, cur_value );
         }
+        cur_pkg_index++;
     }
     pkg_list->cnt = cur_pkg_index;
 
@@ -1388,8 +1455,7 @@ PACKAGE_LIST *packages_get_list_with_data( PACKAGE_MANAGER *pm, int limit, int o
 
     if( pkg_list->cnt == 0 )
     {
-        free( pkg_list->list );
-        free( pkg_list->buf );
+        hash_table_list_cleanup( pkg_list->htl );
         free( pkg_list );
         return NULL;
     }
@@ -1423,17 +1489,23 @@ PACKAGE_LIST *packages_get_list_by_depend( PACKAGE_MANAGER *pm, int limit, int o
 }
 
 /*
+ * packages_get_list_by_bdepend
+ */
+PACKAGE_LIST *packages_get_list_by_bdepend( PACKAGE_MANAGER *pm, int limit, int offset, char *bdepend, int installed )
+{
+    return packages_get_list_with_data( pm, limit, offset, "data_bdepend", bdepend,installed );
+}
+
+/*
  * packages_get_list_by_file
  */
 PACKAGE_LIST *packages_get_list_by_file( PACKAGE_MANAGER *pm, int limit, int offset, char *file )
 {    
-    int                     ret, buf_size, cur_len, cur_pos, cur_pkg_index;
+    int                     ret, cur_pkg_index;
     char                    *sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", "file", "type", "extra", NULL  }; 
     DB                      db;
     PACKAGE_LIST            *pkg_list;
-    HASH_TABLE              *cur_pkg;
-    ENTRY                   item, *itemp;
 
     if( !file )
         return NULL;
@@ -1448,50 +1520,26 @@ PACKAGE_LIST *packages_get_list_by_file( PACKAGE_MANAGER *pm, int limit, int off
     limit_str = util_int_to_str( limit );
 
     ret = db_init( &db, pm->db_name, OPEN_READ );
-    sql = util_strcat( "select distinct * from world,world_file where world.name=world_file.name  and file like '%'||? limit ? offset ?", NULL );
+    sql = util_strcat( "select distinct * from world,world_file where world.name=world_file.name  and file like ", file[0] == '/' ? "'%'" : "'%/'", "||? limit ? offset ?", NULL );
     db_query( &db, sql, file, limit_str, offset_str, NULL);
     free( sql );
     free( limit_str );
     free( offset_str );
 
     pkg_list = (PACKAGE_LIST *)malloc( sizeof( PACKAGE_LIST ) );
-
-
-    pkg_list->list = (HASH_TABLE **)malloc( sizeof( HASH_TABLE * ) * limit );
-
-    buf_size = PACKAGE_ATTRS_LINE_LEN * limit;
-    pkg_list->buf = (char *)malloc( buf_size );
-    memset( pkg_list->buf, '\0',  buf_size  );
+    pkg_list->htl = hash_table_list_init( limit );
 
     cur_pkg_index = 0;
-    cur_pos = 0;
     pkg_list->cnt = 0;
-
     while( db_fetch_assoc( &db ) )
     {
-        cur_pkg = (HASH_TABLE *)malloc( sizeof( HASH_TABLE ) );
-        pkg_list->list[cur_pkg_index++] = cur_pkg;
-        memset( cur_pkg, '\0',  sizeof( HASH_TABLE )  );
-        hcreate_r( 8, cur_pkg );
-
         attr_keys_offset = attr_keys;
         while( cur_key = *attr_keys_offset++ )
         {
             cur_value = db_get_value_by_key( &db, cur_key );
-            cur_len = strlen( cur_value );
-            if( cur_pos + cur_len + 1 > buf_size )
-            {
-                buf_size += cur_len + PACKAGE_ATTRS_LINE_LEN * limit / 4;
-                pkg_list->buf = realloc( pkg_list->buf, buf_size );
-            }
-
-            memcpy( pkg_list->buf + cur_pos, cur_value, cur_len );
-            pkg_list->buf[cur_pos + cur_len] = '\0';
-            item.key = cur_key;
-            item.data = (void *)(pkg_list->buf + cur_pos);
-            hsearch_r( item, ENTER, &itemp, cur_pkg );
-            cur_pos += cur_len + 1;
+            hash_table_list_add_data( pkg_list->htl, cur_pkg_index, cur_key, cur_value );
         }
+        cur_pkg_index++;
     }
     pkg_list->cnt = cur_pkg_index;
 
@@ -1499,8 +1547,7 @@ PACKAGE_LIST *packages_get_list_by_file( PACKAGE_MANAGER *pm, int limit, int off
 
     if( pkg_list->cnt == 0 )
     {
-        free( pkg_list->list );
-        free( pkg_list->buf );
+        hash_table_list_cleanup( pkg_list->htl );
         free( pkg_list );
         return NULL;
     }
@@ -1513,52 +1560,26 @@ PACKAGE_LIST *packages_get_list_by_file( PACKAGE_MANAGER *pm, int limit, int off
  */
 void packages_free_list( PACKAGE_LIST *pkg_list )
 {
-    int i;
-
     if( !pkg_list )
         return;
 
-    if( pkg_list->list )
-    {
-        for( i = 0; i < pkg_list->cnt; i++ )
-        {
-            if( pkg_list->list[i] )
-            {
-                hdestroy_r( pkg_list->list[i] );
-                free( pkg_list->list[i] );
-            }
-        }
-        free( pkg_list->list );
-    }
-
-    if( pkg_list->buf );
-        free( pkg_list->buf );
-
+    hash_table_list_cleanup( pkg_list->htl );
     free( pkg_list );
 }
 
 /*
- * packages_get_package_attr
+ * packages_get_list_attr
  */
-char *packages_get_package_attr( HASH_TABLE *ht, char *key )
+char *packages_get_list_attr( PACKAGE_LIST *pkg_list, int index, char *key )
 {
-    ENTRY   item, *itemp;
-
-    if( !ht )
-        return NULL;
-
-    item.key = key;
-    item.data = NULL;
-    hsearch_r( item, FIND, &itemp, ht );
-
-    return itemp ? itemp->data : NULL;
+    return hash_table_list_get_data( pkg_list->htl, index, key );
 }
 
-char *packages_get_package_attr2( HASH_TABLE *ht, char *key )
+char *packages_get_list_attr2( PACKAGE_LIST *pkg_list, int index, char *key )
 {
     char *result;
 
-    result = packages_get_package_attr( ht, key );
+    result = hash_table_list_get_data( pkg_list->htl, index, key );
     return result ? result : "";
 }
 
@@ -1582,7 +1603,7 @@ int packages_install_package( PACKAGE_MANAGER *pm, char *package_name )
         return -2;
     }
 
-    package_url = packages_get_package_attr( pkg->pkg, "uri" );
+    package_url = packages_get_package_attr( pkg, "uri" );
     if( !package_url )
     {
         return_code = -3;
@@ -1645,7 +1666,7 @@ int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
         return -1;
     }
 
-    package_name = packages_get_package_attr( pkg->pkg, "name" );
+    package_name = packages_get_package_attr( pkg, "name" );
 
     //check installed
     if( packages_has_installed( pm, package_name ) )
@@ -1657,13 +1678,13 @@ int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
     for( i = 0; i < pkg_data->cnt; i++ )
     {
         //check depend
-        depend = packages_get_package_attr( pkg_data->data[i], "data_depend");
+        depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
         if( depend )
         {
             token = strtok( depend, " ,");
             while( token )
             {
-                if( !packages_has_installed( pm, packages_get_package_attr( pkg_data->data[i], token ) ) )
+                if( !packages_has_installed( pm, packages_get_package_data_attr( pkg_data, i, token ) ) )
                 {
                     return_code = -3; 
                     goto return_point;
@@ -1673,13 +1694,13 @@ int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
         }
 
         //check conflict
-        conflict = packages_get_package_attr( pkg_data->data[i], "data_conflict");
+        conflict = packages_get_package_data_attr( pkg_data, i, "data_conflict");
         if( conflict )
         {
             token = strtok( conflict, " ,");
             while( token )
             {
-                if( packages_has_installed( pm, packages_get_package_attr( pkg_data->data[i], token ) ) )
+                if( packages_has_installed( pm, packages_get_package_data_attr( pkg_data, i, token ) ) )
                 {
                     return_code = -4; 
                     goto return_point;
@@ -1744,10 +1765,10 @@ int packages_pack_package( PACKAGE_MANAGER *pm, char *source_dir, char *ypk_path
 int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir )
 {
     int                 i, ret, status, return_code = 0;
-    void                *pkginfo = NULL, *filelist = NULL;
     size_t              pkginfo_len, filelist_len;
-    char                *sql, *sql_data, *sql_filelist, *package_name, *install_file, *cmd, *list_line;
-    char                *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra;
+    void                *pkginfo = NULL, *filelist = NULL;
+    char                *sql, *sql_data, *sql_filelist, *install_file, *cmd, *list_line;
+    char                *package_name, *yversion, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra;
     char                tmp_ypk_install[] = "/tmp/ypkinstall.XXXXXX";
     PACKAGE             *pkg = NULL;
     PACKAGE_DATA        *pkg_data = NULL;
@@ -1769,7 +1790,10 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
         return_code = -1;
         goto return_point;
     }
-    package_name = packages_get_package_attr( pkg->pkg, "name" );
+    package_name = packages_get_package_attr( pkg, "name" );
+    yversion = packages_get_package_attr( pkg, "yversion" );
+    if( !yversion )
+        yversion = "0";
 
     //pre install
     mkstemp( tmp_ypk_install );
@@ -1823,46 +1847,47 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
     printf( "updating database ...\n");
     db_init( &db, pm->db_name, OPEN_WRITE );
     //world
-    sql = "replace into world (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, uri, description, data_count, install_time) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    sql = "replace into world (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, uri, description, data_count, install_time) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'));";
 
 
     ret = db_exec( &db, sql,  
             package_name, //name
-            packages_get_package_attr2( pkg->pkg, "generic_name"), //generic_name
-            packages_get_package_attr2( pkg->pkg, "is_desktop"), //desktop
-            packages_get_package_attr2( pkg->pkg, "category" ), //category
-            packages_get_package_attr2( pkg->pkg, "arch" ), //arch
-            packages_get_package_attr2( pkg->pkg, "version" ), //version
-            packages_get_package_attr2( pkg->pkg, "priority" ), //priority
-            packages_get_package_attr2( pkg->pkg, "install" ), //install
-            packages_get_package_attr2( pkg->pkg, "license" ), //license
-            packages_get_package_attr2( pkg->pkg, "homepage" ), //homepage
-            packages_get_package_attr2( pkg->pkg, "repo" ), //repo
-            packages_get_package_attr2( pkg->pkg, "size" ), //size
-            packages_get_package_attr2( pkg->pkg, "sha" ), //repo
-            packages_get_package_attr2( pkg->pkg, "build_date" ), //build_date
-            packages_get_package_attr2( pkg->pkg, "uri" ), //uri
-            packages_get_package_attr2( pkg->pkg, "description" ), //description
-            packages_get_package_attr2( pkg->pkg, "data_count" ), //data_count
-            "0", //install_time
+            yversion, //yversion
+            packages_get_package_attr2( pkg, "generic_name"), //generic_name
+            packages_get_package_attr2( pkg, "is_desktop"), //desktop
+            packages_get_package_attr2( pkg, "category" ), //category
+            packages_get_package_attr2( pkg, "arch" ), //arch
+            packages_get_package_attr2( pkg, "version" ), //version
+            packages_get_package_attr2( pkg, "priority" ), //priority
+            packages_get_package_attr2( pkg, "install" ), //install
+            packages_get_package_attr2( pkg, "license" ), //license
+            packages_get_package_attr2( pkg, "homepage" ), //homepage
+            packages_get_package_attr2( pkg, "repo" ), //repo
+            packages_get_package_attr2( pkg, "size" ), //size
+            packages_get_package_attr2( pkg, "sha" ), //repo
+            packages_get_package_attr2( pkg, "build_date" ), //build_date
+            packages_get_package_attr2( pkg, "uri" ), //uri
+            packages_get_package_attr2( pkg, "description" ), //description
+            packages_get_package_attr2( pkg, "data_count" ), //data_count
             NULL);
     
     //world_data
-    sql_data = "insert into world_data (name, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?);";
     db_exec( &db, "delete from world_data where name=?", package_name, NULL );  
+    sql_data = "insert into world_data (name, yversion, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     for( i = 0; i < pkg_data->cnt; i++ )
     {
         ret = db_exec( &db, sql_data,  
                 package_name, //name
-                packages_get_package_attr2( pkg_data->data[i], "data_name"), //data_name
-                packages_get_package_attr2( pkg_data->data[i], "data_format" ), //data_format
-                packages_get_package_attr2( pkg_data->data[i], "data_size" ), //data_size
-                packages_get_package_attr2( pkg_data->data[i], "data_install_size" ), //data_install_size
-                packages_get_package_attr2( pkg_data->data[i], "data_depend" ), //data_depend
-                packages_get_package_attr2( pkg_data->data[i], "data_bdepend" ), //data_bdepend
-                packages_get_package_attr2( pkg_data->data[i], "data_recommended" ), //data_recommended
-                packages_get_package_attr2( pkg_data->data[i], "data_conflict" ), //data_conflict
+                yversion, //yversion
+                packages_get_package_data_attr2( pkg_data, i, "data_name"), //data_name
+                packages_get_package_data_attr2( pkg_data, i, "data_format" ), //data_format
+                packages_get_package_data_attr2( pkg_data, i, "data_size" ), //data_size
+                packages_get_package_data_attr2( pkg_data, i, "data_install_size" ), //data_install_size
+                packages_get_package_data_attr2( pkg_data, i, "data_depend" ), //data_depend
+                packages_get_package_data_attr2( pkg_data, i, "data_bdepend" ), //data_bdepend
+                packages_get_package_data_attr2( pkg_data, i, "data_recommended" ), //data_recommended
+                packages_get_package_data_attr2( pkg_data, i, "data_conflict" ), //data_conflict
                 NULL);
     }
 
@@ -1875,7 +1900,7 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
     }
 
     db_exec( &db, "delete from world_file where name=?", package_name, NULL );  
-    sql_filelist = "insert into world_file (name, type, file, size, perms, uid, gid, mtime) values (?, ?, ?, ?, ?, ?, ?, ?)"; 
+    sql_filelist = "insert into world_file (name, yversion, type, file, size, perms, uid, gid, mtime) values (?, ?, ?, ?, ?, ?, ?, ?, ?)"; 
 
     list_line = util_mem_gets( filelist );
     while( list_line )
@@ -1894,6 +1919,7 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
 
             ret = db_exec( &db, sql_filelist, 
                     package_name,
+                    yversion,
                     file_type ? file_type : "",
                     file_file ? file_file : "",
                     file_size ? file_size : "",
@@ -1940,7 +1966,7 @@ int packages_remove_package( PACKAGE_MANAGER *pm, char *package_name )
         return -2;
     }
 
-    install_file = packages_get_package_attr( pkg->pkg, "install" );
+    install_file = packages_get_package_attr( pkg, "install" );
     //pre remove
     if( install_file && strlen( install_file ) > 8 )
     {

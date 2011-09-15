@@ -123,7 +123,7 @@ int reader_open( char *docname,  XML_READER_HANDLE *handle )
         return -1;
 	}
 
-    handle->ht = xmlHashCreate(HASH_TABLE_SIZE);
+    handle->ht = xmlHashCreate(XML_HASH_TABLE_SIZE);
 	if ( handle->ht == NULL ) 
     {
 #ifdef DEBUG
@@ -138,7 +138,7 @@ int reader_open( char *docname,  XML_READER_HANDLE *handle )
 int reader_fetch_a_row( XML_READER_HANDLE *handle, int node_depth, char **attr_list )
 {
     int         ret, in_a_row = 0, end_a_row =0, current_depth, current_type;
-    //char        **local_attr_list, *current_attr, *attr_value,prefix[HASH_FULL_KEY_LEN];
+    //char        **local_attr_list, *current_attr, *attr_value,prefix[XML_HASH_FULL_KEY_LEN];
     char        **local_attr_list, *current_attr, *attr_value;
 
     reader_hash_cleanup( handle );
@@ -167,7 +167,7 @@ int reader_fetch_a_row( XML_READER_HANDLE *handle, int node_depth, char **attr_l
 
                     if( attr_list )
                     {
-                        //memset( prefix, '\0', HASH_FULL_KEY_LEN );
+                        //memset( prefix, '\0', XML_HASH_FULL_KEY_LEN );
                         local_attr_list = attr_list;
                         while( current_attr = *local_attr_list++ )
                         {
@@ -176,7 +176,7 @@ int reader_fetch_a_row( XML_READER_HANDLE *handle, int node_depth, char **attr_l
                                 /*
                                 if( prefix[0] )
                                     strcat( prefix, "|" );
-                                strncat( prefix, attr_value, HASH_FULL_KEY_LEN - strlen( prefix ) );
+                                strncat( prefix, attr_value, XML_HASH_FULL_KEY_LEN - strlen( prefix ) );
                                 */
                                 xmlHashAddEntry( handle->ht, current_attr, (void *)attr_value );
                             }
@@ -215,19 +215,19 @@ int reader_fetch_a_row( XML_READER_HANDLE *handle, int node_depth, char **attr_l
 static int reader_fetch_fields( XML_READER_HANDLE *handle, int node_depth, char *prefix, char **attr_list )
 {
     int         ret, current_depth, current_type;
-    char        *key, *value, **local_attr_list, *current_attr, *attr_value, full_key[HASH_FULL_KEY_LEN];
+    char        *key, *value, **local_attr_list, *current_attr, *attr_value, full_key[XML_HASH_FULL_KEY_LEN];
 
 
     key = xmlTextReaderName( handle->reader );
-    memset( full_key, '\0', HASH_FULL_KEY_LEN );
+    memset( full_key, '\0', XML_HASH_FULL_KEY_LEN );
 
     if( prefix )
     {
-        snprintf( full_key, HASH_FULL_KEY_LEN, "%s|%s", prefix, key );
+        snprintf( full_key, XML_HASH_FULL_KEY_LEN, "%s|%s", prefix, key );
     }
     else
     {
-        strncpy( full_key, key, HASH_FULL_KEY_LEN );
+        strncpy( full_key, key, XML_HASH_FULL_KEY_LEN );
     }
 
     if( attr_list )
@@ -238,7 +238,7 @@ static int reader_fetch_fields( XML_READER_HANDLE *handle, int node_depth, char 
             if( attr_value = xmlTextReaderGetAttribute( handle->reader, current_attr ) )
             {
                 strcat( full_key, "|" );
-                strncat( full_key, attr_value, HASH_FULL_KEY_LEN - strlen( full_key ) );
+                strncat( full_key, attr_value, XML_HASH_FULL_KEY_LEN - strlen( full_key ) );
             }
         }
     }
@@ -277,7 +277,7 @@ static void hash_data_cleanup( void *data, xmlChar *key )
 static void reader_hash_cleanup( XML_READER_HANDLE *handle )
 {
     xmlHashFree( handle->ht, hash_data_cleanup );
-    handle->ht = xmlHashCreate(HASH_TABLE_SIZE);
+    handle->ht = xmlHashCreate(XML_HASH_TABLE_SIZE);
 }
 
 void reader_cleanup( XML_READER_HANDLE *handle )
