@@ -421,30 +421,38 @@ int main( int argc, char **argv )
          * search which package provide this file
          */
         case 'S':
-            if( argc != 3 )
+            if( argc < 3 )
             {
                 err = 1;
             }
             else
             {
-                file_name = argv[optind];
-                printf( "* Searching for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  file_name );
-                pkg_list = packages_get_list_by_file( pm, 2000, 0, file_name );
-                if( pkg_list )
+                for( i = optind; i < argc; i++)
                 {
-                    for( i = 0; i < pkg_list->cnt; i++ )
+                    file_name = argv[i];
+                    len = strlen( file_name );
+                    if( file_name[len - 1] == '/' )
+                        file_name[len -1] = '\0';
+
+                    printf( "* Searching for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  file_name );
+                    pkg_list = packages_get_list_by_file( pm, 2000, 0, file_name );
+                    if( pkg_list )
                     {
-                        file_type = packages_get_list_attr( pkg_list, i, "type");
-                        printf( "%s_%s: %s, " COLOR_WHILE "%s" COLOR_RESET,  packages_get_list_attr( pkg_list, i, "name"), packages_get_list_attr( pkg_list, i, "version"), file_type, packages_get_list_attr( pkg_list, i, "file") );
-                        if( file_type[0] == 'S' )
-                            printf( " -> %s", packages_get_list_attr( pkg_list, i, "extra") );
-                        printf( "\n" );
+                        for( j = 0; j < pkg_list->cnt; j++ )
+                        {
+                            file_type = packages_get_list_attr( pkg_list, j, "type");
+                            printf( "%s_%s: %s, " COLOR_WHILE "%s" COLOR_RESET,  packages_get_list_attr( pkg_list, j, "name"), packages_get_list_attr( pkg_list, j, "version"), file_type, packages_get_list_attr( pkg_list, j, "file") );
+                            if( file_type[0] == 'S' )
+                                printf( " -> %s", packages_get_list_attr( pkg_list, j, "extra") );
+                            printf( "\n" );
+                        }
+                        packages_free_list( pkg_list );
                     }
-                    packages_free_list( pkg_list );
-                }
-                else
-                {
-                    printf( COLOR_RED "* /home/eric/workspace/c/sm/ypkg not owned by any packages.\n" COLOR_RESET,  file_name );
+                    else
+                    {
+                        printf( COLOR_RED "* %s not owned by any packages.\n" COLOR_RESET,  file_name );
+                    }
+                    printf( "\n" );
                 }
             }
             break;
