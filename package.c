@@ -1653,7 +1653,8 @@ return_point:
 int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
 {
     int                 i, return_code = 0;
-    char                *depend, *conflict, *token, *package_name;
+    char                *depend, *conflict, *token, *package_name, *arch;
+    struct utsname      buf;
     PACKAGE             *pkg = NULL;
     PACKAGE_DATA        *pkg_data = NULL;
 
@@ -1667,11 +1668,22 @@ int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
     }
 
     package_name = packages_get_package_attr( pkg, "name" );
+    arch = packages_get_package_attr( pkg, "arch" );
+
+    //check arch
+    if( arch && !uname( &buf ) )
+    {
+        if( strcmp( buf.machine, arch ) )
+        {
+            return_code = -2;
+            goto return_point;
+        }
+    }
 
     //check installed
     if( packages_has_installed( pm, package_name ) )
     {
-        return_code = -2;
+        return_code = -3;
         goto return_point;
     }
 
@@ -1686,7 +1698,7 @@ int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
             {
                 if( !packages_has_installed( pm, packages_get_package_data_attr( pkg_data, i, token ) ) )
                 {
-                    return_code = -3; 
+                    return_code = -4; 
                     goto return_point;
                 }
                 token = strtok( NULL, " ,");
@@ -1702,7 +1714,7 @@ int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
             {
                 if( packages_has_installed( pm, packages_get_package_data_attr( pkg_data, i, token ) ) )
                 {
-                    return_code = -4; 
+                    return_code = -5; 
                     goto return_point;
                 }
                 token = strtok( NULL, " ,");

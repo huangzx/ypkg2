@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <getopt.h>
 #include <time.h>
 #include "package.h"
@@ -185,27 +186,31 @@ int main( int argc, char **argv )
             {
                 for( i = optind; i < argc; i++)
                 {
-                    printf("checking %s ... ", argv[i]);
+                    package_name = argv[i];
+                    printf( "Checking for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  package_name );
                     ret = packages_check_package( pm, argv[i] );
                     switch( ret )
                     {
                         case 0:
-                            printf( "ok.\n" );
+                            printf( COLOR_GREEN "Ready.\n" COLOR_RESET );
                             break;
                         case -1:
-                            printf( "invalid format or file not found.\n" );
+                            printf( COLOR_RED "Error: Invalid format or File not found.\n" COLOR_RESET );
                             break;
                         case -2:
-                            printf( "has been installed.\n" );
+                            printf( COLOR_RED "Error: Architecture does not match.\n" COLOR_RESET );
                             break;
                         case -3:
-                            printf( "missing runtime deps.\n" );
+                            printf( COLOR_RED "Error: has been installed.\n" COLOR_RESET );
                             break;
                         case -4:
-                            printf( "conflicting deps.\n" );
+                            printf( COLOR_RED "Error: missing runtime deps.\n" COLOR_RESET );
+                            break;
+                        case -5:
+                            printf( COLOR_RED "Error: conflicting deps.\n" COLOR_RESET );
                             break;
                         default:
-                            printf( "unknown error.\n" );
+                            printf( COLOR_RED "Error: unknown error.\n" COLOR_RESET );
                     }
                 }
             }
