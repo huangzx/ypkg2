@@ -748,7 +748,7 @@ int packages_get_count( PACKAGE_MANAGER *pm, char *key, char *keyword, int wildc
     return count;
 }
 
-int packages_has_installed( PACKAGE_MANAGER *pm, char *name )
+int packages_has_installed( PACKAGE_MANAGER *pm, char *name, char *yversion )
 {
     DB      db;
     int     count;
@@ -757,7 +757,10 @@ int packages_has_installed( PACKAGE_MANAGER *pm, char *name )
         return -1;
 
     db_init( &db, pm->db_name, OPEN_READ );
-    db_query( &db, "select count(*) from world where name=?", name, NULL);
+    if( yversion)
+        db_query( &db, "select count(*) from world where name=? and yversion=?", name, yversion, NULL);
+    else
+        db_query( &db, "select count(*) from world where name=?", name, NULL);
 
     db_fetch_num( &db );
     count = atoi( db_get_value_by_index( &db, 0 ) );
@@ -1630,7 +1633,7 @@ int packages_install_package( PACKAGE_MANAGER *pm, char *package_name )
     fclose( file.stream );
 
     printf( "installing %s\n", package_path );
-    if( return_code = packages_install_local_package( pm, package_path, "/" ) )
+    if( return_code = packages_install_local_package( pm, package_path, "/", 0 ) )
     {
         printf("packages_install_local_package() return code: %d\n", return_code );
         return_code = -5;
@@ -1653,9 +1656,9 @@ return_point:
 int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
 {
     int                 i, return_code = 0;
-    char                *depend, *conflict, *token, *package_name, *arch;
+    char                *depend, *conflict, *token, *package_name, *arch, *yversion, *yversion2;
     struct utsname      buf;
-    PACKAGE             *pkg = NULL;
+    PACKAGE             *pkg = NULL, *pkg2 = NULL;
     PACKAGE_DATA        *pkg_data = NULL;
 
     if( !ypk_path || access( ypk_path, R_OK ) )
@@ -1669,6 +1672,7 @@ int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
 
     package_name = packages_get_package_attr( pkg, "name" );
     arch = packages_get_package_attr( pkg, "arch" );
+    yversion = packages_get_package_attr( pkg, "yversion" );
 
     //check arch
     if( arch && !uname( &buf ) )
@@ -1680,12 +1684,6 @@ int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
         }
     }
 
-    //check installed
-    if( packages_has_installed( pm, package_name ) )
-    {
-        return_code = -3;
-        goto return_point;
-    }
 
     for( i = 0; i < pkg_data->cnt; i++ )
     {
@@ -1696,9 +1694,9 @@ int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
             token = strtok( depend, " ,");
             while( token )
             {
-                if( !packages_has_installed( pm, packages_get_package_data_attr( pkg_data, i, token ) ) )
+                if( !packages_has_installed( pm, packages_get_package_data_attr( pkg_data, i, token ), NULL ) )
                 {
-                    return_code = -4; 
+                    return_code = -3; 
                     goto return_point;
                 }
                 token = strtok( NULL, " ,");
@@ -1712,9 +1710,9 @@ int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
             token = strtok( conflict, " ,");
             while( token )
             {
-                if( packages_has_installed( pm, packages_get_package_data_attr( pkg_data, i, token ) ) )
+                if( packages_has_installed( pm, packages_get_package_data_attr( pkg_data, i, token ), NULL ) )
                 {
-                    return_code = -5; 
+                    return_code = -4; 
                     goto return_point;
                 }
                 token = strtok( NULL, " ,");
@@ -1722,9 +1720,28 @@ int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
         }
     }
 
+    //check installed
+    if( pkg2 = packages_get_package( pm, package_name, 1 )  )
+    {
+        yversion2 = packages_get_package_attr( pkg2, "yversion" );
+        if( yversion > yversion2 )
+        {
+            return_code = 2; 
+            goto return_point;
+        }
+        else
+        {
+            return_code = 1; 
+            goto return_point;
+        }
+    }
+
 return_point:
     if( pkg )
         packages_free_package( pkg );
+
+    if( pkg2 )
+        packages_free_package( pkg2 );
 
     if( pkg_data )
         packages_free_package_data( pkg_data );
@@ -1753,7 +1770,7 @@ int packages_unpack_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir
     }
 
     //copy files 
-    printf( "unpacking files ...\n");
+    //printf( "unpacking files ...\n");
     if( archive_extract_all( tmp_ypk_data, dest_dir ) == -1 )
     {
         remove( tmp_ypk_data );
@@ -1774,32 +1791,64 @@ int packages_pack_package( PACKAGE_MANAGER *pm, char *source_dir, char *ypk_path
 /*
  * packages_install_local_package
  */
-int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir )
+int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir, int force )
 {
-    int                 i, ret, status, return_code = 0;
+    int                 i, j, ret, installed, upgrade, status, return_code;
     size_t              pkginfo_len, filelist_len;
-    void                *pkginfo = NULL, *filelist = NULL;
-    char                *sql, *sql_data, *sql_filelist, *install_file, *cmd, *list_line;
+    void                *pkginfo, *filelist;
+    char                *sql, *sql_data, *sql_filelist, *sql_filelist2, *install_file, *cmd, *list_line;
     char                *package_name, *yversion, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra;
     char                tmp_ypk_install[] = "/tmp/ypkinstall.XXXXXX";
-    PACKAGE             *pkg = NULL;
-    PACKAGE_DATA        *pkg_data = NULL;
+    PACKAGE             *pkg;
+    PACKAGE_DATA        *pkg_data;
+    PACKAGE_FILE        *pkg_file;
     DB                  db;
 
+
+    installed = 0;
+    upgrade = 0;
+    return_code = 0;
+    pkginfo = NULL; 
+    filelist = NULL;
+    pkg = NULL; 
+    pkg_data = NULL;
+
     //check
-    if( !ypk_path )
+    if( !ypk_path || access( ypk_path, R_OK ) )
         return -1;
 
-    if( packages_check_package( pm, ypk_path ) < 0 )
+    ret = packages_check_package( pm, ypk_path ); //ret = -4 ~ 2
+
+    if( ret == -1 )
+    {
         return -1;
+    }
+    else if( ret < -1 && !force )
+    {
+        return ret;
+    }
+    else if( ret == 1 )
+    {
+        if( !force )
+            return 1;
+
+        installed = 1;
+    }
+    else if( ret == 2 )
+    {
+        upgrade = 1;
+    }
+
 
     if( !dest_dir )
         dest_dir = "/";
 
+
+    //get package infomations
     packages_get_package_from_ypk( ypk_path, &pkg, &pkg_data );
     if( !pkg || !pkg_data )
     {
-        return_code = -1;
+        return_code = -5;
         goto return_point;
     }
     package_name = packages_get_package_attr( pkg, "name" );
@@ -1807,12 +1856,13 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
     if( !yversion )
         yversion = "0";
 
+
     //pre install
     mkstemp( tmp_ypk_install );
     ret = archive_extract_file2( ypk_path, "pkginfo", &pkginfo, &pkginfo_len );
     if( ret == -1 )
     {
-        return_code = -2;
+        return_code = -6;
         goto return_point;
     }
 
@@ -1822,42 +1872,44 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
 
     if( ret != -1 )
     {
-        printf( "running pre_install script ...\n" );
+        //printf( "running pre_install script ...\n" );
         cmd = util_strcat( "source '", tmp_ypk_install, "'; if type pre_install >/dev/null 2>1; then pre_install; fi", NULL );
         status = system( cmd );
         free( cmd );
         if( WEXITSTATUS( status ) )
         {
-            return_code = -3; 
-            //goto return_point;
+            return_code = -7; 
+            goto return_point;
         }
     }
 
     //copy files 
-    printf( "copying files ...\n");
+    //printf( "copying files ...\n");
     if( packages_unpack_package( pm, ypk_path, dest_dir ) != 0 )
     {
-        return_code = -4; 
+        return_code = -8; 
         goto return_point;
     }
 
     //post install
     if( !access( tmp_ypk_install, R_OK ) )
     {
-        printf( "running post_install script ...\n" );
+        //printf( "running post_install script ...\n" );
         cmd = util_strcat( "source '", tmp_ypk_install, "'; if type post_install >/dev/null 2>1; then post_install; fi", NULL );
         status = system( cmd );
         free( cmd );
         if( WEXITSTATUS( status ) )
         {
-            return_code = -5; 
-            //goto return_point;
+            return_code = -9; 
+            goto return_point;
         }
     }
 
+
     //update db
-    printf( "updating database ...\n");
+    //printf( "updating database ...\n");
     db_init( &db, pm->db_name, OPEN_WRITE );
+    db_exec( &db, "begin", NULL );  
     //world
     sql = "replace into world (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, uri, description, data_count, install_time) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'));";
 
@@ -1907,12 +1959,54 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
     ret = archive_extract_file4( pkginfo, pkginfo_len, "filelist", &filelist, &filelist_len );
     if( ret == -1 )
     {
-        return_code = -7; 
+        return_code = -10; 
         goto return_point;
     }
 
+    if( upgrade || installed )
+    {
+        sql_filelist = "delete from world_file where name=? and file=?"; 
+        list_line = util_mem_gets( filelist );
+        while( list_line )
+        {
+            if( list_line[0] != 'I' )
+            {
+                file_type = strtok( list_line, " ,");
+                file_file = strtok( NULL, " ,");
+                file_size = strtok( NULL, " ,");
+                file_perms = strtok( NULL, " ,");
+                file_uid = strtok( NULL, " ,");
+                file_gid = strtok( NULL, " ,");
+                file_mtime = strtok( NULL, " ,");
+                file_extra = strtok( NULL, " ,");
+
+                if( file_file )
+                {
+                    db_exec( &db, sql_filelist, package_name, file_file, NULL );
+                }
+
+            }
+
+            free( list_line );
+            list_line = util_mem_gets( NULL );
+        }
+
+        pkg_file = packages_get_package_file( pm, package_name );
+        if( pkg_file )
+        {
+            for( j = 0; j < pkg_file->cnt; j++ )
+            {
+                file_file = packages_get_package_file_attr( pkg_file, j, "file");
+                if( file_file )
+                    remove( file_file );
+            }
+            packages_free_package_file( pkg_file );
+        }
+
+    }
+
     db_exec( &db, "delete from world_file where name=?", package_name, NULL );  
-    sql_filelist = "insert into world_file (name, yversion, type, file, size, perms, uid, gid, mtime) values (?, ?, ?, ?, ?, ?, ?, ?, ?)"; 
+    sql_filelist2 = "insert into world_file (name, yversion, type, file, size, perms, uid, gid, mtime) values (?, ?, ?, ?, ?, ?, ?, ?, ?)"; 
 
     list_line = util_mem_gets( filelist );
     while( list_line )
@@ -1929,7 +2023,7 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
             file_extra = strtok( NULL, " ,");
 
 
-            ret = db_exec( &db, sql_filelist, 
+            ret = db_exec( &db, sql_filelist2, 
                     package_name,
                     yversion,
                     file_type ? file_type : "",
@@ -1946,6 +2040,7 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
         list_line = util_mem_gets( NULL );
     }
 
+    db_exec( &db, "end", NULL );  
     db_close( &db );
 
 return_point:
@@ -1985,7 +2080,7 @@ int packages_remove_package( PACKAGE_MANAGER *pm, char *package_name )
         install_file_path = util_strcat( PACKAGE_DB_DIR, "/", package_name, "/", install_file, NULL );
         if( !access( install_file_path, R_OK ) )
         {
-            printf( "running pre remove script ...\n" );
+            //printf( "running pre remove script ...\n" );
             cmd = util_strcat( "source '", install_file_path, "'; if type pre_remove >/dev/null 2>1; then pre_remove; fi", NULL );
             status = system( cmd );
             free( cmd );
@@ -2003,11 +2098,14 @@ int packages_remove_package( PACKAGE_MANAGER *pm, char *package_name )
     while( db_fetch_assoc( &db ) )
     {
         file_path = db_get_value_by_key( &db, "file" );
+        remove( file_path );
+        /*
         printf("deleting %s ... ", file_path);
         if( !remove( file_path ) )
             printf("successed.\n" );
         else
             printf("failed.\n" );
+            */
     }
 
     sql_file = "select * from world_file where type='D' and name=?";
@@ -2015,11 +2113,14 @@ int packages_remove_package( PACKAGE_MANAGER *pm, char *package_name )
     while( db_fetch_assoc( &db ) )
     {
         file_path = db_get_value_by_key( &db, "file" );
+        remove( file_path );
+        /*
         printf("deleting %s ... ", file_path);
         if( !remove( file_path ) )
             printf("successed.\n" );
         else
             printf("failed.\n" );
+            */
 
     }
     db_close( &db );
@@ -2027,7 +2128,7 @@ int packages_remove_package( PACKAGE_MANAGER *pm, char *package_name )
     //post remove
     if( install_file_path && !access( install_file_path, R_OK ) )
     {
-        printf( "running post remove script ...\n" );
+        //printf( "running post remove script ...\n" );
         cmd = util_strcat( "source '", install_file_path, "'; if type post_remove >/dev/null 2>1; then post_remove; fi", NULL );
         status = system( cmd );
         free( cmd );
@@ -2040,15 +2141,17 @@ int packages_remove_package( PACKAGE_MANAGER *pm, char *package_name )
 
     //delete /var/ypkg/db/$N
     file_path = util_strcat( PACKAGE_DB_DIR, "/", package_name, NULL );
-    printf( "deleting %s ... \n", file_path );
+    //printf( "deleting %s ... \n", file_path );
     util_remove_dir( file_path );
     free( file_path );
 
     //update db
     db_init( &db, pm->db_name, OPEN_WRITE );
+    db_exec( &db, "begin", NULL );  
     db_exec( &db, "delete from world where name=?", package_name, NULL );  
     db_exec( &db, "delete from world_data where name=?", package_name, NULL );  
     db_exec( &db, "delete from world_file where name=?", package_name, NULL );  
+    db_exec( &db, "end", NULL );  
     db_close( &db );
 
 

@@ -25,6 +25,9 @@ struct option longopts[] = {
     { "whatrequires", no_argument, NULL, 's' },
     { "whatprovides", no_argument, NULL, 'S' },
     { "compare-version", no_argument, NULL, 'm' },
+    { "in", no_argument, NULL, 'i' },
+    { "out", no_argument, NULL, 'o' },
+    { "force", no_argument, NULL, 'f' },
     { 0, 0, 0, 0}
 };
 
@@ -51,8 +54,9 @@ Commands:\n\
                                                return 2 if old is lesser then new\n\
 \n\
 Options:\n\
-        -i infile\n\
-        -o outfile\n\
+        -i|--in infile\n\
+        -o|--out outfile\n\
+        -f|--force                              work with --install\n\
        ";
 
     printf( "%s\n", usage );
@@ -60,7 +64,7 @@ Options:\n\
 
 int main( int argc, char **argv )
 {
-    int             c, i, j, action, ret, err, flag, len;
+    int             c, force, i, j, action, ret, err, flag, len;
     char            *tmp, *package_name, *file_name, *install_time, *version, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type;
     PACKAGE_MANAGER *pm;
     PACKAGE         *pkg;
@@ -77,6 +81,7 @@ int main( int argc, char **argv )
     action = 0;
     err = 0;
     flag = 0;
+    force = 0;
     infile = NULL;
     outfile = NULL;
     if( !pm )
@@ -85,7 +90,7 @@ int main( int argc, char **argv )
         return 1;
     }
 
-    while( ( c = getopt_long( argc, argv, ":hCIclkxbLsSmi:o:", longopts, NULL ) ) != -1 )
+    while( ( c = getopt_long( argc, argv, ":hCIclkxbLsSmi:o:f", longopts, NULL ) ) != -1 )
     {
         switch( c )
         {
@@ -111,6 +116,10 @@ int main( int argc, char **argv )
 
             case 'o':
                 outfile = optarg;
+                break;
+
+            case 'f':
+                force = 1;
                 break;
 
             case '?':
@@ -167,9 +176,33 @@ int main( int argc, char **argv )
             {
                 for( i = optind; i < argc; i++)
                 {
-                    printf("installing %s ... ", argv[i]);
-                    packages_install_local_package( pm, argv[i], "/" );
-                    printf( "%s\n", ret < 0 ? "failed" : "successed" );
+                    package_name = argv[i];
+                    printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", package_name );
+                    ret = packages_install_local_package( pm, package_name, "/", force );
+                    if( ret < -4 )
+                        printf( COLOR_RED "Error: Installation failed.\n" COLOR_RESET );
+
+                    switch( ret )
+                    {
+                        case 1:
+                            printf( COLOR_YELLO "The latest version has installed.\n" COLOR_RESET );
+                            break;
+                        case 0:
+                            printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+                            break;
+                        case -1:
+                            printf( COLOR_RED "Error: Invalid format or File not found.\n" COLOR_RESET );
+                            break;
+                        case -2:
+                            printf( COLOR_RED "Error: Architecture does not match.\n" COLOR_RESET );
+                            break;
+                        case -3:
+                            printf( COLOR_RED "Error: missing runtime deps.\n" COLOR_RESET );
+                            break;
+                        case -4:
+                            printf( COLOR_RED "Error: conflicting deps.\n" COLOR_RESET );
+                            break;
+                    }
                 }
             }
             break;
@@ -188,9 +221,15 @@ int main( int argc, char **argv )
                 {
                     package_name = argv[i];
                     printf( "Checking for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  package_name );
-                    ret = packages_check_package( pm, argv[i] );
+                    ret = packages_check_package( pm, package_name );
                     switch( ret )
                     {
+                        case 2:
+                            printf( COLOR_GREEN "Can be upgraded.\n" COLOR_RESET );
+                            break;
+                        case 1:
+                            printf( COLOR_WHILE "The latest version has installed.\n" COLOR_RESET );
+                            break;
                         case 0:
                             printf( COLOR_GREEN "Ready.\n" COLOR_RESET );
                             break;
@@ -201,17 +240,16 @@ int main( int argc, char **argv )
                             printf( COLOR_RED "Error: Architecture does not match.\n" COLOR_RESET );
                             break;
                         case -3:
-                            printf( COLOR_RED "Error: has been installed.\n" COLOR_RESET );
-                            break;
-                        case -4:
                             printf( COLOR_RED "Error: missing runtime deps.\n" COLOR_RESET );
                             break;
-                        case -5:
+                        case -4:
                             printf( COLOR_RED "Error: conflicting deps.\n" COLOR_RESET );
                             break;
                         default:
                             printf( COLOR_RED "Error: unknown error.\n" COLOR_RESET );
                     }
+
+
                 }
             }
 
