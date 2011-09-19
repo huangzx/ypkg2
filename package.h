@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/wait.h>
+#include <sys/utsname.h>
 #include "download.h"
 #include "util.h"
 #include "db.h"
@@ -78,7 +79,7 @@ int packages_import_local_data( PACKAGE_MANAGER *pm );
  * get package infomations
  */
 int packages_get_count( PACKAGE_MANAGER *pm, char *key, char *keyword, int wildcards, int installed );
-int packages_has_installed( PACKAGE_MANAGER *pm, char *name );
+int packages_has_installed( PACKAGE_MANAGER *pm, char *name, char *yversion );
 
 int packages_get_package_from_ypk( char *ypk_path, PACKAGE **package, PACKAGE_DATA **package_data );
 
@@ -127,12 +128,13 @@ void packages_free_list( PACKAGE_LIST *pkg_list );
 /*
  * package install & remove & update
  */
+int packages_compare_version( char *version1, char *version2 );
 int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path );
 int packages_unpack_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir );
 int packages_pack_package( PACKAGE_MANAGER *pm, char *source_dir, char *ypk_path );
 int packages_install_package( PACKAGE_MANAGER *pm, char *package_name );
 //int packages_install_history_package( PACKAGE_MANAGER *pm, char *package_name, char *yversion );
-int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir );
+int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir, int force );
 int packages_remove_package( PACKAGE_MANAGER *pm, char *package_name );
 //int packages_update_package( PACKAGE_MANAGER *pm );
 

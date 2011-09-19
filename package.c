@@ -48,6 +48,7 @@ void packages_manager_cleanup( PACKAGE_MANAGER *pm )
     free( pm );
 }
 
+
 int packages_check_update( PACKAGE_MANAGER *pm )
 {
     int             timestamp, last_check;
@@ -1786,6 +1787,15 @@ int packages_unpack_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir
  */
 int packages_pack_package( PACKAGE_MANAGER *pm, char *source_dir, char *ypk_path )
 {
+}
+
+/*
+ * compare version
+ */
+int packages_compare_version( char *version1, char *version2 )
+{
+    //here
+    return 0;
 }
 
 /*
