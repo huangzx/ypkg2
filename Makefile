@@ -1,7 +1,8 @@
 YPKG=ypkg2
 YPKGIMPORT=ypkg2-import
 LIBYPK= libypk.so
-OBJS= download.o util.o db.o data.o archive.o xml.o package.o 
+OBJS= download.o util.o db.o data.o archive.o xml.o preg.o package.o 
+DEBUG= -g
 DESTDIR=
 BINDIR= $(DESTDIR)/usr/bin
 LIBDIR= $(DESTDIR)/usr/lib
@@ -9,7 +10,7 @@ LANGDIR= $(DESTDIR)/usr/share/locale/zh_CN/LC_MESSAGES
 DATADIR= $(DESTDIR)/var/ypkg/db
 TMPDIR=/tmp
 
-LIBS= -lcurl -lsqlite3 -larchive -lxml2 -lpthread
+LIBS= -lcurl -lsqlite3 -larchive -lxml2 -lpthread -lpcre
 
 all: $(LIBYPK) $(YPKG) $(YPKGIMPORT)
 
@@ -17,39 +18,42 @@ $(YPKG): ypkg.o
 	cc -g -o $(YPKG)  ypkg.o  -L. -lypk
 
 ypkg.o: ypkg.c
-	cc -c -g ypkg.c -o ypkg.o
+	cc -c $(DEBUG) ypkg.c -o ypkg.o
 
 
 $(YPKGIMPORT): ypkg-import.o $(OBJS)	
-	cc -g -o $(YPKGIMPORT)  ypkg-import.o -L. -lypk
+	cc $(DEBUG) -o $(YPKGIMPORT)  ypkg-import.o -L. -lypk
 
 ypkg-import.o: ypkg-import.c
-	cc -c -g ypkg-import.c -o ypkg-import.o
+	cc -c $(DEBUG) ypkg-import.c -o ypkg-import.o
 
 
 $(LIBYPK): $(OBJS)
-	cc -g -shared -fPIC -o libypk.so $(OBJS) $(LIBS)
+	cc $(DEBUG) -shared -fPIC -o libypk.so $(OBJS) $(LIBS)
 
 download.o: download.c
-	cc -c -g download.c -o download.o
+	cc -c $(DEBUG) download.c -o download.o
 
 util.o: util.c
-	cc -c -g util.c -o util.o
+	cc -c $(DEBUG) util.c -o util.o
 
 db.o: db.c
-	cc -c -g db.c -o db.o
+	cc -c $(DEBUG) db.c -o db.o
 
 data.o: data.c
-	cc -c -g data.c -o data.o
+	cc -c $(DEBUG) data.c -o data.o
 
 archive.o: archive.c
-	cc -c -g archive.c -o archive.o
+	cc -c $(DEBUG) archive.c -o archive.o
 
 xml.o: xml.c
-	cc -c -g xml.c -o xml.o
+	cc -c $(DEBUG) xml.c -o xml.o
+
+preg.o: preg.c
+	cc -c $(DEBUG) preg.c -o preg.o
 
 package.o: package.c
-	cc -c -g package.c -o package.o
+	cc -c $(DEBUG) package.c -o package.o
 
 install: all
 	mkdir -p $(BINDIR) $(LIBDIR) $(LANGDIR) $(DATADIR) $(TMPDIR)
