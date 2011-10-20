@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#define __USE_GNU
+////#define __USE_GNU
 #include <search.h>
 
 #define HASH_TABLE_SIZE 1024

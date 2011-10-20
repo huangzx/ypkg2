@@ -6,7 +6,7 @@
 #include <string.h>
 #include <sqlite3.h>
 #include <stdarg.h>
-#define __USE_GNU
+////#define __USE_GNU
 #include <search.h>
 
 #define OPEN_READ       1

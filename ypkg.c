@@ -66,11 +66,11 @@ int main( int argc, char **argv )
 {
     int             c, force, i, j, action, ret, err, flag, len;
     char            *tmp, *package_name, *file_name, *install_time, *version, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type;
-    PACKAGE_MANAGER *pm;
-    PACKAGE         *pkg;
-    PACKAGE_DATA    *pkg_data;
-    PACKAGE_FILE    *pkg_file;
-    PACKAGE_LIST    *pkg_list;
+    YPackageManager *pm;
+    YPackage         *pkg;
+    YPackageData    *pkg_data;
+    YPackageFile    *pkg_file;
+    YPackageList    *pkg_list;
         
     if( argc == 1 )
     {

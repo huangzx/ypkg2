@@ -3,7 +3,7 @@
 
 int main()
 {
-    PACKAGE_MANAGER *pm;
+    YPackageManager *pm;
 
     if( geteuid() )
     {

@@ -3,12 +3,12 @@
 #define DEBUG 1
 
 
-PACKAGE_MANAGER *packages_manager_init()
+YPackageManager *packages_manager_init()
 {
     char *config_file;
-    PACKAGE_MANAGER *pm;
+    YPackageManager *pm;
 
-    pm = malloc( sizeof(PACKAGE_MANAGER) );
+    pm = malloc( sizeof(YPackageManager) );
 
     if( !pm )
         return NULL;
@@ -31,7 +31,7 @@ PACKAGE_MANAGER *packages_manager_init()
     return pm;
 }
 
-void packages_manager_cleanup( PACKAGE_MANAGER *pm )
+void packages_manager_cleanup( YPackageManager *pm )
 {
     if( !pm )
         return;
@@ -49,7 +49,7 @@ void packages_manager_cleanup( PACKAGE_MANAGER *pm )
 }
 
 
-int packages_check_update( PACKAGE_MANAGER *pm )
+int packages_check_update( YPackageManager *pm )
 {
     int             timestamp, last_check;
     char            *target_url, *list_date_file;
@@ -91,7 +91,7 @@ int packages_check_update( PACKAGE_MANAGER *pm )
     return 0;
 }
 
-int packages_import_local_data( PACKAGE_MANAGER *pm )
+int packages_import_local_data( YPackageManager *pm )
 {
     int                 xml_ret, db_ret, is_desktop, i, list_len;
     char                xml_value, *sql, *sql_history, *sql_data, *sql_history_data, *sql_filelist, *idx, *data_key, *file_path, *file_path_sub, *list_line;
@@ -285,7 +285,7 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
 
     //world_file
     printf( "Import file list  ...\n" );
-    dir = opendir( PACKAGE_DB_DIR );
+    dir = opendir( YPackage_DB_DIR );
     if( !dir )
         return -1;
 
@@ -298,7 +298,7 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
 
         package_name = entry->d_name;
         //printf( "%s\n", package_name );
-        file_path = util_strcat( PACKAGE_DB_DIR, "/", entry->d_name, NULL );
+        file_path = util_strcat( YPackage_DB_DIR, "/", entry->d_name, NULL );
         if( !stat( file_path, &statbuf ) && S_ISDIR( statbuf.st_mode ) )
         {
             //sub dir
@@ -387,7 +387,7 @@ int packages_import_local_data( PACKAGE_MANAGER *pm )
     return 0;
 }
 
-int packages_update( PACKAGE_MANAGER *pm )
+int packages_update( YPackageManager *pm )
 {
     int             timestamp, last_update, cnt;
     char            *target_url, *list_file, *list_line, xml_file[32],  sum[48];
@@ -442,7 +442,7 @@ int packages_update( PACKAGE_MANAGER *pm )
     return cnt;
 }
 
-static int packages_update_single_xml( PACKAGE_MANAGER *pm, char *xml_file, char *sum )
+static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum )
 {
     int                 xml_ret, db_ret, is_desktop, i;
     char                *target_url, xml_value, *sql, *sql_data, *sql_history, *sql_history_data, *package_name, *yversion, *idx, *data_key;
@@ -613,7 +613,7 @@ static int packages_update_single_xml( PACKAGE_MANAGER *pm, char *xml_file, char
     remove(tmp_xml);
 }
 
-static int packages_get_last_check_timestamp( PACKAGE_MANAGER *pm )
+static int packages_get_last_check_timestamp( YPackageManager *pm )
 {
     int     last_check, has_new;
     DB      db;
@@ -642,7 +642,7 @@ static int packages_get_last_check_timestamp( PACKAGE_MANAGER *pm )
 }
 
 
-static int packages_set_last_check_timestamp( PACKAGE_MANAGER *pm, int last_check )
+static int packages_set_last_check_timestamp( YPackageManager *pm, int last_check )
 {
     int     ret = -1;
     char    *timestamp;
@@ -663,7 +663,7 @@ static int packages_set_last_check_timestamp( PACKAGE_MANAGER *pm, int last_chec
     return ret;
 }
 
-static int packages_get_last_update_timestamp( PACKAGE_MANAGER *pm )
+static int packages_get_last_update_timestamp( YPackageManager *pm )
 {
     DB      db;
     int     last_update;
@@ -684,7 +684,7 @@ static int packages_get_last_update_timestamp( PACKAGE_MANAGER *pm )
     return last_update;
 }
 
-static int packages_set_last_update_timestamp( PACKAGE_MANAGER *pm, int last_update )
+static int packages_set_last_update_timestamp( YPackageManager *pm, int last_update )
 {
     DB      db;
     char    timestamp[11];
@@ -705,7 +705,7 @@ static int packages_set_last_update_timestamp( PACKAGE_MANAGER *pm, int last_upd
     return -1;
 }
 
-int packages_get_count( PACKAGE_MANAGER *pm, char *key, char *keyword, int wildcards, int installed  )
+int packages_get_count( YPackageManager *pm, char *key, char *keyword, int wildcards, int installed  )
 {
     DB      db;
     int     count;
@@ -749,7 +749,7 @@ int packages_get_count( PACKAGE_MANAGER *pm, char *key, char *keyword, int wildc
     return count;
 }
 
-int packages_has_installed( PACKAGE_MANAGER *pm, char *name, char *yversion )
+int packages_has_installed( YPackageManager *pm, char *name, char *yversion )
 {
     DB      db;
     int     count;
@@ -770,12 +770,12 @@ int packages_has_installed( PACKAGE_MANAGER *pm, char *name, char *yversion )
     return count > 0;
 }
 
-PACKAGE *packages_get_package( PACKAGE_MANAGER *pm, char *name, int installed )
+YPackage *packages_get_package( YPackageManager *pm, char *name, int installed )
 {
     char                    *sql, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "uri", "size", "install", "data_count", NULL  }; 
     DB                      db;
-    PACKAGE                 *pkg = NULL;
+    YPackage                 *pkg = NULL;
 
     if( !pm || !name )
     {
@@ -789,7 +789,7 @@ PACKAGE *packages_get_package( PACKAGE_MANAGER *pm, char *name, int installed )
 
     if( db_fetch_assoc( &db ) )
     {
-        pkg = (PACKAGE *)malloc( sizeof( PACKAGE ) );
+        pkg = (YPackage *)malloc( sizeof( YPackage ) );
         pkg->ht = hash_table_init( );
 
         attr_keys_offset = attr_keys;
@@ -808,7 +808,7 @@ PACKAGE *packages_get_package( PACKAGE_MANAGER *pm, char *name, int installed )
 /*
  * packages_get_package_from_ypk
  */
-int packages_get_package_from_ypk( char *ypk_path, PACKAGE **package, PACKAGE_DATA **package_data )
+int packages_get_package_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data )
 {
     int                 i, ret, return_code = 0, cur_data_index, data_count;
     void                *pkginfo = NULL, *control = NULL;
@@ -820,8 +820,8 @@ int packages_get_package_from_ypk( char *ypk_path, PACKAGE **package, PACKAGE_DA
     char                *data_attr_xpath[] = { "name", "format", "size", "install_size", "depend", "bdepend", "recommended", "conflict", NULL  }; 
     xmlDocPtr           xmldoc = NULL;
     xmlXPathObjectPtr   xpath;
-    PACKAGE             *pkg;
-    PACKAGE_DATA        *pkg_data;
+    YPackage             *pkg;
+    YPackageData        *pkg_data;
 
 
     if( !package && !package_data )
@@ -866,7 +866,7 @@ int packages_get_package_from_ypk( char *ypk_path, PACKAGE **package, PACKAGE_DA
 
     if( package )
     {
-        pkg = (PACKAGE *)malloc( sizeof( PACKAGE ) );
+        pkg = (YPackage *)malloc( sizeof( YPackage ) );
         pkg->ht = hash_table_init( );
 
         attr_keys_offset = attr_keys;
@@ -898,7 +898,7 @@ int packages_get_package_from_ypk( char *ypk_path, PACKAGE **package, PACKAGE_DA
         }
         data_count = data_count ? data_count : 1;
 
-        pkg_data = (PACKAGE_DATA *)malloc( sizeof( PACKAGE_DATA ) );
+        pkg_data = (YPackageData *)malloc( sizeof( YPackageData ) );
         pkg_data->htl = hash_table_list_init( data_count );
         
         cur_data_index = 0;
@@ -974,7 +974,7 @@ return_point:
 /*
  * packages_get_package_attr
  */
-char *packages_get_package_attr( PACKAGE *pkg, char *key )
+char *packages_get_package_attr( YPackage *pkg, char *key )
 {
     if( !pkg || !key )
         return NULL;
@@ -982,7 +982,7 @@ char *packages_get_package_attr( PACKAGE *pkg, char *key )
     return hash_table_get_data( pkg->ht, key );
 }
 
-char *packages_get_package_attr2( PACKAGE *pkg, char *key )
+char *packages_get_package_attr2( YPackage *pkg, char *key )
 {
     char *result;
 
@@ -996,7 +996,7 @@ char *packages_get_package_attr2( PACKAGE *pkg, char *key )
 /*
  * packages_free_package
  */
-void packages_free_package( PACKAGE *pkg )
+void packages_free_package( YPackage *pkg )
 {
     if( !pkg )
         return;
@@ -1008,13 +1008,13 @@ void packages_free_package( PACKAGE *pkg )
 /*
  * packages_get_package_data
  */
-PACKAGE_DATA *packages_get_package_data( PACKAGE_MANAGER *pm, char *name, int installed )
+YPackageData *packages_get_package_data( YPackageManager *pm, char *name, int installed )
 {
     int                     data_count, cur_data_index;
     char                    *sql, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "data_name", "data_format", "data_size", "data_install_size", "data_depend", "data_bdepend", "data_recommended", "data_conflict", NULL  }; 
     DB                      db;
-    PACKAGE_DATA            *pkg_data = NULL;
+    YPackageData            *pkg_data = NULL;
 
     if( !pm || !name )
     {
@@ -1034,7 +1034,7 @@ PACKAGE_DATA *packages_get_package_data( PACKAGE_MANAGER *pm, char *name, int in
     db_query( &db, sql, name, NULL);
     free( sql );
 
-    pkg_data = (PACKAGE_DATA *)malloc( sizeof( PACKAGE_DATA ) );
+    pkg_data = (YPackageData *)malloc( sizeof( YPackageData ) );
     pkg_data->htl = hash_table_list_init( data_count );
 
     cur_data_index = 0;
@@ -1067,12 +1067,12 @@ PACKAGE_DATA *packages_get_package_data( PACKAGE_MANAGER *pm, char *name, int in
 /*
  * packages_get_package_data_attr
  */
-char *packages_get_package_data_attr( PACKAGE_DATA *pkg_data, int index, char *key )
+char *packages_get_package_data_attr( YPackageData *pkg_data, int index, char *key )
 {
     return hash_table_list_get_data( pkg_data->htl, index, key );
 }
 
-char *packages_get_package_data_attr2( PACKAGE_DATA *pkg_data, int index, char *key )
+char *packages_get_package_data_attr2( YPackageData *pkg_data, int index, char *key )
 {
     char *result;
 
@@ -1082,7 +1082,7 @@ char *packages_get_package_data_attr2( PACKAGE_DATA *pkg_data, int index, char *
 /*
  * packages_free_package_data
  */
-void packages_free_package_data( PACKAGE_DATA *pkg_data )
+void packages_free_package_data( YPackageData *pkg_data )
 {
     if( !pkg_data )
         return;
@@ -1094,13 +1094,13 @@ void packages_free_package_data( PACKAGE_DATA *pkg_data )
 /*
  * packages_get_package_file
  */
-PACKAGE_FILE *packages_get_package_file( PACKAGE_MANAGER *pm, char *name )
+YPackageFile *packages_get_package_file( YPackageManager *pm, char *name )
 {
     int                     file_count, file_type, buf_size, cur_len, cur_pos, cur_file_index;
     char                    *sql, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "file", "type", "size", "perms", "uid", "gid", "mtime", NULL  }; 
     DB                      db;
-    PACKAGE_FILE            *pkg_file = NULL;
+    YPackageFile            *pkg_file = NULL;
     HASH_TABLE              *cur_file;
     ENTRY                   item, *itemp;
 
@@ -1120,7 +1120,7 @@ PACKAGE_FILE *packages_get_package_file( PACKAGE_MANAGER *pm, char *name )
     //get file info
     db_query( &db, "select * from world_file where name=?", name, NULL);
 
-    pkg_file = (PACKAGE_FILE *)malloc( sizeof( PACKAGE_FILE ) );
+    pkg_file = (YPackageFile *)malloc( sizeof( YPackageFile ) );
     pkg_file->htl = hash_table_list_init( file_count );
 
     cur_file_index = 0;
@@ -1181,7 +1181,7 @@ PACKAGE_FILE *packages_get_package_file( PACKAGE_MANAGER *pm, char *name )
 /*
  * packages_get_package_file_from_ypk
  */
-PACKAGE_FILE *packages_get_package_file_from_ypk( char *ypk_path )
+YPackageFile *packages_get_package_file_from_ypk( char *ypk_path )
 {
     int                 ret, file_count, cur_file_index;
     size_t              pkginfo_len = 0, filelist_len = 0;
@@ -1189,7 +1189,7 @@ PACKAGE_FILE *packages_get_package_file_from_ypk( char *ypk_path )
     char                *package_name, *yversion, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra;
     char                *list_line, *cur_key, *cur_value, **attr_keys_offset;
     char                *attr_keys[] = { "type", "file", "size", "perms", "uid", "gid", "mtime", "extra", NULL  }; 
-    PACKAGE_FILE        *pkg_file = NULL;
+    YPackageFile        *pkg_file = NULL;
 
     if( access( ypk_path, R_OK ) )
         return NULL;
@@ -1209,7 +1209,7 @@ PACKAGE_FILE *packages_get_package_file_from_ypk( char *ypk_path )
     }
 
     file_count = 500;
-    pkg_file = (PACKAGE_FILE *)malloc( sizeof( PACKAGE_FILE ) );
+    pkg_file = (YPackageFile *)malloc( sizeof( YPackageFile ) );
     pkg_file->htl = hash_table_list_init( file_count );
 
     cur_file_index = 0;
@@ -1272,12 +1272,12 @@ return_point:
 /*
  * packages_get_package_file_attr
  */
-char *packages_get_package_file_attr( PACKAGE_FILE *pkg_file, int index, char *key )
+char *packages_get_package_file_attr( YPackageFile *pkg_file, int index, char *key )
 {
     return hash_table_list_get_data( pkg_file->htl, index, key );
 }
 
-char *packages_get_package_file_attr2( PACKAGE_FILE *pkg_file, int index, char *key )
+char *packages_get_package_file_attr2( YPackageFile *pkg_file, int index, char *key )
 {
     char *result;
 
@@ -1288,7 +1288,7 @@ char *packages_get_package_file_attr2( PACKAGE_FILE *pkg_file, int index, char *
 /*
  * packages_free_package_file
  */
-void packages_free_package_file( PACKAGE_FILE *pkg_file )
+void packages_free_package_file( YPackageFile *pkg_file )
 {
     int i;
 
@@ -1302,13 +1302,13 @@ void packages_free_package_file( PACKAGE_FILE *pkg_file )
 /*
  * packages_get_list
  */
-PACKAGE_LIST *packages_get_list( PACKAGE_MANAGER *pm, int limit, int offset, char *key, char *keyword, int wildcards, int installed )
+YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int wildcards, int installed )
 {
     int                     ret, cur_pkg_index;
     char                    *table,*sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", "install_time", NULL  }; 
     DB                      db;
-    PACKAGE_LIST            *pkg_list;
+    YPackageList            *pkg_list;
 
 
     if( offset < 0 )
@@ -1350,7 +1350,7 @@ PACKAGE_LIST *packages_get_list( PACKAGE_MANAGER *pm, int limit, int offset, cha
     free( limit_str );
     free( offset_str );
 
-    pkg_list = (PACKAGE_LIST *)malloc( sizeof( PACKAGE_LIST ) );
+    pkg_list = (YPackageList *)malloc( sizeof( YPackageList ) );
     pkg_list->htl = hash_table_list_init( limit );
 
     cur_pkg_index = 0;
@@ -1384,10 +1384,10 @@ PACKAGE_LIST *packages_get_list( PACKAGE_MANAGER *pm, int limit, int offset, cha
 /*
  * packages_get_list2
  */
-PACKAGE_LIST *packages_get_list2( PACKAGE_MANAGER *pm, int page_size, int page_no, char *key, char *keyword, int wildcards, int installed )
+YPackageList *packages_get_list2( YPackageManager *pm, int page_size, int page_no, char *key, char *keyword, int wildcards, int installed )
 {
     int                     offset;
-    PACKAGE_LIST            *pkg_list;
+    YPackageList            *pkg_list;
 
 
     if( page_size < 1 )
@@ -1406,13 +1406,13 @@ PACKAGE_LIST *packages_get_list2( PACKAGE_MANAGER *pm, int page_size, int page_n
 /*
  * packages_get_list_with_data
  */
-PACKAGE_LIST *packages_get_list_with_data( PACKAGE_MANAGER *pm, int limit, int offset, char *key, char *keyword, int installed )
+YPackageList *packages_get_list_with_data( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int installed )
 {    
     int                     ret, cur_pkg_index;
     char                    *table, *table_data, *sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", NULL  }; 
     DB                      db;
-    PACKAGE_LIST            *pkg_list;
+    YPackageList            *pkg_list;
 
     if( !key || !keyword )
         return NULL;
@@ -1437,7 +1437,7 @@ PACKAGE_LIST *packages_get_list_with_data( PACKAGE_MANAGER *pm, int limit, int o
     free( limit_str );
     free( offset_str );
 
-    pkg_list = (PACKAGE_LIST *)malloc( sizeof( PACKAGE_LIST ) );
+    pkg_list = (YPackageList *)malloc( sizeof( YPackageList ) );
     pkg_list->htl = hash_table_list_init( limit );
 
     cur_pkg_index = 0;
@@ -1471,7 +1471,7 @@ PACKAGE_LIST *packages_get_list_with_data( PACKAGE_MANAGER *pm, int limit, int o
 /*
  * packages_get_list_by_recommended
  */
-PACKAGE_LIST *packages_get_list_by_recommended( PACKAGE_MANAGER *pm, int limit, int offset, char *recommended, int installed )
+YPackageList *packages_get_list_by_recommended( YPackageManager *pm, int limit, int offset, char *recommended, int installed )
 {
     return packages_get_list_with_data( pm, limit, offset, "data_recommended", recommended, installed );
 }
@@ -1479,7 +1479,7 @@ PACKAGE_LIST *packages_get_list_by_recommended( PACKAGE_MANAGER *pm, int limit, 
 /*
  * packages_get_list_by_conflict
  */
-PACKAGE_LIST *packages_get_list_by_conflict( PACKAGE_MANAGER *pm, int limit, int offset, char *conflict, int installed )
+YPackageList *packages_get_list_by_conflict( YPackageManager *pm, int limit, int offset, char *conflict, int installed )
 {
     return packages_get_list_with_data( pm, limit, offset, "data_conflict", conflict,installed );
 }
@@ -1487,7 +1487,7 @@ PACKAGE_LIST *packages_get_list_by_conflict( PACKAGE_MANAGER *pm, int limit, int
 /*
  * packages_get_list_by_depend
  */
-PACKAGE_LIST *packages_get_list_by_depend( PACKAGE_MANAGER *pm, int limit, int offset, char *depend, int installed )
+YPackageList *packages_get_list_by_depend( YPackageManager *pm, int limit, int offset, char *depend, int installed )
 {
     return packages_get_list_with_data( pm, limit, offset, "data_depend", depend,installed );
 }
@@ -1495,7 +1495,7 @@ PACKAGE_LIST *packages_get_list_by_depend( PACKAGE_MANAGER *pm, int limit, int o
 /*
  * packages_get_list_by_bdepend
  */
-PACKAGE_LIST *packages_get_list_by_bdepend( PACKAGE_MANAGER *pm, int limit, int offset, char *bdepend, int installed )
+YPackageList *packages_get_list_by_bdepend( YPackageManager *pm, int limit, int offset, char *bdepend, int installed )
 {
     return packages_get_list_with_data( pm, limit, offset, "data_bdepend", bdepend,installed );
 }
@@ -1503,13 +1503,13 @@ PACKAGE_LIST *packages_get_list_by_bdepend( PACKAGE_MANAGER *pm, int limit, int 
 /*
  * packages_get_list_by_file
  */
-PACKAGE_LIST *packages_get_list_by_file( PACKAGE_MANAGER *pm, int limit, int offset, char *file )
+YPackageList *packages_get_list_by_file( YPackageManager *pm, int limit, int offset, char *file )
 {    
     int                     ret, cur_pkg_index;
     char                    *sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", "file", "type", "extra", NULL  }; 
     DB                      db;
-    PACKAGE_LIST            *pkg_list;
+    YPackageList            *pkg_list;
 
     if( !file )
         return NULL;
@@ -1530,7 +1530,7 @@ PACKAGE_LIST *packages_get_list_by_file( PACKAGE_MANAGER *pm, int limit, int off
     free( limit_str );
     free( offset_str );
 
-    pkg_list = (PACKAGE_LIST *)malloc( sizeof( PACKAGE_LIST ) );
+    pkg_list = (YPackageList *)malloc( sizeof( YPackageList ) );
     pkg_list->htl = hash_table_list_init( limit );
 
     cur_pkg_index = 0;
@@ -1562,7 +1562,7 @@ PACKAGE_LIST *packages_get_list_by_file( PACKAGE_MANAGER *pm, int limit, int off
 /*
  * packages_free_list
  */
-void packages_free_list( PACKAGE_LIST *pkg_list )
+void packages_free_list( YPackageList *pkg_list )
 {
     if( !pkg_list )
         return;
@@ -1574,12 +1574,12 @@ void packages_free_list( PACKAGE_LIST *pkg_list )
 /*
  * packages_get_list_attr
  */
-char *packages_get_list_attr( PACKAGE_LIST *pkg_list, int index, char *key )
+char *packages_get_list_attr( YPackageList *pkg_list, int index, char *key )
 {
     return hash_table_list_get_data( pkg_list->htl, index, key );
 }
 
-char *packages_get_list_attr2( PACKAGE_LIST *pkg_list, int index, char *key )
+char *packages_get_list_attr2( YPackageList *pkg_list, int index, char *key )
 {
     char *result;
 
@@ -1590,12 +1590,12 @@ char *packages_get_list_attr2( PACKAGE_LIST *pkg_list, int index, char *key )
 /*
  * packages_install_package
  */
-int packages_install_package( PACKAGE_MANAGER *pm, char *package_name )
+int packages_install_package( YPackageManager *pm, char *package_name )
 {
     int                 return_code = 0;
     char                *target_url = NULL, *package_url = NULL, *package_path = NULL;
     TARGET_FILE         file;
-    PACKAGE             *pkg;
+    YPackage             *pkg;
 
     if( !package_name )
         return -1;
@@ -1654,13 +1654,13 @@ return_point:
 /*
  * packages_check_package
  */
-int packages_check_package( PACKAGE_MANAGER *pm, char *ypk_path )
+int packages_check_package( YPackageManager *pm, char *ypk_path )
 {
     int                 i, return_code = 0;
     char                *depend, *conflict, *token, *package_name, *arch, *yversion, *yversion2;
     struct utsname      buf;
-    PACKAGE             *pkg = NULL, *pkg2 = NULL;
-    PACKAGE_DATA        *pkg_data = NULL;
+    YPackage             *pkg = NULL, *pkg2 = NULL;
+    YPackageData        *pkg_data = NULL;
 
     if( !ypk_path || access( ypk_path, R_OK ) )
         return -1;
@@ -1753,7 +1753,7 @@ return_point:
 /*
  * packages_unpack_package
  */
-int packages_unpack_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir )
+int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir )
 {
     char                tmp_ypk_data[] = "/tmp/ypkdata.XXXXXX";
 
@@ -1785,7 +1785,7 @@ int packages_unpack_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir
 /*
  * packages_pack_package
  */
-int packages_pack_package( PACKAGE_MANAGER *pm, char *source_dir, char *ypk_path )
+int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path )
 {
 }
 
@@ -1801,7 +1801,7 @@ int packages_compare_version( char *version1, char *version2 )
 /*
  * packages_install_local_package
  */
-int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *dest_dir, int force )
+int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int force )
 {
     int                 i, j, ret, installed, upgrade, status, return_code;
     size_t              pkginfo_len, filelist_len;
@@ -1809,9 +1809,9 @@ int packages_install_local_package( PACKAGE_MANAGER *pm, char *ypk_path, char *d
     char                *sql, *sql_data, *sql_filelist, *sql_filelist2, *install_file, *cmd, *list_line;
     char                *package_name, *yversion, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra;
     char                tmp_ypk_install[] = "/tmp/ypkinstall.XXXXXX";
-    PACKAGE             *pkg;
-    PACKAGE_DATA        *pkg_data;
-    PACKAGE_FILE        *pkg_file;
+    YPackage             *pkg;
+    YPackageData        *pkg_data;
+    YPackageFile        *pkg_file;
     DB                  db;
 
 
@@ -2066,11 +2066,11 @@ return_point:
     return return_code;
 }
 
-int packages_remove_package( PACKAGE_MANAGER *pm, char *package_name )
+int packages_remove_package( YPackageManager *pm, char *package_name )
 {
     int             status, ret, return_code = 0;
     char            *install_file, *install_file_path = NULL, *sql_file, *cmd, *file_path;
-    PACKAGE         *pkg;
+    YPackage         *pkg;
     DB              db;
 
     if( !package_name )
@@ -2087,7 +2087,7 @@ int packages_remove_package( PACKAGE_MANAGER *pm, char *package_name )
     //pre remove
     if( install_file && strlen( install_file ) > 8 )
     {
-        install_file_path = util_strcat( PACKAGE_DB_DIR, "/", package_name, "/", install_file, NULL );
+        install_file_path = util_strcat( YPackage_DB_DIR, "/", package_name, "/", install_file, NULL );
         if( !access( install_file_path, R_OK ) )
         {
             //printf( "running pre remove script ...\n" );
@@ -2150,7 +2150,7 @@ int packages_remove_package( PACKAGE_MANAGER *pm, char *package_name )
     }
 
     //delete /var/ypkg/db/$N
-    file_path = util_strcat( PACKAGE_DB_DIR, "/", package_name, NULL );
+    file_path = util_strcat( YPackage_DB_DIR, "/", package_name, NULL );
     //printf( "deleting %s ... \n", file_path );
     util_remove_dir( file_path );
     free( file_path );
@@ -2178,15 +2178,15 @@ return_point:
  * async interface
  */
 
-static PACKAGE_MANAGER *packages_manager_clone(  PACKAGE_MANAGER *pm )
+static YPackageManager *packages_manager_clone(  YPackageManager *pm )
 {
     int             len;
-    PACKAGE_MANAGER *pm_copy;
+    YPackageManager *pm_copy;
 
     if( !pm )
         return NULL;
 
-    pm_copy = malloc( sizeof( PACKAGE_MANAGER ) );
+    pm_copy = malloc( sizeof( YPackageManager ) );
 
     if( !pm_copy )
         return NULL;
@@ -2223,7 +2223,7 @@ static void *packages_check_update_backend_thread( void *data )
     return (void *)ret;
 }
 
-int packages_check_update_async( PACKAGE_MANAGER *pm, PACKAGE_CB *cb  )
+int packages_check_update_async( YPackageManager *pm, YPackage_CB *cb  )
 {
     int                 tret;
     pthread_t           tid;
@@ -2261,7 +2261,7 @@ static void *packages_update_backend_thread( void *data )
     return (void *)ret;
 }
 
-int packages_update_async( PACKAGE_MANAGER *pm,  PACKAGE_CB *cb )
+int packages_update_async( YPackageManager *pm,  YPackage_CB *cb )
 {
     int                 tret;
     pthread_t           tid;
@@ -2286,7 +2286,7 @@ int packages_update_async( PACKAGE_MANAGER *pm,  PACKAGE_CB *cb )
 static void *packages_get_list_backend_thread( void *data )
 {
     ASYNC_QUERY_PARAMS  *params;
-    PACKAGE_LIST        *pkg_list;
+    YPackageList        *pkg_list;
 
     params = (ASYNC_QUERY_PARAMS  *)data;
 
@@ -2300,7 +2300,7 @@ static void *packages_get_list_backend_thread( void *data )
     return (void *)0;
 }
 
-int packages_get_list_async( PACKAGE_MANAGER *pm, int limit, int offset, char *key, char *keyword, int wildcards, int installed, PACKAGE_CB *cb )
+int packages_get_list_async( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int wildcards, int installed, YPackage_CB *cb )
 {
     int                 tret;
     pthread_t           tid;
@@ -2328,7 +2328,7 @@ int packages_get_list_async( PACKAGE_MANAGER *pm, int limit, int offset, char *k
     return -1;
 }
 
-int packages_get_list_async2( PACKAGE_MANAGER *pm, int page_size, int page_no, char *key, char *keyword, int wildcards, PACKAGE_CB *cb )
+int packages_get_list_async2( YPackageManager *pm, int page_size, int page_no, char *key, char *keyword, int wildcards, YPackage_CB *cb )
 {
     int                 tret, offset;
     pthread_t           tid;
