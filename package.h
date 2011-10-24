@@ -1,5 +1,5 @@
-#ifndef _YPACKAGE_H
-#define _YPACKAGE_H
+#ifndef PACKAGE_H
+#define PACKAGE_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,15 +14,16 @@
 #include "data.h"
 #include "archive.h"
 #include "xml.h"
+#include "preg.h"
 
 #define CONFIG_FILE "/etc/yget.conf"
-#define YPackage_DB_DIR  "/var/ypkg/db"
+#define PACKAGE_DB_DIR  "/var/ypkg/db"
 #define DB_NAME "/var/ypkg/db/package.db"
 //#define DB_NAME "/tmp/soft_manager.db"
 #define UPDATE_DIR "updates"
 #define LIST_FILE "updates.list"
 #define LIST_DATE_FILE "updates.date"
-#define YPackage_ATTRS_LINE_LEN 1024
+#define PACKAGE_ATTRS_LINE_LEN 1024
 
 #define LOCAL_UNIVERSE "/var/ypkg/packages/universe"
 #define LOCAL_WORLD "/var/ypkg/db/world"
@@ -35,12 +36,12 @@ typedef struct {
 }YPackageManager;
 
 typedef struct {
-    HASH_TABLE              *ht;
+    HashTable              *ht;
 }YPackage;
 
 typedef struct {
     int                     cnt;
-    HASH_TABLE_LIST         *htl;
+    HashTableList         *htl;
 }YPackageData;
 
 typedef struct {
@@ -49,14 +50,20 @@ typedef struct {
     int                     cnt_link;
     int                     cnt_dir;
     int                     size;
-    HASH_TABLE_LIST         *htl;
+    HashTableList         *htl;
 }YPackageFile;
 
 typedef struct {
     int                     cnt;
-    HASH_TABLE_LIST         *htl;
+    HashTableList         *htl;
 }YPackageList;
 
+typedef struct _YPackageChangeList {
+    char                    *name;
+    int                     size;
+    int                     type; //self:1 ,depend:2, recommended:3
+    struct _YPackageChangeList    *prev;
+}YPackageChangeList;
 
 /**********************************/
 /* sync interface                 */
@@ -75,11 +82,14 @@ int packages_check_update( YPackageManager *pm );
 int packages_update( YPackageManager *pm );
 int packages_import_local_data( YPackageManager *pm );
 
+
 /*
  * get package infomations
  */
+
+/* get a single package infomations */
 int packages_get_count( YPackageManager *pm, char *key, char *keyword, int wildcards, int installed );
-int packages_has_installed( YPackageManager *pm, char *name, char *yversion );
+int packages_has_installed( YPackageManager *pm, char *name, char *version );
 
 int packages_get_package_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data );
 
@@ -95,13 +105,14 @@ char *packages_get_package_data_attr2( YPackageData *pkg_data, int index, char *
 void packages_free_package_data( YPackageData *pkg_data );
 
 
-/* file info */
+/* get package file infomations */
 YPackageFile *packages_get_package_file( YPackageManager *pm, char *name );
 YPackageFile *packages_get_package_file_from_ypk( char *ypk_path );
 char *packages_get_package_file_attr( YPackageFile *pkg_file, int index, char *key );
 char *packages_get_package_file_attr2( YPackageFile *pkg_file, int index, char *key );
 void packages_free_package_file( YPackageFile *pkg_file );
 
+/* get package list */
 YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int wildcards, int installed );
 
 YPackageList *packages_get_list2( YPackageManager *pm, int page_size, int page_no, char *key, char *keyword, int wildcards, int installed );
@@ -126,23 +137,42 @@ void packages_free_list( YPackageList *pkg_list );
 
 
 /*
- * package install & remove & update
+ * compare version
  */
 int packages_compare_version( char *version1, char *version2 );
+
+/*
+ * package install & remove & upgrade
+ */
 int packages_check_package( YPackageManager *pm, char *ypk_path );
+
 int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir );
 int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path );
+
+
 int packages_install_package( YPackageManager *pm, char *package_name );
-//int packages_install_history_package( YPackageManager *pm, char *package_name, char *yversion );
+//int packages_install_history_package( YPackageManager *pm, char *package_name, char *version );
 int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int force );
+YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *package_name );
+int packages_install_list( YPackageManager *pm, YPackageChangeList *list );
+int packages_install_dev_list( YPackageManager *pm, YPackageChangeList *list );
+void packages_free_install_list( YPackageChangeList *list );
+
+
 int packages_remove_package( YPackageManager *pm, char *package_name );
-//int packages_update_package( YPackageManager *pm );
+YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package_name );
+int packages_remove_list( YPackageManager *pm, YPackageChangeList *list );
+void packages_free_remove_list( YPackageChangeList *list );
+
+YPackageChangeList *packages_get_upgrade_list( YPackageManager *pm );
+int packages_upgrade_list( YPackageManager *pm, YPackageChangeList *list );
+void packages_free_upgrade_list( YPackageChangeList *list );
 
 /******************************/
 /* async interface            */
 /******************************/
-typedef void YPackage_CB( void *data );
-typedef struct _ASYNC_QUERY_PARAMS{
+typedef void YPackageCB( void *data );
+typedef struct {
     int                 limit;
     int                 offset; 
     int                 wildcards; 
@@ -150,21 +180,24 @@ typedef struct _ASYNC_QUERY_PARAMS{
     char                *key; 
     char                *keyword; 
     YPackageManager     *pm; 
-    YPackage_CB          *cb;
-}ASYNC_QUERY_PARAMS;
+    YPackageCB          *cb;
+}AsyncQueryParams;
 
-int packages_check_update_async( YPackageManager *pm,  YPackage_CB *cb );
+int packages_check_update_async( YPackageManager *pm,  YPackageCB *cb );
 
-int packages_update_async( YPackageManager *pm,  YPackage_CB *cb );
+int packages_update_async( YPackageManager *pm,  YPackageCB *cb );
 
-int packages_get_list_async( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int wildcards, int installed, YPackage_CB *cb );
+int packages_get_list_async( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int wildcards, int installed, YPackageCB *cb );
 
-int packages_get_list_async2( YPackageManager *pm, int page_size, int page_no, char *key, char *keyword, int wildcards, YPackage_CB *cb );
+int packages_get_list_async2( YPackageManager *pm, int page_size, int page_no, char *key, char *keyword, int wildcards, YPackageCB *cb );
 
 
 /**********************************/
 /* internal functions             */
 /**********************************/
+static int packages_compare_main_version( char *version1, char *version2 );
+static int packages_compare_sub_version( char *version1, char *version2 );
+
 static YPackageManager *packages_manager_clone(  YPackageManager *pm );
 
 static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum );
@@ -178,4 +211,4 @@ static int packages_set_last_update_timestamp( YPackageManager *pm, int last_upd
 static void *packages_check_update_backend_thread( void *data );
 static void *packages_update_backend_thread( void *data );
 static void *packages_get_list_backend_thread(void *data);
-#endif /* !_YPACKAGE_H */
+#endif /* !PACKAGE_H */

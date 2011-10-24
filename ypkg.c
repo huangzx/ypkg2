@@ -84,11 +84,6 @@ int main( int argc, char **argv )
     force = 0;
     infile = NULL;
     outfile = NULL;
-    if( !pm )
-    {
-        fprintf( stderr, "Error: Can not open database.\n" );
-        return 1;
-    }
 
     while( ( c = getopt_long( argc, argv, ":hCIclkxbLsSmi:o:f", longopts, NULL ) ) != -1 )
     {
@@ -128,6 +123,12 @@ int main( int argc, char **argv )
     }
 
     pm = packages_manager_init();
+    if( !pm )
+    {
+        fprintf( stderr, "Error: Can not open database.\n" );
+        return 1;
+    }
+
     switch( action )
     {
         /*

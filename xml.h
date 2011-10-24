@@ -22,27 +22,27 @@ char *xpath_get_node( xmlDocPtr doc, xmlChar *xpath );
 /**
  * xmlTextReader
  */
-#define XML_HASH_TABLE_SIZE 32
+#define XML_HashTable_SIZE 32
 #define XML_HASH_FULL_KEY_LEN 64
-typedef struct _XML_READER_HANDLE{
+typedef struct {
     xmlTextReaderPtr    reader;
     xmlHashTablePtr     ht;
-}XML_READER_HANDLE;
+}XMLReaderHandle;
 
-int reader_open( char *docname,  XML_READER_HANDLE *handle);
+int reader_open( char *docname,  XMLReaderHandle *handle);
 
-int reader_fetch_a_row( XML_READER_HANDLE *handle, int target_depth, char **attr_list );
+int reader_fetch_a_row( XMLReaderHandle *handle, int target_depth, char **attr_list );
 
-static int reader_fetch_fields( XML_READER_HANDLE *handle, int node_depth, char *prefix, char **attr_list );
+static int reader_fetch_fields( XMLReaderHandle *handle, int node_depth, char *prefix, char **attr_list );
 
 static void hash_data_cleanup( void *data, xmlChar *key );
 
-static void reader_hash_cleanup( XML_READER_HANDLE *handle );
+static void reader_hash_cleanup( XMLReaderHandle *handle );
 
-void reader_cleanup( XML_READER_HANDLE *handle );
+void reader_cleanup( XMLReaderHandle *handle );
 
-char *reader_get_value( XML_READER_HANDLE *handle, char *key );
+char *reader_get_value( XMLReaderHandle *handle, char *key );
 
-char *reader_get_value2( XML_READER_HANDLE *handle, char *key );
+char *reader_get_value2( XMLReaderHandle *handle, char *key );
 
 #endif /* !XML_H */

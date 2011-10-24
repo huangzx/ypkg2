@@ -3,7 +3,7 @@
 size_t memory_callback(void *data, size_t size, size_t nmemb, void *user)
 {
     size_t realsize = size * nmemb;
-    TARGET_CONTENT *content = (TARGET_CONTENT *)user;
+    DownloadContent *content = (DownloadContent *)user;
 
     content->text = realloc(content->text, content->size + realsize + 1);
     if (content->text == NULL) 
@@ -25,7 +25,7 @@ size_t memory_callback(void *data, size_t size, size_t nmemb, void *user)
 
 size_t file_callback(void *data, size_t size, size_t nmemb, void *user)
 {
-    TARGET_FILE *file = (TARGET_FILE *)user;
+    DownloadFile *file = (DownloadFile *)user;
     if(file && !file->stream)
     {
         file->stream = fopen(file->file, "wb");
@@ -35,7 +35,7 @@ size_t file_callback(void *data, size_t size, size_t nmemb, void *user)
     return fwrite(data, size, nmemb, file->stream);
 }
 
-int get_content(char *url, TARGET_CONTENT *content)
+int get_content(char *url, DownloadContent *content)
 {
     CURL *curl_handle;
     CURLcode res;
@@ -58,7 +58,7 @@ int get_content(char *url, TARGET_CONTENT *content)
     return res;
 }
 
-int download_file(char *url, TARGET_FILE *file)
+int download_file(char *url, DownloadFile *file)
 {
     CURL *curl_handle;
     CURLcode res;

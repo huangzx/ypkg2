@@ -6,13 +6,17 @@
 #include <string.h>
 #include <sqlite3.h>
 #include <stdarg.h>
-////#define __USE_GNU
+
+#ifndef __USE_GNU
+#define __USE_GNU
+#endif
+
 #include <search.h>
 
 #define OPEN_READ       1
 #define OPEN_WRITE      2
 
-#define DB_HASH_TABLE_SIZE 32
+#define DB_HashTable_SIZE 32
 
 #define RESULT_NUM      1
 #define RESULT_ASSOC    2
@@ -28,6 +32,7 @@ typedef struct _DB {
 
 int db_init( DB *db, char *db_path, int open_mode );
 int db_close(DB *db);
+int db_cleanup( DB *db );
 int db_exec(DB *db, char *sql, ...);
 
 int db_query(DB *db, char *sql, ...);

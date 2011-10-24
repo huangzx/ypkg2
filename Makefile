@@ -1,8 +1,9 @@
 YPKG=ypkg2
+YGET=yget2
 YPKGIMPORT=ypkg2-import
 LIBYPK= libypk.so
 OBJS= download.o util.o db.o data.o archive.o xml.o preg.o package.o 
-DEBUG= -g
+DEBUG= 
 DESTDIR=
 BINDIR= $(DESTDIR)/usr/bin
 LIBDIR= $(DESTDIR)/usr/lib
@@ -12,24 +13,29 @@ TMPDIR=/tmp
 
 LIBS= -lcurl -lsqlite3 -larchive -lxml2 -lpthread -lpcre
 
-all: $(LIBYPK) $(YPKG) $(YPKGIMPORT)
+all: $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT)
 
 $(YPKG): ypkg.o 
-	cc -g -o $(YPKG)  ypkg.o  -L. -lypk
+	cc  $(DEBUG) -g -o $(YPKG)  ypkg.o  -L. -lypk
 
 ypkg.o: ypkg.c
-	cc -c $(DEBUG) ypkg.c -o ypkg.o
+	cc  $(DEBUG) -c ypkg.c -o ypkg.o
 
+$(YGET): yget.o 
+	cc  $(DEBUG) -o $(YGET) yget.o  -L. -lypk
 
-$(YPKGIMPORT): ypkg-import.o $(OBJS)	
-	cc $(DEBUG) -o $(YPKGIMPORT)  ypkg-import.o -L. -lypk
+yget.o: yget.c
+	cc  $(DEBUG) -c yget.c -o yget.o
+
+$(YPKGIMPORT): ypkg-import.o 
+	cc  $(DEBUG) -o $(YPKGIMPORT)  ypkg-import.o -L. -lypk
 
 ypkg-import.o: ypkg-import.c
-	cc -c $(DEBUG) ypkg-import.c -o ypkg-import.o
+	cc  $(DEBUG) -c ypkg-import.c -o ypkg-import.o
 
 
 $(LIBYPK): $(OBJS)
-	cc $(DEBUG) -shared -fPIC -o libypk.so $(OBJS) $(LIBS)
+	cc  $(DEBUG) -shared -fPIC -o libypk.so $(OBJS) $(LIBS)
 
 download.o: download.c
 	cc -c $(DEBUG) download.c -o download.o
@@ -59,6 +65,7 @@ install: all
 	mkdir -p $(BINDIR) $(LIBDIR) $(LANGDIR) $(DATADIR) $(TMPDIR)
 	cp $(LIBYPK) $(LIBDIR)
 	cp $(YPKG) $(BINDIR)
+	cp $(YGET) $(BINDIR)
 	cp $(YPKGIMPORT) $(BINDIR) 
 	cp data/db_create.sql $(TMPDIR)
 	sqlite3 $(DATADIR)/package.db ".read $(TMPDIR)/db_create.sql"
@@ -66,10 +73,11 @@ install: all
 	$(BINDIR)/$(YPKGIMPORT)
 
 clean:
-	rm -f $(OBJS) ypkg.o ypkg-import.o $(LIBYPK) $(YPKG) $(YPKGIMPORT) $(TMPDIR)/db_create.sql
+	rm -f $(OBJS) ypkg.o yget.o ypkg-import.o $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT) $(TMPDIR)/db_create.sql
 
 remove:
 	rm -f $(BINDIR)/$(YPKG) 
+	rm -f $(BINDIR)/$(YGET) 
 	rm -f $(BINDIR)/$(YPKGIMPORT)
 	rm -f $(LIBDIR)/$(LIBYPK) 
 	rm -f $(DATADIR)/package.db

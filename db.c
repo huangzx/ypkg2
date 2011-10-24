@@ -22,9 +22,16 @@ int db_init( DB *db, char *db_path, int open_mode )
     return 0;
 }
 
-int db_close(DB *db)
+int db_close( DB *db )
 {
+    db_cleanup( db );
+    sqlite3_close(db->handle);
 
+    return 0;
+}
+
+int db_cleanup( DB *db )
+{
     if(db->stmt)
     {
         sqlite3_finalize( db->stmt );
@@ -38,7 +45,6 @@ int db_close(DB *db)
     }
 
     db_destory_hash_table( db );
-    sqlite3_close(db->handle);
 
     return 0;
 }
@@ -47,7 +53,7 @@ int db_exec(DB *db, char *sql, ...)
 {
     va_list ap;
     char *arg;
-    int i = 1;
+    int i = 1, ret;
 
 
     sqlite3_prepare_v2 ( db->handle, sql, strlen(sql), &(db->stmt), NULL );
@@ -59,12 +65,13 @@ int db_exec(DB *db, char *sql, ...)
     }
     va_end(ap);
 
-    sqlite3_step ( db->stmt ); 
+    ret = sqlite3_step ( db->stmt ); 
+    //printf("sql:%s return:%d\n",sql, ret);
 
     sqlite3_finalize( db->stmt );
     db->stmt = NULL;
 
-    return sqlite3_changes( db->handle );
+    return ret;
 }
 
 
@@ -91,7 +98,7 @@ static int db_create_hash_table( DB *db )
 {
     db->ht = malloc( sizeof( struct hsearch_data ) );
     memset(db->ht, '\0',  sizeof( struct hsearch_data ) );
-    return hcreate_r( DB_HASH_TABLE_SIZE, db->ht );
+    return hcreate_r( DB_HashTable_SIZE, db->ht );
 }
 
 static void db_destory_hash_table( DB *db )
@@ -106,7 +113,7 @@ static void db_destory_hash_table( DB *db )
 
 int db_fetch_row( DB *db, int result_type )
 {
-    int     cnt, i;
+    int     cnt, i, ret;
     char    *result;
     ENTRY   item, *itemp;
 
@@ -115,7 +122,7 @@ int db_fetch_row( DB *db, int result_type )
 
     //printf("%s\n", sqlite3_sql( db->stmt ) );
 
-    if(sqlite3_step( db->stmt ) == SQLITE_ROW)
+    if( (ret = sqlite3_step( db->stmt )) == SQLITE_ROW)
     {
         cnt = sqlite3_column_count( db->stmt );
         db->column_count = cnt;
@@ -156,6 +163,8 @@ int db_fetch_row( DB *db, int result_type )
         
         return cnt;
     } 
+    
+    //printf("sqlite3_step return: %d\n", ret);
 
     sqlite3_finalize( db->stmt );
     db->stmt = NULL;

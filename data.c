@@ -1,26 +1,26 @@
 #include "data.h"
 
 
-HASH_TABLE *hash_table_init()
+HashTable *hash_table_init()
 {
     int                 buf_size;
-    HASH_TABLE          *ht;
+    HashTable          *ht;
 
 
-    ht = (HASH_TABLE *)malloc( sizeof( HASH_TABLE ) );
+    ht = (HashTable *)malloc( sizeof( HashTable ) );
     if( !ht )
         return NULL;
 
-    ht->index = (HASH_INDEX *)malloc( sizeof( HASH_INDEX ) );
+    ht->index = (HashIndex *)malloc( sizeof( HashIndex ) );
     if( !ht->index )
     {
         free( ht );
         return NULL;
     }
-    memset( ht->index, '\0',  sizeof( HASH_INDEX )  );
-    hcreate_r( 8, ht->index );
+    memset( ht->index, '\0',  sizeof( HashIndex )  );
+    hcreate_r( 16, ht->index );
 
-    buf_size = HASH_TABLE_SIZE;
+    buf_size = HashTable_SIZE;
     ht->data = hash_table_malloc_data( NULL, buf_size );
     if( !ht->data )
     {
@@ -33,12 +33,12 @@ HASH_TABLE *hash_table_init()
     return ht;
 }
 
-int hash_table_add_data( HASH_TABLE *ht, char *key, char *value )
+int hash_table_add_data( HashTable *ht, char *key, char *value )
 {
-    int             len, buf_size;
+    int             len, buf_size, ret;
     ENTRY           item, *itemp;
-    HASH_INDEX      *cur_index;
-    HASH_DATA       *new_data;
+    HashIndex      *cur_index;
+    HashData       *new_data;
 
     if( !ht || !key )
         return -1;
@@ -48,7 +48,7 @@ int hash_table_add_data( HASH_TABLE *ht, char *key, char *value )
         len = strlen( value );
         if( ht->cur_data->pos + len + 1 > ht->cur_data->size )
         {
-            buf_size = HASH_TABLE_SIZE;
+            buf_size = HashTable_SIZE;
             new_data = hash_table_malloc_data( ht->cur_data, buf_size );
             if( !new_data )
                 return -1;
@@ -60,21 +60,22 @@ int hash_table_add_data( HASH_TABLE *ht, char *key, char *value )
         ht->cur_data->buf[ht->cur_data->pos + len] = '\0';
         item.key = key;
         item.data = (void *)(ht->cur_data->buf + ht->cur_data->pos);
-        hsearch_r( item, ENTER, &itemp, ht->index );
+        ret = hsearch_r( item, ENTER, &itemp, ht->index );
         ht->cur_data->pos += len + 1;
     }
     else
     {
         item.key = key;
         item.data = NULL;
-        hsearch_r( item, ENTER, &itemp, ht->index );
+        ret = hsearch_r( item, ENTER, &itemp, ht->index );
     }
     return 0;
 }
 
 
-char *hash_table_get_data( HASH_TABLE *ht, char *key )
+char *hash_table_get_data( HashTable *ht, char *key )
 {
+    int     ret;
     ENTRY   item, *itemp;
 
     if( !ht || !key )
@@ -82,14 +83,14 @@ char *hash_table_get_data( HASH_TABLE *ht, char *key )
 
     item.key = key;
     item.data = NULL;
-    hsearch_r( item, FIND, &itemp, ht->index );
+    ret = hsearch_r( item, FIND, &itemp, ht->index );
 
     return itemp ? itemp->data : NULL;
 }
 
-void hash_table_cleanup( HASH_TABLE *ht )
+void hash_table_cleanup( HashTable *ht )
 {
-    HASH_DATA   *cur_data, *next_data;
+    HashData   *cur_data, *next_data;
 
     if( !ht )
         return;
@@ -119,30 +120,30 @@ void hash_table_cleanup( HASH_TABLE *ht )
 }
 
 
-HASH_TABLE_LIST *hash_table_list_init( int count )
+HashTableList *hash_table_list_init( int count )
 {
     int                 buf_size;
-    HASH_TABLE_LIST     *htl;
+    HashTableList     *htl;
 
     if( count < 1 )
         return NULL;
 
-    htl = (HASH_TABLE_LIST *)malloc( sizeof( HASH_TABLE_LIST ) );
+    htl = (HashTableList *)malloc( sizeof( HashTableList ) );
     if( !htl )
         return NULL;
 
     htl->max_cnt = count;
     htl->cur_cnt = 0;
 
-    htl->list = (HASH_INDEX **)malloc( sizeof( HASH_INDEX * ) * count );
+    htl->list = (HashIndex **)malloc( sizeof( HashIndex * ) * count );
     if( !htl->list )
     {
         free( htl );
         return NULL;
     }
-    memset( htl->list, '\0',  sizeof( HASH_INDEX * ) * count );
+    memset( htl->list, '\0',  sizeof( HashIndex * ) * count );
 
-    buf_size = HASH_TABLE_SIZE * count;
+    buf_size = HashTable_SIZE * count;
     htl->data = hash_table_malloc_data( NULL, buf_size );
     if( !htl->data )
     {
@@ -155,9 +156,9 @@ HASH_TABLE_LIST *hash_table_list_init( int count )
     return htl;
 }
 
-int hash_table_list_extend( HASH_TABLE_LIST *htl, int count )
+int hash_table_list_extend( HashTableList *htl, int count )
 {
-    HASH_INDEX      **new_list;
+    HashIndex      **new_list;
 
     if( !htl )
         return -1;
@@ -165,24 +166,24 @@ int hash_table_list_extend( HASH_TABLE_LIST *htl, int count )
     if( htl->max_cnt > count )
         return -1;
 
-    new_list = (HASH_INDEX **)realloc( htl->list, sizeof( HASH_INDEX * ) * count );
+    new_list = (HashIndex **)realloc( htl->list, sizeof( HashIndex * ) * count );
     if( !new_list )
     {
         return -1;
     }
-    memset( &(new_list[htl->max_cnt]), '\0',  sizeof( HASH_INDEX * ) * ( count - htl->max_cnt ) );
+    memset( &(new_list[htl->max_cnt]), '\0',  sizeof( HashIndex * ) * ( count - htl->max_cnt ) );
     htl->max_cnt = count;
     htl->list = new_list;
 
     return 0;
 }
 
-int hash_table_list_add_data( HASH_TABLE_LIST *htl, int index, char *key, char *value )
+int hash_table_list_add_data( HashTableList *htl, int index, char *key, char *value )
 {
     int             len, buf_size;
     ENTRY           item, *itemp;
-    HASH_INDEX      *cur_index;
-    HASH_DATA       *new_data;
+    HashIndex      *cur_index;
+    HashData       *new_data;
 
     if( !htl || !key || index < 0 )
         return -1;
@@ -195,12 +196,12 @@ int hash_table_list_add_data( HASH_TABLE_LIST *htl, int index, char *key, char *
 
     if( htl->list[index] == NULL )
     {
-        cur_index = (HASH_INDEX *)malloc( sizeof( HASH_INDEX ) );
+        cur_index = (HashIndex *)malloc( sizeof( HashIndex ) );
         if( !cur_index )
             return -1;
 
-        memset( cur_index, '\0',  sizeof( HASH_INDEX )  );
-        hcreate_r( 8, cur_index );
+        memset( cur_index, '\0',  sizeof( HashIndex )  );
+        hcreate_r( 16, cur_index );
         htl->list[index] = cur_index;
     }
 
@@ -210,13 +211,13 @@ int hash_table_list_add_data( HASH_TABLE_LIST *htl, int index, char *key, char *
         if( htl->cur_data->pos + len + 1 > htl->cur_data->size )
         {
             if( htl->cur_cnt > htl->max_cnt * 3 / 4 )
-                buf_size = HASH_TABLE_SIZE * htl->max_cnt / 3;
+                buf_size = HashTable_SIZE * htl->max_cnt / 3;
             else if( htl->cur_cnt > htl->max_cnt * 2 / 3 )
-                buf_size = HASH_TABLE_SIZE * htl->max_cnt / 2;
+                buf_size = HashTable_SIZE * htl->max_cnt / 2;
             else if( htl->cur_cnt > htl->max_cnt / 2 )
-                buf_size = HASH_TABLE_SIZE * htl->max_cnt;
+                buf_size = HashTable_SIZE * htl->max_cnt;
             else
-                buf_size = HASH_TABLE_SIZE * htl->max_cnt * 2;
+                buf_size = HashTable_SIZE * htl->max_cnt * 2;
 
             new_data = hash_table_malloc_data( htl->cur_data, buf_size );
             if( !new_data )
@@ -242,7 +243,7 @@ int hash_table_list_add_data( HASH_TABLE_LIST *htl, int index, char *key, char *
 }
 
 
-char *hash_table_list_get_data( HASH_TABLE_LIST *htl, int index, char *key )
+char *hash_table_list_get_data( HashTableList *htl, int index, char *key )
 {
     ENTRY   item, *itemp;
 
@@ -259,10 +260,10 @@ char *hash_table_list_get_data( HASH_TABLE_LIST *htl, int index, char *key )
     return itemp ? itemp->data : NULL;
 }
 
-void hash_table_list_cleanup( HASH_TABLE_LIST *htl )
+void hash_table_list_cleanup( HashTableList *htl )
 {
     int         i;
-    HASH_DATA   *cur_data, *next_data;
+    HashData   *cur_data, *next_data;
 
     if( !htl )
         return;
@@ -299,14 +300,14 @@ void hash_table_list_cleanup( HASH_TABLE_LIST *htl )
 }
 
 
-static HASH_DATA *hash_table_malloc_data( HASH_DATA *cur_data, int new_size )
+static HashData *hash_table_malloc_data( HashData *cur_data, int new_size )
 {
-    HASH_DATA *new_data;
+    HashData *new_data;
 
     if( new_size < 1 )
         return NULL;
 
-    new_data = (HASH_DATA *)malloc( sizeof( HASH_DATA ) );
+    new_data = (HashData *)malloc( sizeof( HashData ) );
     if( !new_data )
     {
         return NULL;

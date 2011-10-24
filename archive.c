@@ -244,7 +244,7 @@ errout:
 int archive_extract_all( char *arch_file, char *dest_dir )
 {
     int                     ret, flags, path_len;     
-    char                    *filename, *dest = NULL;
+    char                    *filename, *tmp, *dest;
     struct archive          *arch_r = NULL, *arch_w = NULL;
     struct archive_entry    *entry = NULL;
 
@@ -258,9 +258,23 @@ int archive_extract_all( char *arch_file, char *dest_dir )
     if( archive_read_open_filename( arch_r, arch_file, 10240 ) != ARCHIVE_OK )
         goto errout;
 
-    ;
-    if( !( dest = (char *)malloc( MAX_PATH_LEN ) ) )
+    dest = NULL;
+    if( !( dest = (char *)malloc( MAX_PATH_LEN * sizeof(char) ) ) )
         goto errout;
+
+    memset( dest, '\0', MAX_PATH_LEN * sizeof(char) );
+
+    tmp = NULL;
+    if( dest_dir )
+    {
+        path_len = strlen( dest_dir );
+        if( !( tmp = (char *)malloc( path_len * sizeof(char) + 1 ) ) )
+            goto errout;
+
+        memset( tmp, '\0',  path_len * sizeof(char) + 1 );
+        strncpy( tmp, dest_dir, path_len );
+        dest_dir = tmp;
+    }
 
     flags = ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_PERM | ARCHIVE_EXTRACT_ACL | ARCHIVE_EXTRACT_FFLAGS;
     arch_w = archive_write_disk_new();
@@ -274,20 +288,30 @@ int archive_extract_all( char *arch_file, char *dest_dir )
         printf("extract:%s\n", filename );
 #endif
 
-        if( dest_dir && dest_dir[0] )
+        if( !dest_dir )
         {
-            if( dest_dir[0] == '/' && dest_dir[1] == '\0' && filename[0] == '/' )
-                dest = filename;
-            else
-            {
-                path_len = snprintf( dest, MAX_PATH_LEN, "%s/%s", dest_dir, filename );
-                dest[path_len] = '\0';
-            }
+            strncpy( dest, filename, strlen( filename ) );
         }
         else
         {
-            dest = filename;
+            path_len = strlen( dest_dir );
+            if( path_len > 0 && dest_dir[path_len-1] == '/' )
+            {
+                dest_dir[path_len-1] = '\0';
+            }
+
+            if( filename[0] == '/' )
+            {
+                path_len = snprintf( dest, MAX_PATH_LEN, "%s%s", dest_dir, filename );
+            }
+            else
+            {
+                path_len = snprintf( dest, MAX_PATH_LEN, "%s/%s", dest_dir, filename );
+            }
+            dest[path_len] = '\0';
         }
+
+        printf("dest:%s\nfilename:%s\n", dest, filename);
 
         archive_entry_set_pathname( entry, dest );
         if( archive_read_extract2( arch_r, entry, arch_w ) != ARCHIVE_OK ) 
@@ -304,6 +328,8 @@ errout:
         archive_read_finish( arch_r );
     if( arch_w )
         archive_write_finish( arch_w );
+    if( dest_dir )
+        free( dest_dir );
     if( dest )
         free( dest );
     return -1;

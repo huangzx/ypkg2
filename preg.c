@@ -1,6 +1,6 @@
 #include "preg.h"
 
-int preg_match(PREGINFO *piptr, char *pattern, char *subject, int options, int first)
+int preg_match(PREGInfo *piptr, char *pattern, char *subject, int options, int first)
 {
     const char *error;
     int erroffset;
@@ -50,7 +50,7 @@ int preg_match(PREGINFO *piptr, char *pattern, char *subject, int options, int f
 }
 
 
-int preg_result(PREGINFO *piptr, int number, char *buf, int buf_size)
+int preg_result(PREGInfo *piptr, int number, char *buf, int buf_size)
 {
     int ret;
 
@@ -59,7 +59,7 @@ int preg_result(PREGINFO *piptr, int number, char *buf, int buf_size)
     return ret;
 }
 
-int preg_result2(PREGINFO *piptr, char *name, char *buf, int buf_size)
+int preg_result2(PREGInfo *piptr, char *name, char *buf, int buf_size)
 {
     int ret;
 
@@ -75,9 +75,10 @@ int preg_result2(PREGINFO *piptr, char *name, char *buf, int buf_size)
     return ret;
 }
 
-int preg_free(PREGINFO *piptr)
+int preg_free(PREGInfo *piptr)
 {
-    pcre_free(piptr->re);
+    if( piptr && piptr->re )
+        pcre_free(piptr->re);
 }
 
 char *preg_replace(char *pattern, char *replace, char *subject, int options)
@@ -142,7 +143,7 @@ int preg_demo(void)
     char *subject = "abcdabcdabc1354def82gbckswwer";
 
     //match
-    PREGINFO pi;
+    PREGInfo pi;
     int first = 1;
     int buf_size = 64;
     char buf[buf_size];

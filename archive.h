@@ -1,9 +1,10 @@
-#ifndef ZIP_H
-#define ZIP_H
+#ifndef ARCHIVE_H
+#define ARCHIVE_H
 
 #define MAX_PATH_LEN 1024
 
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <archive.h>
@@ -42,4 +43,4 @@ int archive_extract_all( char *filename, char *dest_dir );
  */
 int archive_extract_all( char *filename, char *dest_dir );
 
-#endif /* !ZIP_H */
+#endif /* !ARCHIVE_H */

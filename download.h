@@ -6,19 +6,19 @@
 #include <string.h>
 #include <curl/curl.h>
 
-typedef struct _TARGET_CONTENT {
+typedef struct _DownloadContent {
     char *text;
     size_t size;
-} TARGET_CONTENT;
+} DownloadContent;
 
 
-typedef struct _TARGET_FILE {
+typedef struct _DownloadFile {
     char *file;
     FILE *stream;
-} TARGET_FILE;
+} DownloadFile;
 
-int get_content(char *url, TARGET_CONTENT *content);
-int download_file(char *url, TARGET_FILE *file);
+int get_content(char *url, DownloadContent *content);
+int download_file(char *url, DownloadFile *file);
 
 size_t memory_callback(void *data, size_t size, size_t nmemb, void *user);
 size_t file_callback(void *data, size_t size, size_t nmemb, void *user);

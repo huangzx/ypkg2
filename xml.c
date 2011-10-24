@@ -111,7 +111,7 @@ char *xpath_get_node( xmlDocPtr doc, xmlChar *xpath )
 /**
  * xmlTextReader
  */
-int reader_open( char *docname,  XML_READER_HANDLE *handle )
+int reader_open( char *docname,  XMLReaderHandle *handle )
 {
 
     handle->reader = xmlNewTextReaderFilename( docname );
@@ -123,7 +123,7 @@ int reader_open( char *docname,  XML_READER_HANDLE *handle )
         return -1;
 	}
 
-    handle->ht = xmlHashCreate(XML_HASH_TABLE_SIZE);
+    handle->ht = xmlHashCreate(XML_HashTable_SIZE);
 	if ( handle->ht == NULL ) 
     {
 #ifdef DEBUG
@@ -135,7 +135,7 @@ int reader_open( char *docname,  XML_READER_HANDLE *handle )
     return 0;
 }
 
-int reader_fetch_a_row( XML_READER_HANDLE *handle, int node_depth, char **attr_list )
+int reader_fetch_a_row( XMLReaderHandle *handle, int node_depth, char **attr_list )
 {
     int         ret, in_a_row = 0, end_a_row =0, current_depth, current_type;
     //char        **local_attr_list, *current_attr, *attr_value,prefix[XML_HASH_FULL_KEY_LEN];
@@ -212,7 +212,7 @@ int reader_fetch_a_row( XML_READER_HANDLE *handle, int node_depth, char **attr_l
 }
 
 
-static int reader_fetch_fields( XML_READER_HANDLE *handle, int node_depth, char *prefix, char **attr_list )
+static int reader_fetch_fields( XMLReaderHandle *handle, int node_depth, char *prefix, char **attr_list )
 {
     int         ret, current_depth, current_type;
     char        *key, *value, **local_attr_list, *current_attr, *attr_value, full_key[XML_HASH_FULL_KEY_LEN];
@@ -274,25 +274,25 @@ static void hash_data_cleanup( void *data, xmlChar *key )
     xmlFree( (xmlChar *)data );
 }
 
-static void reader_hash_cleanup( XML_READER_HANDLE *handle )
+static void reader_hash_cleanup( XMLReaderHandle *handle )
 {
     xmlHashFree( handle->ht, hash_data_cleanup );
-    handle->ht = xmlHashCreate(XML_HASH_TABLE_SIZE);
+    handle->ht = xmlHashCreate(XML_HashTable_SIZE);
 }
 
-void reader_cleanup( XML_READER_HANDLE *handle )
+void reader_cleanup( XMLReaderHandle *handle )
 {
     xmlFreeTextReader( handle->reader );
     xmlHashFree( handle->ht, hash_data_cleanup );
 }
 
-char *reader_get_value( XML_READER_HANDLE *handle, char *key )
+char *reader_get_value( XMLReaderHandle *handle, char *key )
 {
     return (char *)xmlHashLookup( handle->ht, key );
 }
 
 
-char *reader_get_value2( XML_READER_HANDLE *handle, char *key )
+char *reader_get_value2( XMLReaderHandle *handle, char *key )
 {
     char *result;
 
