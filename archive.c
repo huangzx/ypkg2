@@ -311,11 +311,13 @@ int archive_extract_all( char *arch_file, char *dest_dir )
             dest[path_len] = '\0';
         }
 
-        printf("dest:%s\nfilename:%s\n", dest, filename);
-
         archive_entry_set_pathname( entry, dest );
-        if( archive_read_extract2( arch_r, entry, arch_w ) != ARCHIVE_OK ) 
+        ret = archive_read_extract2( arch_r, entry, arch_w );
+        if( ret != ARCHIVE_OK && ret != ARCHIVE_WARN ) 
+        {
+        //printf("err:%d, file:%s, rr:%s, rw:%s\n", ret, dest, archive_error_string(arch_r), archive_error_string(arch_w));
             goto errout;
+        }
     }
 
     free( dest );

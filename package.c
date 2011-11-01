@@ -1224,6 +1224,7 @@ YPackageFile *packages_get_package_file( YPackageManager *pm, char *name )
     db_query( &db, "select count(*) from world_file where name=?", name, NULL);
     db_fetch_num( &db );
     file_count = atoi( db_get_value_by_index( &db, 0 ) );
+    db_cleanup( &db );
 
     //get file info
     db_query( &db, "select * from world_file where name=?", name, NULL);
@@ -1724,23 +1725,23 @@ int packages_install_package( YPackageManager *pm, char *package_name )
     }
 
     package_path = util_strcat( pm->package_dest, "/", package_url+2, NULL );
-    if( !access( package_path, R_OK ) )
+    if( access( package_path, R_OK ) )
     {
         //goto return_point;
-    }
 
-    target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
+        target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
 
-    file.file = package_path;
-    file.stream = NULL;
-    printf( "downloading %s to %s\n", target_url, package_path );
-    if( download_file( target_url, &file ) != 0 )
-    {
+        file.file = package_path;
+        file.stream = NULL;
+        printf( "downloading %s to %s\n", target_url, package_path );
+        if( download_file( target_url, &file ) != 0 )
+        {
+            fclose( file.stream );
+            return_code = -4;
+            goto return_point;
+        }
         fclose( file.stream );
-        return_code = -4;
-        goto return_point;
     }
-    fclose( file.stream );
 
     printf( "installing %s\n", package_path );
     if( return_code = packages_install_local_package( pm, package_path, "/", 0 ) )
@@ -1751,7 +1752,7 @@ int packages_install_package( YPackageManager *pm, char *package_name )
 
     //printf( "updating database ...\n");
     db_init( &db, pm->db_name, OPEN_WRITE );
-    db_ret = db_exec( &db, "update universe set installed='1' where name=?", package_name, NULL );  
+    db_ret = db_exec( &db, "update universe set installed='1', can_update='0' where name=?", package_name, NULL );  
     db_close( &db );
 
 return_point:
