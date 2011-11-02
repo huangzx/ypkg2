@@ -35,19 +35,21 @@ void usage()
         installing packages. The most frequently used commands are update\n\
         and install.\n\n\
         Commands:\n\
-            install                 install packages and dependencies (pkg is leafpad not leafpad_0.8.17.ypk)\n\
-            install-dev             install build-dependencies for packages (pkg is leafpad not leafpad_0.8.17.ypk)\n\
-            remove                  remove package and orphaned dependencies\n\
-            search                  search packages\n\
-            clean                   remove all downloaded packages\n\
-            upgrade                 upgrade system\n\
-            update                  retrieve new lists of packages\n\
+            --install                 install packages and dependencies (pkg is leafpad not leafpad_0.8.17.ypk)\n\
+            --install-dev             install build-dependencies for packages (pkg is leafpad not leafpad_0.8.17.ypk)\n\
+            --remove                  remove package and orphaned dependencies\n\
+            --search                  search packages\n\
+            --status                  show package's infomations\n\
+            --clean                   remove all downloaded packages\n\
+            --upgrade                 upgrade system\n\
+            --update                  retrieve new lists of packages\n\
 \n\
         Options:\n\
             -p                      instead of actually install, simply display what to do\n\
             -y                      assume Yes to all queries\n\
             -d		                download only - do NOT install\n\
-            -f                      force install \n\
+            -f | --force            force\n\
+            -v | --verbose          display a detaileed text\n\
        ";
 
     printf( "%s\n", usage );
@@ -426,7 +428,7 @@ int main( int argc, char **argv )
                     }
                     else
                     {
-                        //printf( "has no installed.\n" );
+                        printf( "Done.\n" );
                     }
             }
 
@@ -445,9 +447,13 @@ int main( int argc, char **argv )
                 ret = packages_check_update( pm );
                 if(ret)
                 {
-                    printf("Updating ...");
+                    printf("Updating ...\n");
                     packages_update( pm );
-                    printf("Done!");
+                    printf("Done!\n");
+                }
+                else
+                {
+                    printf("Done!\n");
                 }
             }
             break;
