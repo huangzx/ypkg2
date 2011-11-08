@@ -271,6 +271,12 @@ int main( int argc, char **argv )
          * Clean
          */
         case 'C':
+            printf( "Do you want to remove all downloaded packages? [Y/N]?" );
+            confirm = getchar();
+            if( confirm == 'Y' || confirm == 'y' )
+            {
+                packages_cleanup_package( pm );
+            }
             break;
         /*
          * Search

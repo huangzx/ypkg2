@@ -49,6 +49,22 @@ char *util_rtrim(char *str)
     return str;
 }
 
+int util_ends_with( char *str, char *suffix )
+{
+    size_t len_str, len_suffix;
+
+    if( !str || !suffix )
+        return 0;
+
+    len_str = strlen( str );
+    len_suffix = strlen( suffix );
+
+    if( len_suffix > len_str )
+        return 0;
+
+    return strncmp( str + len_str - len_suffix, suffix, len_suffix ) == 0;
+}
+
 char *util_mem_gets( char *mem )
 {
     int             len;
@@ -231,6 +247,54 @@ int util_remove_dir( char *dir_path )
     closedir( dir );
 
     return rmdir( dir_path );
+}
+
+
+int util_remove_files( char *dir_path, char *suffix )
+{
+    int             ret;
+    char            *file_path;
+    DIR             *dir;
+    struct dirent   *entry;
+    struct stat     statbuf;
+
+
+    dir = opendir( dir_path );
+    if( !dir )
+        return -1;
+
+    while( entry = readdir( dir ) )
+    {
+        if( !strcmp( entry->d_name, "." ) || !strcmp( entry->d_name, ".." ) )
+        {
+            continue;
+        }
+
+        file_path = util_strcat( dir_path, "/", entry->d_name, NULL );
+
+        if( suffix && !util_ends_with( file_path, suffix ) )
+        {
+            free( file_path );
+            continue;
+        }
+
+        if( !stat( file_path, &statbuf ) )
+        {
+            if( !S_ISDIR( statbuf.st_mode ) )
+            {
+                ret = unlink( file_path );
+            }
+        }
+        free( file_path );
+        if( ret )
+        {
+            closedir( dir );
+            return -1;
+        }
+    }
+    closedir( dir );
+
+    return 0;
 }
 
 char *util_time_to_str( time_t time )

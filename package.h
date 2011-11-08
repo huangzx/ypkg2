@@ -168,6 +168,8 @@ YPackageChangeList *packages_get_upgrade_list( YPackageManager *pm );
 int packages_upgrade_list( YPackageManager *pm, YPackageChangeList *list );
 void packages_free_upgrade_list( YPackageChangeList *list );
 
+int packages_cleanup_package( YPackageManager *pm );
+
 /******************************/
 /* async interface            */
 /******************************/

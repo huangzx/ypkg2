@@ -1753,7 +1753,8 @@ int packages_install_package( YPackageManager *pm, char *package_name )
         printf( "downloading %s to %s\n", target_url, package_path );
         if( download_file( target_url, &file ) != 0 )
         {
-            fclose( file.stream );
+            if( file.stream )
+                fclose( file.stream );
             return_code = -4;
             goto return_point;
         }
@@ -1928,20 +1929,32 @@ void packages_free_install_list( YPackageChangeList *list )
  */
 int packages_install_list( YPackageManager *pm, YPackageChangeList *list )
 {
-    YPackageChangeList    *cur_pkg;
+    int                     ret;
+    YPackageChangeList      *cur_pkg;
 
     if( !list )
-        return;
+        return 0;
 
 
     while( list )
     {
         cur_pkg = list;
         
-        printf("installing %s ...\n", cur_pkg->name );
-        packages_install_package( pm, cur_pkg->name );
+        printf( "installing %s ...\n", cur_pkg->name );
+        ret = packages_install_package( pm, cur_pkg->name );
+        if( !ret )
+        {
+            printf( " success\n" );
+        }
+        else
+        {
+            printf( " failed\n" );
+            return ret;
+        }
         list = list->prev;
     }
+
+    return 0;
 }
 
 /*
@@ -2752,6 +2765,15 @@ return_point:
         free( install_file_path );
     packages_free_package( pkg );
     return return_code;
+}
+
+
+/*
+ * clean up cache directory
+ */
+int packages_cleanup_package( YPackageManager *pm )
+{
+    return util_remove_files( pm->package_dest, ".ypk" );
 }
 
 
