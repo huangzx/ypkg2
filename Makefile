@@ -10,10 +10,11 @@ LIBDIR= $(DESTDIR)/usr/lib
 LANGDIR= $(DESTDIR)/usr/share/locale/zh_CN/LC_MESSAGES
 DATADIR= $(DESTDIR)/var/ypkg/db
 TMPDIR=/tmp
+STATIC_LIB=libypk.a
 
 LIBS= -lcurl -lsqlite3 -larchive -lxml2 -lpthread -lpcre
 
-all: $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT)
+all: $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT) $(STATIC_LIB)
 
 $(YPKG): ypkg.o 
 	cc  $(DEBUG) -g -o $(YPKG)  ypkg.o  -L. -lypk
@@ -36,6 +37,10 @@ ypkg-import.o: ypkg-import.c
 
 $(LIBYPK): $(OBJS)
 	cc  $(DEBUG) -shared -fPIC -o libypk.so $(OBJS) $(LIBS)
+
+$(STATIC_LIB):$(OBJS)
+	ar -r $(STATIC_LIB) $(OBJS)
+	ranlib $(STATIC_LIB)
 
 download.o: download.c
 	cc -c $(DEBUG) download.c -o download.o
