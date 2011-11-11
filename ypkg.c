@@ -65,9 +65,9 @@ Options:\n\
 int main( int argc, char **argv )
 {
     int             c, force, i, j, action, ret, err, flag, len;
-    char            *tmp, *package_name, *file_name, *install_time, *version, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type;
+    char            *tmp, *package_name, *file_name, *install_time, *version, *version2, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type;
     YPackageManager *pm;
-    YPackage         *pkg;
+    YPackage        *pkg, *pkg2;
     YPackageData    *pkg_data;
     YPackageFile    *pkg_file;
     YPackageList    *pkg_list;
@@ -528,7 +528,48 @@ int main( int argc, char **argv )
          * comprare two version strings
          */
         case 'm':
-            printf("^_^\n");
+            if( argc != 4 )
+            {
+                err = 1;
+            }
+            else
+            {
+                version = NULL;
+                version2 = NULL;
+                if( !packages_get_package_from_ypk( argv[optind], &pkg, NULL ) )
+                {
+                    version = packages_get_package_attr( pkg, "version" );
+
+                    if( !packages_get_package_from_ypk( argv[optind + 1], &pkg2, NULL ) )
+                    {
+                        version2 = packages_get_package_attr( pkg2, "version" );
+
+                        ret = packages_compare_version( version, version2 );
+                        if( ret > 0 )
+                            printf( "%s[version:%s] is newer than %s[version:%s]\n", argv[optind], version, argv[optind+1], version2 );
+                        else if( ret < 0 )
+                            printf( "%s[version:%s] is older than %s[version:%s]\n", argv[optind], version, argv[optind+1], version2  );
+                        else
+                            printf( "%s[version:%s] and %s[version:%s] has the same version\n", argv[optind], version, argv[optind+1], version2  );
+
+                    }
+                    else
+                    {
+                        printf( COLOR_RED "Error: Invalid format or File not found[%s]\n" COLOR_RESET, argv[optind + 1] );
+                    }
+                }
+                else
+                {
+                    printf( COLOR_RED "Error: Invalid format or File not found[%s]\n" COLOR_RESET, argv[optind] );
+                }
+
+
+                if( pkg )
+                    packages_free_package( pkg );
+
+                if( pkg2 )
+                    packages_free_package( pkg2 );
+            }
             break;
         default:
             usage();

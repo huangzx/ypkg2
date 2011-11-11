@@ -2073,32 +2073,42 @@ int packages_check_package( YPackageManager *pm, char *ypk_path )
     int                 i, return_code = 0;
     char                *depend, *conflict, *token, *package_name, *arch, *version, *version2;
     struct utsname      buf;
-    YPackage             *pkg = NULL, *pkg2 = NULL;
+    YPackage            *pkg = NULL, *pkg2 = NULL;
     YPackageData        *pkg_data = NULL;
+    YPackageFile        *pkg_file;
 
     if( !ypk_path || access( ypk_path, R_OK ) )
         return -1;
 
     //get ypk's infomations
-    if(packages_get_package_from_ypk( ypk_path, &pkg, &pkg_data ) < 0 )
+    if( packages_get_package_from_ypk( ypk_path, &pkg, &pkg_data ) < 0 )
     {
         return -1;
     }
+
+
+    if( !( pkg_file = packages_get_package_file_from_ypk( ypk_path ) ) )
+    {
+        return -1;
+    }
+    packages_free_package_file( pkg_file );
 
     package_name = packages_get_package_attr( pkg, "name" );
     arch = packages_get_package_attr( pkg, "arch" );
     version = packages_get_package_attr( pkg, "version" );
 
     //check arch
-    if( arch && !uname( &buf ) )
+    if( arch && ( arch[0] != 'a' || arch[1] != 'n' || arch[2] != 'y' ) )
     {
-        if( strcmp( buf.machine, arch ) )
+        if( !uname( &buf ) )
         {
-            return_code = -2;
-            goto return_point;
+            if( strcmp( buf.machine, arch ) )
+            {
+                return_code = -2;
+                goto return_point;
+            }
         }
     }
-
 
     for( i = 0; i < pkg_data->cnt; i++ )
     {
