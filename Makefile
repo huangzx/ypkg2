@@ -72,8 +72,8 @@ install: all
 	cp $(YPKG) $(BINDIR)
 	cp $(YGET) $(BINDIR)
 	cp $(YPKGIMPORT) $(BINDIR) 
-	cp data/db_create.sql $(TMPDIR)
-	sqlite3 $(DATADIR)/package.db ".read $(TMPDIR)/db_create.sql"
+	#cp data/db_create.sql $(TMPDIR)
+	#sqlite3 $(DATADIR)/package.db ".read $(TMPDIR)/db_create.sql"
 	#cp po/zh_CN.mo $(LANGDIR)/ypkg.mo
 	$(BINDIR)/$(YPKGIMPORT)
 
@@ -85,5 +85,5 @@ remove:
 	rm -f $(BINDIR)/$(YGET) 
 	rm -f $(BINDIR)/$(YPKGIMPORT)
 	rm -f $(LIBDIR)/$(LIBYPK) 
-	rm -f $(DATADIR)/package.db
+	#rm -f $(DATADIR)/package.db
 	#rm -f $(LANGDIR)/ypkg.mo
