@@ -8,8 +8,8 @@ DESTDIR=
 BINDIR= $(DESTDIR)/usr/bin
 LIBDIR= $(DESTDIR)/usr/lib
 LANGDIR= $(DESTDIR)/usr/share/locale/zh_CN/LC_MESSAGES
-DATADIR= $(DESTDIR)/var/ypkg/db
-TMPDIR=/tmp
+DBDIR= $(DESTDIR)/var/ypkg/db
+DATADIR= $(DESTDIR)/usr/share/ypkg
 STATIC_LIB=libypk.a
 
 LIBS= -lcurl -lsqlite3 -larchive -lxml2 -lpthread -lpcre
@@ -67,23 +67,24 @@ package.o: package.c
 	cc -c $(DEBUG) package.c -o package.o
 
 install: all
-	mkdir -p $(BINDIR) $(LIBDIR) $(LANGDIR) $(DATADIR) $(TMPDIR)
+	mkdir -p $(BINDIR) $(LIBDIR) $(LANGDIR) $(DBDIR) $(DATADIR) 
 	cp $(LIBYPK) $(LIBDIR)
 	cp $(YPKG) $(BINDIR)
 	cp $(YGET) $(BINDIR)
 	cp $(YPKGIMPORT) $(BINDIR) 
-	#cp data/db_create.sql $(TMPDIR)
-	#sqlite3 $(DATADIR)/package.db ".read $(TMPDIR)/db_create.sql"
+	cp data/db_create.sql $(DATADIR)
+	#sqlite3 $(DBDIR)/package.db ".read $(DATADIR)/db_create.sql"
+	#$(BINDIR)/$(YPKGIMPORT)
 	#cp po/zh_CN.mo $(LANGDIR)/ypkg.mo
-	$(BINDIR)/$(YPKGIMPORT)
 
 clean:
-	rm -f $(OBJS) ypkg.o yget.o ypkg-import.o $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT) $(TMPDIR)/db_create.sql
+	rm -f $(OBJS) ypkg.o yget.o ypkg-import.o $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT) 
 
 remove:
 	rm -f $(BINDIR)/$(YPKG) 
 	rm -f $(BINDIR)/$(YGET) 
 	rm -f $(BINDIR)/$(YPKGIMPORT)
 	rm -f $(LIBDIR)/$(LIBYPK) 
-	#rm -f $(DATADIR)/package.db
+	rm -f $(DATADIR)/db_create.sql
+	#rm -f $(DBDIR)/package.db
 	#rm -f $(LANGDIR)/ypkg.mo
