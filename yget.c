@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <time.h>
-#include "package.h"
+#include "ypackage.h"
 
 #define COLOR_RED "\e[31;49m"
 #define COLOR_GREEN "\e[32;49m"
@@ -19,7 +19,7 @@ struct option longopts[] = {
     { "remove", no_argument, NULL, 'R' },
     { "autoremove", no_argument, NULL, 'A' },
     { "search", no_argument, NULL, 'S' },
-    { "status", no_argument, NULL, 's' },
+    { "show", no_argument, NULL, 's' },
     { "clean", no_argument, NULL, 'C' },
     { "update", no_argument, NULL, 'u' },
     { "upgrade", no_argument, NULL, 'U' },
@@ -39,7 +39,7 @@ void usage()
             --install-dev             install build-dependencies for packages (pkg is leafpad not leafpad_0.8.17.ypk)\n\
             --remove                  remove package and orphaned dependencies\n\
             --search                  search packages\n\
-            --status                  show package's infomations\n\
+            --show                    show package's infomations\n\
             --clean                   remove all downloaded packages\n\
             --upgrade                 upgrade system\n\
             --update                  retrieve new lists of packages\n\
@@ -60,7 +60,7 @@ int main( int argc, char **argv )
     int             c, force, verbose, i, j, action, ret, err, flag, len;
     char            confirm, *tmp, *package_name, *file_name, *install_time, *build_date, *version, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type, *installed, *can_update, *repo, *homepage;
     YPackageManager *pm;
-    YPackage         *pkg;
+    YPackage        *pkg, *pkg2;
     YPackageData    *pkg_data;
     YPackageFile    *pkg_file;
     YPackageList    *pkg_list;
@@ -144,6 +144,7 @@ int main( int argc, char **argv )
             }
             else
             {
+
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
@@ -243,25 +244,31 @@ int main( int argc, char **argv )
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
-                    install_list = packages_get_install_list( pm, package_name );
+                    install_list = packages_get_dev_list( pm, package_name );
+                    confirm = 'N';
 
                     if( install_list )
                     {
-                        printf( "install list: %s", install_list->name );
+                        printf( "Install list: %s", install_list->name );
                         cur_package = install_list->prev;
                         while( cur_package )
                         {
-                            printf(",%s-dev ", cur_package->name );
+                            printf(",%s ", cur_package->name );
                             cur_package = cur_package->prev;
                         }
-                        putchar( '\n' );
+                        printf( "\nDo you want to continue [Y/N]?" );
+                        confirm = getchar();
 
-                        packages_install_dev_list( pm, install_list );
-                        packages_free_install_list( install_list );
+                        if( confirm == 'Y' || confirm == 'y' )
+                        {
+                            packages_install_list( pm, install_list );
+                        }
+
+                        packages_free_dev_list( install_list );
                     }
                     else
                     {
-                        printf( "%s-dev has installed.\n", package_name );
+                        printf( "%s's development packages have installed.\n", package_name );
                     }
                 }
             }
@@ -288,6 +295,8 @@ int main( int argc, char **argv )
             }
             else
             {
+                printf( "status \tname \tversion    \tchannel  \tdescription\n====================================================================\n" );
+
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
@@ -305,10 +314,11 @@ int main( int argc, char **argv )
                             if( !verbose )
                             {
                                 printf( 
-                                        COLOR_GREEN "%s "  COLOR_RESET  "%s\t%s%c\t%s\n",
-                                        installed, package_name, 
+                                        COLOR_GREEN "%-s "  COLOR_RESET  "\t%-s \t%-10s \t%-8s \t%-s\n",
+                                        installed, 
+                                        package_name, 
                                         packages_get_list_attr( pkg_list, j, "version"), 
-                                        repo[0], 
+                                        repo, 
                                         packages_get_list_attr( pkg_list, j, "description") 
                                         );
                             }
@@ -368,7 +378,7 @@ int main( int argc, char **argv )
             break;
 
         /*
-         * Status
+         * Show
          */
         case 's':
             if( argc != 3 )
@@ -377,6 +387,7 @@ int main( int argc, char **argv )
             }
             else
             {
+                /*
                 package_name = argv[optind];
                 if( pkg = packages_get_package( pm, package_name, 0 ) )
                 {
@@ -395,6 +406,84 @@ int main( int argc, char **argv )
                 {
                     printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
                 }
+                */
+                /*
+Name: lftp
+Version: 4.1.2
+Arch: i686
+Category: Network
+Priority: required
+Status: installed
+Install_date: 2011-11-02 10:59:49
+Available: 13.0.782.220 stable 2011-11-02 10:59:49
+License： GPLv2
+Packager：Ylmf OS Developers ylmfos@115.com
+Install： lftp.install
+Size：31944  
+Sha： 00431646afb8f86888ba82dbc418dc358645a8fe
+Build_date：1320659177
+Uri：l/lftp_4.1.2-i686.ypk
+Install_size：1504948
+Depend：expat, gcc, glibc, gnutls, libgcrypt, libgpg-error, libtasn1, ncurses, readline, zlib
+Bdepend：expat-dev, foo-dev
+Recommended：gcc, foo
+Conflict：foo
+Description: Small but powerful ftp client
+Homepage：http://lftp.yar.ru/
+
+                 */
+
+                package_name = argv[optind];
+                pkg = NULL;
+                pkg2 = NULL;
+                pkg_data = NULL;
+                if( pkg = packages_get_package( pm, package_name, 0 ) )
+                {
+                    installed = packages_get_package_attr( pkg, "installed" );
+                    can_update = packages_get_package_attr( pkg, "can_update" );
+                    if( installed[0] != '0' )
+                    {
+                        pkg2 = packages_get_package( pm, package_name, 1 );
+                    }
+                    installed = installed[0] == '0' ? "*" : ( can_update[0] == '0' ? "I" : "U" );
+
+                    pkg_data = packages_get_package_data( pm, package_name, 0 );
+
+                    printf( 
+                            "Name: %s\nVersion: %s\nArch: %s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall: %s\nSize: %s\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %s\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nDescription: %s\nHomepage: %s\n", 
+                            package_name,
+                            pkg2 ? packages_get_package_attr( pkg2, "version") : packages_get_package_attr( pkg, "version"), 
+                            packages_get_package_attr( pkg, "arch"), 
+                            packages_get_package_attr( pkg, "category"), 
+                            packages_get_package_attr( pkg, "priority"), 
+                            installed,
+                            pkg2 ? packages_get_package_attr( pkg2, "install_time") : "*",  //install date
+                            packages_get_package_attr( pkg, "version"),  //available
+                            packages_get_package_attr( pkg, "license"), 
+                            "ylmfos",  //packager
+                            packages_get_package_attr( pkg, "install"), 
+                            packages_get_package_attr( pkg, "size"), 
+                            packages_get_package_attr( pkg, "sha"), 
+                            packages_get_package_attr( pkg, "build_date"),
+                            packages_get_package_attr( pkg, "uri"), 
+                            packages_get_package_data_attr( pkg_data, 0, "data_install_size"),  //install
+                            packages_get_package_data_attr( pkg_data, 0, "data_depend"),  //depend
+                            packages_get_package_data_attr( pkg_data, 0, "data_bdepend"),  //bdepend
+                            packages_get_package_data_attr( pkg_data, 0, "data_recommended"),  //recommended
+                            packages_get_package_data_attr( pkg_data, 0, "data_conflict"),  //conflict
+                            packages_get_package_attr( pkg, "description"),
+                            packages_get_package_attr( pkg, "homepage")
+                            );
+
+                    packages_free_package_data( pkg_data );
+                    packages_free_package( pkg );
+                    packages_free_package( pkg2 );
+                }
+                else
+                {
+                    printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                }
+
             }
 
             break;

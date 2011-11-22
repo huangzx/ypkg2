@@ -18,7 +18,7 @@ HashTable *hash_table_init()
         return NULL;
     }
     memset( ht->index, '\0',  sizeof( HashIndex )  );
-    hcreate_r( 16, ht->index );
+    hcreate_r( 24, ht->index );
 
     buf_size = HashTable_SIZE;
     ht->data = hash_table_malloc_data( NULL, buf_size );
@@ -201,7 +201,7 @@ int hash_table_list_add_data( HashTableList *htl, int index, char *key, char *va
             return -1;
 
         memset( cur_index, '\0',  sizeof( HashIndex )  );
-        hcreate_r( 16, cur_index );
+        hcreate_r( 24, cur_index );
         htl->list[index] = cur_index;
     }
 

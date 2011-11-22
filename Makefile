@@ -1,12 +1,15 @@
+VERSION=0.0.1
 YPKG=ypkg2
 YGET=yget2
 YPKGIMPORT=ypkg2-import
 LIBYPK= libypk.so
-OBJS= download.o util.o db.o data.o archive.o xml.o preg.o package.o 
+YPACKAGEH=ypackage.h
+OBJS= download.o util.o db.o data.o archive.o xml.o preg.o ypackage.o 
 DEBUG= 
 DESTDIR=
 BINDIR= $(DESTDIR)/usr/bin
 LIBDIR= $(DESTDIR)/usr/lib
+INCDIR= $(DESTDIR)/usr/include
 LANGDIR= $(DESTDIR)/usr/share/locale/zh_CN/LC_MESSAGES
 DBDIR= $(DESTDIR)/var/ypkg/db
 DATADIR= $(DESTDIR)/usr/share/ypkg
@@ -63,12 +66,14 @@ xml.o: xml.c
 preg.o: preg.c
 	cc -c $(DEBUG) preg.c -o preg.o
 
-package.o: package.c
-	cc -c $(DEBUG) package.c -o package.o
+ypackage.o: ypackage.c
+	cc -c $(DEBUG) ypackage.c -o ypackage.o
 
 install: all
-	mkdir -p $(BINDIR) $(LIBDIR) $(LANGDIR) $(DBDIR) $(DATADIR) 
-	cp $(LIBYPK) $(LIBDIR)
+	mkdir -p $(BINDIR) $(LIBDIR) $(INCDIR) $(LANGDIR) $(DBDIR) $(DATADIR) 
+	cp $(LIBYPK) $(LIBDIR)/$(LIBYPK).$(VERSION)
+	ln -s $(LIBDIR)/$(LIBYPK).$(VERSION) $(LIBDIR)/$(LIBYPK)
+	cp $(YPACKAGEH) $(INCDIR)
 	cp $(YPKG) $(BINDIR)
 	cp $(YGET) $(BINDIR)
 	cp $(YPKGIMPORT) $(BINDIR) 
@@ -84,7 +89,9 @@ remove:
 	rm -f $(BINDIR)/$(YPKG) 
 	rm -f $(BINDIR)/$(YGET) 
 	rm -f $(BINDIR)/$(YPKGIMPORT)
-	rm -f $(LIBDIR)/$(LIBYPK) 
+	rm -f $(LIBDIR)/$(LIBYPK).$(VERSION) 
+	rm -f $(LIBDIR)/$(LIBYPK)
+	rm -f $(INCDIR)/$(YPACKAGEH) 
 	rm -f $(DATADIR)/db_create.sql
 	#rm -f $(DBDIR)/package.db
 	#rm -f $(LANGDIR)/ypkg.mo
