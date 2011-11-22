@@ -72,7 +72,6 @@ ypackage.o: ypackage.c
 install: all
 	mkdir -p $(BINDIR) $(LIBDIR) $(INCDIR) $(LANGDIR) $(DBDIR) $(DATADIR) 
 	cp $(LIBYPK) $(LIBDIR)/$(LIBYPK).$(VERSION)
-	ln -s $(LIBDIR)/$(LIBYPK).$(VERSION) $(LIBDIR)/$(LIBYPK)
 	cp $(YPACKAGEH) $(INCDIR)
 	cp $(YPKG) $(BINDIR)
 	cp $(YGET) $(BINDIR)
@@ -81,6 +80,8 @@ install: all
 	#sqlite3 $(DBDIR)/package.db ".read $(DATADIR)/db_create.sql"
 	#$(BINDIR)/$(YPKGIMPORT)
 	#cp po/zh_CN.mo $(LANGDIR)/ypkg.mo
+	cd  $(LIBDIR) && ln -s $(LIBYPK).$(VERSION) ./$(LIBYPK)
+	
 
 clean:
 	rm -f $(OBJS) ypkg.o yget.o ypkg-import.o $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT) 
