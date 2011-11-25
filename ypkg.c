@@ -2,6 +2,7 @@
 #include <getopt.h>
 #include <time.h>
 #include "ypackage.h"
+#include "util.h"
 
 #define COLOR_RED "\e[31;49m"
 #define COLOR_GREEN "\e[32;49m"
@@ -186,6 +187,7 @@ int main( int argc, char **argv )
                     switch( ret )
                     {
                         case 1:
+                        case 2:
                             printf( COLOR_YELLO "The latest version has installed.\n" COLOR_RESET );
                             break;
                         case 0:

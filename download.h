@@ -12,9 +12,12 @@ typedef struct _DownloadContent {
 } DownloadContent;
 
 
+
 typedef struct _DownloadFile {
-    char *file;
-    FILE *stream;
+    char                        *file;
+    FILE                        *stream;
+    curl_progress_callback      cb;
+    void                        *cb_arg;
 } DownloadFile;
 
 int get_content(char *url, DownloadContent *content);

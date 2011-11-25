@@ -2,6 +2,7 @@
 #include <getopt.h>
 #include <time.h>
 #include "ypackage.h"
+#include "util.h"
 
 #define COLOR_RED "\e[31;49m"
 #define COLOR_GREEN "\e[32;49m"
@@ -20,6 +21,7 @@ struct option longopts[] = {
     { "autoremove", no_argument, NULL, 'A' },
     { "search", no_argument, NULL, 'S' },
     { "show", no_argument, NULL, 's' },
+    { "status", no_argument, NULL, 't' },
     { "clean", no_argument, NULL, 'C' },
     { "update", no_argument, NULL, 'u' },
     { "upgrade", no_argument, NULL, 'U' },
@@ -55,10 +57,119 @@ void usage()
     printf( "%s\n", usage );
 }
 
+int yget_download_progress_callback( void *cb_arg, double dltotal, double dlnow )
+{
+    int progress, bar_len;
+    char *bar = "====================";
+    char *space = "                    ";
+
+    progress = (int)(dlnow * 100 / dltotal);
+    if( progress == *(int *)cb_arg )
+        return 0;
+
+    bar_len = progress / 5;
+    bar_len = bar_len > 0 ? bar_len : 1;
+
+    printf( "Downloading [%.*s>%.*s][%3d%%]%s", bar_len, bar, 20 - bar_len, space, progress, space );
+
+    if( progress == 100 )
+        putchar( '\n' );
+    else
+        putchar( '\r' );
+
+    fflush( stdout );
+    *(int *)cb_arg = progress;
+
+    return 0;
+}
+
+
+int yget_install_package( YPackageManager *pm, char *package_name )
+{
+    int                 return_code, progress;
+    char                *target_url = NULL, *package_url = NULL, *package_path = NULL;
+    YPackage            *pkg;
+    YPackageDCB         dcb;
+
+    if( !package_name )
+        return -1;
+
+
+    return_code = 0;
+    pkg = packages_get_package( pm, package_name, 0 );
+    if( !pkg )
+    {
+        return -2;
+    }
+
+    package_url = packages_get_package_attr( pkg, "uri" );
+    if( !package_url )
+    {
+        return_code = -3;
+        goto return_point;
+    }
+
+    package_path = util_strcat( pm->package_dest, "/", package_url+2, NULL );
+    target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
+
+    dcb.cb = yget_download_progress_callback;
+    dcb.arg = &progress;
+    if( packages_download_package( NULL, NULL, target_url, package_path, 0, &dcb ) < 0 )
+    {
+        return -4;
+        goto return_point;
+    }
+
+    if( packages_install_local_package( pm, package_path, "/", 0 ) )
+    {
+        return_code = -5;
+    }
+
+return_point:
+    if( package_path )
+        free( package_path );
+
+    if( target_url )
+        free( target_url );
+
+    packages_free_package( pkg );
+    return return_code;
+}
+
+int yget_install_list( YPackageManager *pm, YPackageChangeList *list )
+{
+    int                     ret;
+    YPackageChangeList      *cur_pkg;
+
+    if( !list )
+        return 0;
+
+
+    while( list )
+    {
+        cur_pkg = list;
+        
+        printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
+        ret = yget_install_package( pm, cur_pkg->name );
+        if( !ret )
+        {
+            printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+        }
+        else
+        {
+            printf( COLOR_RED "Error: Installation failed.\n" COLOR_RESET );
+            return ret;
+        }
+        list = list->prev;
+    }
+
+    return 0;
+}
+
 int main( int argc, char **argv )
 {
-    int             c, force, verbose, i, j, action, ret, err, flag, len;
-    char            confirm, *tmp, *package_name, *file_name, *install_time, *build_date, *version, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type, *installed, *can_update, *repo, *homepage;
+    int             c, force, verbose, i, j, action, ret, err, flag, len, size, install_size;
+    char            confirm, *tmp, *package_name, *file_name, *install_date, *build_date, *version, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type, *installed, *can_update, *repo, *homepage;
     YPackageManager *pm;
     YPackage        *pkg, *pkg2;
     YPackageData    *pkg_data;
@@ -79,7 +190,7 @@ int main( int argc, char **argv )
     verbose = 0;
 
 
-    while( ( c = getopt_long( argc, argv, ":hIiRASsCuUpydfv", longopts, NULL ) ) != -1 )
+    while( ( c = getopt_long( argc, argv, ":hIiRASstCuUpydfv", longopts, NULL ) ) != -1 )
     {
         switch( c )
         {
@@ -90,6 +201,7 @@ int main( int argc, char **argv )
             case 'A': //autoremove
             case 'S': //search
             case 's': //search
+            case 't': //status
             case 'C': //clean
             case 'u': //update
             case 'U': //upgrade
@@ -213,9 +325,9 @@ int main( int argc, char **argv )
                         }
                         printf( "\nDo you want to continue [Y/N]?" );
                         confirm = getchar();
-                        if( confirm == 'Y' || confirm == 'y' )
+                        if( confirm != 'n' && confirm != 'N' )
                         {
-                            packages_install_list( pm, install_list );
+                            yget_install_list( pm, install_list );
                         }
                         packages_free_install_list( install_list );
                     }
@@ -301,7 +413,7 @@ int main( int argc, char **argv )
                 {
                     package_name = argv[i];
 
-                    pkg_list = packages_get_list( pm, 10, 0, "name", package_name, 0, 0 );
+                    pkg_list = packages_get_list( pm, 10, 0, "name", package_name, 1, 0 );
                     if( pkg_list )
                     {
                         for( j = 0; j < pkg_list->cnt; j++ )
@@ -311,16 +423,19 @@ int main( int argc, char **argv )
                             installed = installed[0] == '0' ? "[*]" : ( can_update[0] == '0' ? "[I]" : "[U]" );
                             repo = packages_get_list_attr( pkg_list, j, "repo" );
 
+                            /*
                             if( !verbose )
                             {
+                            */
                                 printf( 
                                         COLOR_GREEN "%-s "  COLOR_RESET  "\t%-s \t%-10s \t%-8s \t%-s\n",
                                         installed, 
-                                        package_name, 
+                                        packages_get_list_attr( pkg_list, j, "name"), 
                                         packages_get_list_attr( pkg_list, j, "version"), 
                                         repo, 
                                         packages_get_list_attr( pkg_list, j, "description") 
                                         );
+                                /*
                             }
                             else
                             {
@@ -364,6 +479,7 @@ int main( int argc, char **argv )
                                 if( build_date )
                                     free( build_date );
                             }
+                            */
 
                         }
                         packages_free_list( pkg_list );
@@ -387,7 +503,100 @@ int main( int argc, char **argv )
             }
             else
             {
-                /*
+                package_name = argv[optind];
+                pkg = NULL;
+                pkg2 = NULL;
+                pkg_data = NULL;
+                if( pkg = packages_get_package( pm, package_name, 0 ) )
+                {
+                    installed = packages_get_package_attr( pkg, "installed" );
+                    can_update = packages_get_package_attr( pkg, "can_update" );
+                    if( installed[0] != '0' )
+                    {
+                        pkg2 = packages_get_package( pm, package_name, 1 );
+                    }
+                    installed = installed[0] == '0' ? "*" : ( can_update[0] == '0' ? "I" : "U" );
+
+                    tmp = packages_get_package_attr( pkg, "build_date");
+                    if( tmp )
+                        build_date = util_time_to_str( atoi( tmp ) );
+                    else
+                        build_date = NULL;
+
+                    if( pkg2 )
+                    {
+                        tmp = packages_get_package_attr( pkg2, "install_time");
+                        if( tmp )
+                            install_date = util_time_to_str( atoi( tmp ) );
+                        else
+                            install_date = NULL;
+                    }
+
+                    tmp = packages_get_package_attr( pkg, "size");
+                    size = tmp ? atoi( tmp ) : 0;
+
+                    pkg_data = packages_get_package_data( pm, package_name, 0 );
+
+                    tmp = packages_get_package_data_attr( pkg_data, 0, "data_install_size");
+                    install_size = tmp ? atoi( tmp ) : 0;
+
+                    printf( 
+                            "Name: %s\nVersion: %s\nArch: %s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nDescription: %s\nHomepage: %s\n", 
+                            package_name,
+                            pkg2 ? packages_get_package_attr( pkg2, "version") : packages_get_package_attr( pkg, "version"), 
+                            packages_get_package_attr( pkg, "arch"), 
+                            packages_get_package_attr( pkg, "category"), 
+                            packages_get_package_attr( pkg, "priority"), 
+                            installed,
+                            install_date,  //install date
+                            packages_get_package_attr( pkg, "version"),  //available
+                            packages_get_package_attr( pkg, "license"), 
+                            "ylmfos",  //packager
+                            packages_get_package_attr( pkg, "install"), 
+                            size > 1000000 ? size / 1000000 : (size > 1000 ? size / 1000 : size), 
+                            size > 1000000 ? 'M' : (size > 1000 ? 'K' : 'B'), 
+                            packages_get_package_attr( pkg, "sha"), 
+                            build_date,
+                            packages_get_package_attr( pkg, "uri"), 
+                            install_size > 1000000 ? install_size / 1000000 : (install_size > 1000 ? install_size / 1000 : install_size), 
+                            install_size > 1000000 ? 'M' : (install_size > 1000 ? 'K' : 'B'), 
+                            packages_get_package_data_attr( pkg_data, 0, "data_depend"),  //depend
+                            packages_get_package_data_attr( pkg_data, 0, "data_bdepend"),  //bdepend
+                            packages_get_package_data_attr( pkg_data, 0, "data_recommended"),  //recommended
+                            packages_get_package_data_attr( pkg_data, 0, "data_conflict"),  //conflict
+                            packages_get_package_attr( pkg, "description"),
+                            packages_get_package_attr( pkg, "homepage")
+                            );
+
+                    if( build_date )
+                        free( build_date );
+
+                    if( install_date )
+                        free( install_date );
+
+                    packages_free_package_data( pkg_data );
+                    packages_free_package( pkg );
+                    packages_free_package( pkg2 );
+                }
+                else
+                {
+                    printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                }
+
+            }
+
+            break;
+
+        /*
+         * status
+         */
+        case 't':
+            if( argc != 3 )
+            {
+                err = 1;
+            }
+            else
+            {
                 package_name = argv[optind];
                 if( pkg = packages_get_package( pm, package_name, 0 ) )
                 {
@@ -406,84 +615,6 @@ int main( int argc, char **argv )
                 {
                     printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
                 }
-                */
-                /*
-Name: lftp
-Version: 4.1.2
-Arch: i686
-Category: Network
-Priority: required
-Status: installed
-Install_date: 2011-11-02 10:59:49
-Available: 13.0.782.220 stable 2011-11-02 10:59:49
-License： GPLv2
-Packager：Ylmf OS Developers ylmfos@115.com
-Install： lftp.install
-Size：31944  
-Sha： 00431646afb8f86888ba82dbc418dc358645a8fe
-Build_date：1320659177
-Uri：l/lftp_4.1.2-i686.ypk
-Install_size：1504948
-Depend：expat, gcc, glibc, gnutls, libgcrypt, libgpg-error, libtasn1, ncurses, readline, zlib
-Bdepend：expat-dev, foo-dev
-Recommended：gcc, foo
-Conflict：foo
-Description: Small but powerful ftp client
-Homepage：http://lftp.yar.ru/
-
-                 */
-
-                package_name = argv[optind];
-                pkg = NULL;
-                pkg2 = NULL;
-                pkg_data = NULL;
-                if( pkg = packages_get_package( pm, package_name, 0 ) )
-                {
-                    installed = packages_get_package_attr( pkg, "installed" );
-                    can_update = packages_get_package_attr( pkg, "can_update" );
-                    if( installed[0] != '0' )
-                    {
-                        pkg2 = packages_get_package( pm, package_name, 1 );
-                    }
-                    installed = installed[0] == '0' ? "*" : ( can_update[0] == '0' ? "I" : "U" );
-
-                    pkg_data = packages_get_package_data( pm, package_name, 0 );
-
-                    printf( 
-                            "Name: %s\nVersion: %s\nArch: %s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall: %s\nSize: %s\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %s\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nDescription: %s\nHomepage: %s\n", 
-                            package_name,
-                            pkg2 ? packages_get_package_attr( pkg2, "version") : packages_get_package_attr( pkg, "version"), 
-                            packages_get_package_attr( pkg, "arch"), 
-                            packages_get_package_attr( pkg, "category"), 
-                            packages_get_package_attr( pkg, "priority"), 
-                            installed,
-                            pkg2 ? packages_get_package_attr( pkg2, "install_time") : "*",  //install date
-                            packages_get_package_attr( pkg, "version"),  //available
-                            packages_get_package_attr( pkg, "license"), 
-                            "ylmfos",  //packager
-                            packages_get_package_attr( pkg, "install"), 
-                            packages_get_package_attr( pkg, "size"), 
-                            packages_get_package_attr( pkg, "sha"), 
-                            packages_get_package_attr( pkg, "build_date"),
-                            packages_get_package_attr( pkg, "uri"), 
-                            packages_get_package_data_attr( pkg_data, 0, "data_install_size"),  //install
-                            packages_get_package_data_attr( pkg_data, 0, "data_depend"),  //depend
-                            packages_get_package_data_attr( pkg_data, 0, "data_bdepend"),  //bdepend
-                            packages_get_package_data_attr( pkg_data, 0, "data_recommended"),  //recommended
-                            packages_get_package_data_attr( pkg_data, 0, "data_conflict"),  //conflict
-                            packages_get_package_attr( pkg, "description"),
-                            packages_get_package_attr( pkg, "homepage")
-                            );
-
-                    packages_free_package_data( pkg_data );
-                    packages_free_package( pkg );
-                    packages_free_package( pkg2 );
-                }
-                else
-                {
-                    printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
-                }
-
             }
 
             break;

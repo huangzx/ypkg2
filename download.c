@@ -69,9 +69,19 @@ int download_file(char *url, DownloadFile *file)
     curl_easy_setopt(curl_handle, CURLOPT_URL, url);
     curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2)");
     curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 0L);
-    curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1L);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, file_callback);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)file);
+    if( file->cb )
+    {
+        curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 0L );
+        curl_easy_setopt(curl_handle, CURLOPT_PROGRESSFUNCTION, file->cb );
+        if( file->cb_arg )
+            curl_easy_setopt(curl_handle, CURLOPT_PROGRESSDATA, file->cb_arg );
+    }
+    else
+    {
+        curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1L);
+    }
 
     res = curl_easy_perform(curl_handle);
 

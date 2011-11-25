@@ -1,6 +1,5 @@
+#define LIBYPK 1
 #include "ypackage.h"
-
-#define DEBUG 1
 
 
 YPackageManager *packages_manager_init()
@@ -1734,21 +1733,108 @@ char *packages_get_list_attr2( YPackageList *pkg_list, int index, char *key )
     return result ? result : "";
 }
 
+
+static int packages_download_progress_callback( void *cb_arg,double dltotal, double dlnow, double ultotal, double ulnow )
+{
+    YPackageDCB *dcb;
+
+    dcb = (YPackageDCB *)cb_arg;
+    return dcb->cb( dcb->arg, dltotal, dlnow );
+}
+
+/*
+ * packages_download_package
+ */
+int packages_download_package( YPackageManager *pm, char *package_name, char *url, char *dest, int force, YPackageDCB *dcb )
+{
+    int                 return_code;
+    char                *target_url, *package_url, *package_path;
+    DownloadFile        file;
+    YPackage            *pkg;
+
+    if( (!url || !dest) && (!pm || !package_name) )
+        return -1;
+
+    if( url && dest )
+    {
+        target_url = util_strcpy( url );
+        package_path = util_strcpy( dest );
+        pkg = NULL;
+    }
+    else
+    {
+        pkg = packages_get_package( pm, package_name, 0 );
+        if( !pkg )
+        {
+            return -2;
+        }
+
+        return_code = 0;
+
+        package_url = packages_get_package_attr( pkg, "uri" );
+        if( !package_url )
+        {
+            return_code = -3;
+            goto return_point;
+        }
+
+        package_path = util_strcat( pm->package_dest, "/", package_url+2, NULL );
+        target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
+    }
+
+    if( force || access( package_path, R_OK ) )
+    {
+        file.file = package_path;
+        file.stream = NULL;
+        if( dcb )
+        {
+            file.cb = packages_download_progress_callback;
+            file.cb_arg = (void *)dcb;
+        }
+        else
+        {
+            file.cb = NULL;
+            file.cb_arg = NULL;
+        }
+
+        if( download_file( target_url, &file ) != 0 )
+        {
+            if( file.stream )
+                fclose( file.stream );
+            return_code = -4;
+            goto return_point;
+        }
+        fclose( file.stream );
+    }
+
+return_point:
+    if( target_url )
+        free( target_url );
+
+    if( package_path )
+        free( package_path );
+
+    if( pkg )
+        packages_free_package( pkg );
+    return return_code;
+}
+
+
 /*
  * packages_install_package
  */
 int packages_install_package( YPackageManager *pm, char *package_name )
 {
-    int                 return_code = 0, db_ret;
+    int                 return_code;
     char                *target_url = NULL, *package_url = NULL, *package_path = NULL;
-    DownloadFile         file;
-    YPackage             *pkg;
-    DB                  db;
+    YPackage            *pkg;
+    YPackageDCB         dcb;
 
     if( !package_name )
         return -1;
 
-    //get info from db
+
+    return_code = 0;
     pkg = packages_get_package( pm, package_name, 0 );
     if( !pkg )
     {
@@ -1763,43 +1849,25 @@ int packages_install_package( YPackageManager *pm, char *package_name )
     }
 
     package_path = util_strcat( pm->package_dest, "/", package_url+2, NULL );
-    if( access( package_path, R_OK ) )
+    target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
+
+    if( packages_download_package( NULL, NULL, target_url, package_path, 0, NULL ) < 0 )
     {
-        //goto return_point;
-
-        target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
-
-        file.file = package_path;
-        file.stream = NULL;
-        printf( "downloading %s to %s\n", target_url, package_path );
-        if( download_file( target_url, &file ) != 0 )
-        {
-            if( file.stream )
-                fclose( file.stream );
-            return_code = -4;
-            goto return_point;
-        }
-        fclose( file.stream );
+        return -4;
+        goto return_point;
     }
 
-    printf( "installing %s\n", package_path );
-    if( return_code = packages_install_local_package( pm, package_path, "/", 0 ) )
+    if( packages_install_local_package( pm, package_path, "/", 0 ) )
     {
-        printf("packages_install_local_package() return code: %d\n", return_code );
         return_code = -5;
     }
 
-    //printf( "updating database ...\n");
-    db_init( &db, pm->db_name, OPEN_WRITE );
-    db_ret = db_exec( &db, "update universe set installed='1', can_update='0' where name=?", package_name, NULL );  
-    db_close( &db );
-
 return_point:
+    if( package_path )
+        free( package_path );
 
     if( target_url )
         free( target_url );
-    if( package_path )
-        free( package_path );
 
     packages_free_package( pkg );
     return return_code;
@@ -2051,16 +2119,10 @@ int packages_install_list( YPackageManager *pm, YPackageChangeList *list )
     {
         cur_pkg = list;
         
-        printf( "installing %s ...\n", cur_pkg->name );
         ret = packages_install_package( pm, cur_pkg->name );
-        if( !ret )
+        if( ret )
         {
-            printf( " success\n" );
-        }
-        else
-        {
-            printf( " failed\n" );
-            return ret;
+            return -1;
         }
         list = list->prev;
     }
@@ -2146,7 +2208,7 @@ void packages_free_remove_list( YPackageChangeList *list )
  */
 int packages_check_package( YPackageManager *pm, char *ypk_path )
 {
-    int                 i, return_code = 0;
+    int                 i, ret, return_code = 0;
     char                *depend, *conflict, *token, *package_name, *arch, *version, *version2;
     struct utsname      buf;
     YPackage            *pkg = NULL, *pkg2 = NULL;
@@ -2225,16 +2287,15 @@ int packages_check_package( YPackageManager *pm, char *ypk_path )
     if( pkg2 = packages_get_package( pm, package_name, 1 )  )
     {
         version2 = packages_get_package_attr( pkg2, "version" );
-
-
-        if( version && (strlen( version ) > 0) && version2 && (strlen( version2 ) > 0) && packages_compare_version( version, version2 ) > 0 )
+        if( version && (strlen( version ) > 0) && version2 && (strlen( version2 ) > 0) )
         {
-            return_code = 2; 
-            goto return_point;
-        }
-        else
-        {
-            return_code = 1; 
+            ret = packages_compare_version( version, version2 );
+            if( ret > 0 )
+                return_code = 3; 
+            else if( ret == 0 )
+                return_code = 2; 
+            else
+                return_code = 1; 
             goto return_point;
         }
     }
@@ -2486,9 +2547,9 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     size_t              pkginfo_len, filelist_len;
     void                *pkginfo, *filelist;
     char                *sql, *sql_data, *sql_filelist, *sql_filelist2, *install_file, *cmd, *list_line;
-    char                *package_name, *version, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra;
+    char                *package_name, *version, *version2, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *can_update;
     char                tmp_ypk_install[] = "/tmp/ypkinstall.XXXXXX";
-    YPackage             *pkg;
+    YPackage            *pkg, *pkg2;
     YPackageData        *pkg_data;
     YPackageFile        *pkg_file;
     DB                  db;
@@ -2506,7 +2567,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( !ypk_path || access( ypk_path, R_OK ) )
         return -1;
 
-    ret = packages_check_package( pm, ypk_path ); //ret = -4 ~ 2
+    ret = packages_check_package( pm, ypk_path ); //ret = -4 ~ 3
 
     if( ret == -1 )
     {
@@ -2516,14 +2577,14 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     {
         return ret;
     }
-    else if( ret == 1 )
+    else if( ret == 1 || ret == 2 )
     {
         if( !force )
             return 1;
 
         installed = 1;
     }
-    else if( ret == 2 )
+    else if( ret == 3 )
     {
         upgrade = 1;
     }
@@ -2729,18 +2790,41 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         list_line = util_mem_gets( NULL );
     }
 
+    pkg2 = packages_get_package( pm, package_name, 0 );
+    if( pkg2 )
+    {
+        version2 = packages_get_package_attr( pkg2, "version" );
+        if( version && (strlen( version ) > 0) && version2 && (strlen( version2 ) > 0) )
+        {
+            can_update = packages_compare_version( version, version2 ) < 0 ? "1" : "0";
+        }
+        else
+        {
+            can_update = "0";
+        }
+
+        db_exec( &db, "update universe set installed='1', can_update=? where name=?", can_update, package_name, NULL );  
+    }
+
     db_exec( &db, "commit", NULL );  
     db_close( &db );
 
 return_point:
     if( pkginfo )
         free( pkginfo );
+
     if( filelist )
         free( filelist );
+
     if( pkg )
         packages_free_package( pkg );
+
+    if( pkg2 )
+        packages_free_package( pkg2 );
+
     if( pkg_data )
         packages_free_package_data( pkg_data );
+
     remove( tmp_ypk_install );
     return return_code;
 }

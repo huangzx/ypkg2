@@ -8,6 +8,9 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include <sys/utsname.h>
+
+#ifdef LIBYPK 
+
 #include "download.h"
 #include "util.h"
 #include "db.h"
@@ -16,10 +19,35 @@
 #include "xml.h"
 #include "preg.h"
 
+#else
+
+typedef struct hsearch_data HashIndex;
+typedef struct _HashData {
+    int                 size;
+    int                 pos;
+    char                *buf;
+    struct _HashData   *next;
+}HashData;
+
+typedef struct {
+    HashIndex          *index;
+    HashData           *data;
+    HashData           *cur_data;
+}HashTable;
+
+
+typedef struct {
+    int                 max_cnt;
+    int                 cur_cnt;
+    HashIndex          **list;
+    HashData           *data;
+    HashData           *cur_data;
+}HashTableList;
+#endif
+
 #define CONFIG_FILE "/etc/yget.conf"
 #define PACKAGE_DB_DIR  "/var/ypkg/db"
 #define DB_NAME "/var/ypkg/db/package.db"
-//#define DB_NAME "/tmp/soft_manager.db"
 #define UPDATE_DIR "updates"
 #define LIST_FILE "updates.list"
 #define LIST_DATE_FILE "updates.date"
@@ -64,6 +92,13 @@ typedef struct _YPackageChangeList {
     int                     type; //self:1 ,depend:2, recommended:3
     struct _YPackageChangeList    *prev;
 }YPackageChangeList;
+
+
+typedef int (*ypk_download_callback)( void *cb_arg, double dltotal, double dlnow );
+typedef struct {
+    ypk_download_callback   cb;
+    void                    *arg;
+}YPackageDCB;
 
 /**********************************/
 /* sync interface                 */
@@ -151,9 +186,11 @@ int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir
 int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path );
 
 
+int packages_download_package( YPackageManager *pm, char *package_name, char *url, char *dest, int force, YPackageDCB *dcb );
+int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int force );
 int packages_install_package( YPackageManager *pm, char *package_name );
 //int packages_install_history_package( YPackageManager *pm, char *package_name, char *version );
-int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int force );
+
 YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *package_name );
 void packages_free_install_list( YPackageChangeList *list );
 YPackageChangeList *packages_get_dev_list( YPackageManager *pm, char *package_name );
@@ -220,4 +257,5 @@ static void packages_free_change_list( YPackageChangeList *list );
 static void *packages_check_update_backend_thread( void *data );
 static void *packages_update_backend_thread( void *data );
 static void *packages_get_list_backend_thread(void *data);
+static int packages_download_progress_callback( void *cb_arg,double dltotal, double dlnow, double ultotal, double ulnow );
 #endif /* !PACKAGE_H */
