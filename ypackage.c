@@ -537,6 +537,8 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
     mkstemp(tmp_bz2);
     file.file = tmp_bz2;
     file.stream = NULL;
+    file.cb = NULL;
+    file.cb_arg = NULL;
     if( download_file( target_url, &file ) != 0 )
     {
         remove(tmp_bz2);
@@ -1755,6 +1757,7 @@ int packages_download_package( YPackageManager *pm, char *package_name, char *ur
     if( (!url || !dest) && (!pm || !package_name) )
         return -1;
 
+    return_code = 0;
     if( url && dest )
     {
         target_url = util_strcpy( url );
@@ -1769,7 +1772,6 @@ int packages_download_package( YPackageManager *pm, char *package_name, char *ur
             return -2;
         }
 
-        return_code = 0;
 
         package_url = packages_get_package_attr( pkg, "uri" );
         if( !package_url )
@@ -2561,6 +2563,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     pkginfo = NULL; 
     filelist = NULL;
     pkg = NULL; 
+    pkg2 = NULL; 
     pkg_data = NULL;
 
     //check
@@ -2635,7 +2638,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     //printf( "copying files ...\n");
     if( (ret = packages_unpack_package( pm, ypk_path, dest_dir )) != 0 )
     {
-        printf("unpack ret:%d\n",ret);
+        //printf("unpack ret:%d\n",ret);
         return_code = -8; 
         goto return_point;
     }
@@ -2740,6 +2743,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             free( list_line );
             list_line = util_mem_gets( NULL );
         }
+        db_exec( &db, "commit", NULL );  
 
         pkg_file = packages_get_package_file( pm, package_name );
         if( pkg_file )
@@ -2748,10 +2752,14 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             {
                 file_file = packages_get_package_file_attr( pkg_file, j, "file");
                 if( file_file )
+                {
                     remove( file_file );
+                }
             }
             packages_free_package_file( pkg_file );
         }
+
+        db_exec( &db, "begin", NULL );  
 
     }
 
@@ -2820,7 +2828,9 @@ return_point:
         packages_free_package( pkg );
 
     if( pkg2 )
+    {
         packages_free_package( pkg2 );
+    }
 
     if( pkg_data )
         packages_free_package_data( pkg_data );

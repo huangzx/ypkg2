@@ -181,8 +181,6 @@ int main( int argc, char **argv )
                     package_name = argv[i];
                     printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", package_name );
                     ret = packages_install_local_package( pm, package_name, "/", force );
-                    if( ret < -4 )
-                        printf( COLOR_RED "Error: Installation failed.\n" COLOR_RESET );
 
                     switch( ret )
                     {
@@ -204,6 +202,19 @@ int main( int argc, char **argv )
                             break;
                         case -4:
                             printf( COLOR_RED "Error: conflicting deps.\n" COLOR_RESET );
+                            break;
+                        case -5:
+                        case -6:
+                            printf( COLOR_RED "Error: Can not get package's infomation.\n" COLOR_RESET );
+                            break;
+                        case -7:
+                            printf( COLOR_RED "Error: An error occurred while executing the pre_install script.\n" COLOR_RESET );
+                            break;
+                        case -8:
+                            printf( COLOR_RED "Error: An error occurred while copy files.\n" COLOR_RESET );
+                            break;
+                        case -9:
+                            printf( COLOR_RED "Error: An error occurred while executing the post_install script.\n" COLOR_RESET );
                             break;
                     }
                 }

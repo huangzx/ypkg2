@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <time.h>
+#include <sys/time.h>
 #include "ypackage.h"
 #include "util.h"
 
@@ -12,6 +13,12 @@
 #define COLOR_CYAN "\e[36;49m"
 #define COLOR_WHILE "\033[1m"
 #define COLOR_RESET "\e[0m"
+
+typedef struct {
+    int             progress;
+    double          cnt;
+    struct timeval  st;
+}DownloadStat;
 
 struct option longopts[] = {
     { "help", no_argument, NULL, 'h' },
@@ -59,18 +66,52 @@ void usage()
 
 int yget_download_progress_callback( void *cb_arg, double dltotal, double dlnow )
 {
-    int progress, bar_len;
-    char *bar = "====================";
-    char *space = "                    ";
+    int                 progress, bar_len;
+    long                speed;
+    char                *bar = "====================";
+    char                *space = "                    ";
+    struct timeval      now;
+    DownloadStat        *statp;
+
+    statp = (DownloadStat *)cb_arg;
 
     progress = (int)(dlnow * 100 / dltotal);
-    if( progress == *(int *)cb_arg )
+    if( progress < 0 || progress == statp->progress )
         return 0;
+
+    statp->progress = progress;
+    if( !gettimeofday( &now, NULL ) )
+    {
+        if( statp->st.tv_sec != now.tv_sec && statp->cnt != dlnow )
+        {
+            speed = (dlnow - statp->cnt) * 1000000 /  ( (now.tv_sec - statp->st.tv_sec) * 1000000 + (now.tv_usec - statp->st.tv_usec) );
+            speed = speed < 0 ? 0 : speed;
+
+            statp->st.tv_sec = now.tv_sec;
+            statp->st.tv_usec = now.tv_usec; 
+            statp->cnt = dlnow;
+        }
+    }
+
 
     bar_len = progress / 5;
     bar_len = bar_len > 0 ? bar_len : 1;
 
-    printf( "Downloading [%.*s>%.*s][%3d%%]%s", bar_len, bar, 20 - bar_len, space, progress, space );
+    printf( 
+            "[%.*s>%.*s]   %.2f%s/%.2f%s[%3d%%]  %ld%s/s%s", 
+            bar_len, 
+            bar, 
+            20 - bar_len, 
+            space, 
+            dlnow > 1048576 ? dlnow/1048576 : (dlnow > 1024 ? dlnow/1024 : dlnow),
+            dlnow > 1048576 ? "MB" : (dlnow > 1024 ? "KB" : "B"),
+            dltotal > 1048576 ? dltotal/1048576 : (dltotal > 1024 ? dltotal/1024 : dltotal),
+            dltotal > 1048576 ? "MB" : (dltotal > 1024 ? "KB" : "B"),
+            progress, 
+            speed > 1024 ? speed/1024 : speed, 
+            speed > 1024 ? "KB" : "B", 
+            space 
+            );
 
     if( progress == 100 )
         putchar( '\n' );
@@ -78,7 +119,6 @@ int yget_download_progress_callback( void *cb_arg, double dltotal, double dlnow 
         putchar( '\r' );
 
     fflush( stdout );
-    *(int *)cb_arg = progress;
 
     return 0;
 }
@@ -86,10 +126,11 @@ int yget_download_progress_callback( void *cb_arg, double dltotal, double dlnow 
 
 int yget_install_package( YPackageManager *pm, char *package_name )
 {
-    int                 return_code, progress;
+    int                 ret, return_code;
     char                *target_url = NULL, *package_url = NULL, *package_path = NULL;
     YPackage            *pkg;
     YPackageDCB         dcb;
+    DownloadStat        dl_stat;
 
     if( !package_name )
         return -1;
@@ -99,12 +140,14 @@ int yget_install_package( YPackageManager *pm, char *package_name )
     pkg = packages_get_package( pm, package_name, 0 );
     if( !pkg )
     {
+        printf( COLOR_RED "Error: Can't find the package %s.\n" COLOR_RESET, package_name );
         return -2;
     }
 
     package_url = packages_get_package_attr( pkg, "uri" );
     if( !package_url )
     {
+        printf( COLOR_RED "Error: Can't get the download url of the package.\n" COLOR_RESET );
         return_code = -3;
         goto return_point;
     }
@@ -112,16 +155,59 @@ int yget_install_package( YPackageManager *pm, char *package_name )
     package_path = util_strcat( pm->package_dest, "/", package_url+2, NULL );
     target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
 
+    printf( "Downloading %s to %s\n", target_url, package_path  );
+    dl_stat.progress = 0;
+    dl_stat.cnt = 0;
+    dl_stat.st.tv_sec = 0;
+    dl_stat.st.tv_usec = 0;
     dcb.cb = yget_download_progress_callback;
-    dcb.arg = &progress;
+    dcb.arg = &dl_stat;
     if( packages_download_package( NULL, NULL, target_url, package_path, 0, &dcb ) < 0 )
     {
+        printf( COLOR_RED "Error: Can't download the package %s from %s.\n" COLOR_RESET, package_name, target_url );
         return -4;
         goto return_point;
     }
 
-    if( packages_install_local_package( pm, package_path, "/", 0 ) )
+    printf( "Installing %s\n", package_path );
+    if( ret = packages_install_local_package( pm, package_path, "/", 0 ) )
     {
+        switch( ret )
+        {
+            case 1:
+            case 2:
+                printf( COLOR_YELLO "The latest version has installed.\n" COLOR_RESET );
+                break;
+            case 0:
+                printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+                break;
+            case -1:
+                printf( COLOR_RED "Error: Invalid format or File not found.\n" COLOR_RESET );
+                break;
+            case -2:
+                printf( COLOR_RED "Error: Architecture does not match.\n" COLOR_RESET );
+                break;
+            case -3:
+                printf( COLOR_RED "Error: missing runtime deps.\n" COLOR_RESET );
+                break;
+            case -4:
+                printf( COLOR_RED "Error: conflicting deps.\n" COLOR_RESET );
+                break;
+            case -5:
+            case -6:
+                printf( COLOR_RED "Error: Can not get package's infomation.\n" COLOR_RESET );
+                break;
+            case -7:
+                printf( COLOR_RED "Error: An error occurred while executing the pre_install script.\n" COLOR_RESET );
+                break;
+            case -8:
+                printf( COLOR_RED "Error: An error occurred while copy files.\n" COLOR_RESET );
+                break;
+            case -9:
+                printf( COLOR_RED "Error: An error occurred while executing the post_install script.\n" COLOR_RESET );
+                break;
+        }
+
         return_code = -5;
     }
 
