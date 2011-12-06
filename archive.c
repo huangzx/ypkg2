@@ -1,4 +1,5 @@
 #include "archive.h"
+#define DEBUG 1
 
 /*
  * file to file
@@ -243,10 +244,11 @@ errout:
 
 int archive_extract_all( char *arch_file, char *dest_dir )
 {
-    int                     ret, flags, path_len;     
-    char                    *filename, *tmp, *dest;
+    int                     ret, flags;     
+    char                    *filename;
     struct archive          *arch_r = NULL, *arch_w = NULL;
-    struct archive_entry    *entry = NULL;
+    struct archive_entry    *entry = NULL, *sparse = NULL;
+    struct archive_entry_linkresolver *linkresolver;
 
     if( !arch_file )
         return -1;
@@ -258,22 +260,24 @@ int archive_extract_all( char *arch_file, char *dest_dir )
     if( archive_read_open_filename( arch_r, arch_file, 10240 ) != ARCHIVE_OK )
         goto errout;
 
-    dest = NULL;
-    if( !( dest = (char *)malloc( MAX_PATH_LEN * sizeof(char) ) ) )
-        goto errout;
-
-    memset( dest, '\0', MAX_PATH_LEN * sizeof(char) );
-
-    tmp = NULL;
     if( dest_dir )
     {
-        path_len = strlen( dest_dir );
-        if( !( tmp = (char *)malloc( path_len * sizeof(char) + 1 ) ) )
-            goto errout;
+        if( mkdir( dest_dir, 0755 ) == -1 )
+        {
+            if( errno == EEXIST )
+            {
+                if( access( dest_dir, R_OK | W_OK | X_OK ) == -1 )
+                {
+                    goto errout;
+                }
 
-        memset( tmp, '\0',  path_len * sizeof(char) + 1 );
-        strncpy( tmp, dest_dir, path_len );
-        dest_dir = tmp;
+            }
+            else
+            {
+                goto errout;
+            }
+        }
+        chdir( dest_dir );
     }
 
     flags = ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_PERM | ARCHIVE_EXTRACT_ACL | ARCHIVE_EXTRACT_FFLAGS;
@@ -283,44 +287,25 @@ int archive_extract_all( char *arch_file, char *dest_dir )
 
     while( archive_read_next_header( arch_r, &entry ) == ARCHIVE_OK ) 
     {
-        filename = (char *)archive_entry_pathname( entry );
 #ifdef DEBUG
+        filename = (char *)archive_entry_pathname( entry );
         printf("extract:%s\n", filename );
 #endif
 
-        if( !dest_dir )
-        {
-            strncpy( dest, filename, strlen( filename ) );
-        }
-        else
-        {
-            path_len = strlen( dest_dir );
-            if( path_len > 0 && dest_dir[path_len-1] == '/' )
-            {
-                dest_dir[path_len-1] = '\0';
-            }
-
-            if( filename[0] == '/' )
-            {
-                path_len = snprintf( dest, MAX_PATH_LEN, "%s%s", dest_dir, filename );
-            }
-            else
-            {
-                path_len = snprintf( dest, MAX_PATH_LEN, "%s/%s", dest_dir, filename );
-            }
-            dest[path_len] = '\0';
-        }
-
-        archive_entry_set_pathname( entry, dest );
         ret = archive_read_extract2( arch_r, entry, arch_w );
         if( ret != ARCHIVE_OK && ret != ARCHIVE_WARN ) 
         {
-        //printf("err:%d, file:%s, rr:%s, rw:%s\n", ret, dest, archive_error_string(arch_r), archive_error_string(arch_w));
             goto errout;
         }
+
+#ifdef DEBUG
+        if( ret != ARCHIVE_OK)
+        {
+            printf("ret:%d, file:%s, link:%d, size:%d, read_err:%s, write_err:%s\n", ret, filename, archive_entry_nlink(entry), archive_entry_size(entry), archive_error_string(arch_r), archive_error_string(arch_w));
+        }
+#endif
     }
 
-    free( dest );
     archive_read_finish( arch_r );
     archive_write_finish( arch_w );
     return 0;
@@ -330,9 +315,5 @@ errout:
         archive_read_finish( arch_r );
     if( arch_w )
         archive_write_finish( arch_w );
-    if( dest_dir )
-        free( dest_dir );
-    if( dest )
-        free( dest );
     return -1;
 }

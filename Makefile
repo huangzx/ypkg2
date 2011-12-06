@@ -84,7 +84,7 @@ install: all
 	
 
 clean:
-	rm -f $(OBJS) ypkg.o yget.o ypkg-import.o $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT) 
+	rm -f $(OBJS) ypkg.o yget.o ypkg-import.o $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT) $(STATIC_LIB)
 
 remove:
 	rm -f $(BINDIR)/$(YPKG) 
