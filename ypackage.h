@@ -180,13 +180,14 @@ int packages_compare_version( char *version1, char *version2 );
 /*
  * package install & remove & upgrade
  */
-int packages_check_package( YPackageManager *pm, char *ypk_path );
+int packages_check_package( YPackageManager *pm, char *ypk_path, char **extra, int extra_max_len );
 
 int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir );
 int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path );
 
 
 int packages_download_package( YPackageManager *pm, char *package_name, char *url, char *dest, int force, YPackageDCB *dcb );
+int packages_exec_script( char *script, char *package_name, char *version, char *version2, char *action );
 int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int force );
 int packages_install_package( YPackageManager *pm, char *package_name );
 //int packages_install_history_package( YPackageManager *pm, char *package_name, char *version );

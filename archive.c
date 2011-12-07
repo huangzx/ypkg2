@@ -1,5 +1,4 @@
 #include "archive.h"
-#define DEBUG 1
 
 /*
  * file to file

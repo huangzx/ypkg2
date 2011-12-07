@@ -235,7 +235,7 @@ int main( int argc, char **argv )
                 {
                     package_name = argv[i];
                     printf( "Checking for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  package_name );
-                    ret = packages_check_package( pm, package_name );
+                    ret = packages_check_package( pm, package_name, NULL, 0 );
                     switch( ret )
                     {
                         case 2:

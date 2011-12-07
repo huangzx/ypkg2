@@ -593,6 +593,8 @@ int main( int argc, char **argv )
                 pkg = NULL;
                 pkg2 = NULL;
                 pkg_data = NULL;
+                install_date = NULL;
+                build_date = NULL;
                 if( pkg = packages_get_package( pm, package_name, 0 ) )
                 {
                     installed = packages_get_package_attr( pkg, "installed" );
@@ -627,22 +629,22 @@ int main( int argc, char **argv )
                     install_size = tmp ? atoi( tmp ) : 0;
 
                     printf( 
-                            "Name: %s\nVersion: %s\nArch: %s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nDescription: %s\nHomepage: %s\n", 
+                            "Name: %s\nVersion: %s\nArch: %s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nDescription: %s\nHomepage: %s\n", 
                             package_name,
                             pkg2 ? packages_get_package_attr( pkg2, "version") : packages_get_package_attr( pkg, "version"), 
                             packages_get_package_attr( pkg, "arch"), 
                             packages_get_package_attr( pkg, "category"), 
                             packages_get_package_attr( pkg, "priority"), 
                             installed,
-                            install_date,  //install date
+                            install_date ? install_date : "",  //install date
                             packages_get_package_attr( pkg, "version"),  //available
                             packages_get_package_attr( pkg, "license"), 
-                            "ylmfos",  //packager
+                            packages_get_package_attr( pkg, "packager"), 
                             packages_get_package_attr( pkg, "install"), 
                             size > 1000000 ? size / 1000000 : (size > 1000 ? size / 1000 : size), 
                             size > 1000000 ? 'M' : (size > 1000 ? 'K' : 'B'), 
                             packages_get_package_attr( pkg, "sha"), 
-                            build_date,
+                            build_date ? build_date : "",
                             packages_get_package_attr( pkg, "uri"), 
                             install_size > 1000000 ? install_size / 1000000 : (install_size > 1000 ? install_size / 1000 : install_size), 
                             install_size > 1000000 ? 'M' : (install_size > 1000 ? 'K' : 'B'), 
