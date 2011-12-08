@@ -966,7 +966,7 @@ int packages_get_package_from_ypk( char *ypk_path, YPackage **package, YPackageD
     size_t              pkginfo_len = 0, control_len = 0;
     char                *cur_key, *cur_value, *cur_xpath, **attr_keys_offset, **attr_xpath_offset, *idx, *data_key;
     char                *attr_keys[] = { "name", "yversion", "generic_name", "category", "arch", "priority", "version", "install", "license", "homepage", "repo", "description", "sha", "size", "build_date", "packager", "uri", "data_count", "is_desktop", NULL  }; 
-    char                *attr_xpath[] = { "//Package/@name", "//yversion", "//genericname/keyword", "//category", "//arch", "//priority", "//version", "//install", "//license", "//homepage", "//repo", "//description/keyword", "//sha", "//size", "//build_date", "//uri", "//data_count", "//genericname[@type='desktop']", NULL  }; 
+    char                *attr_xpath[] = { "//Package/@name", "//yversion", "//genericname/keyword", "//category", "//arch", "//priority", "//version", "//install", "//license", "//homepage", "//repo", "//description/keyword", "//sha", "//size", "//build_date", "//packager", "//uri", "//data_count", "//genericname[@type='desktop']", NULL  }; 
     char                *data_attr_keys[] = { "data_name", "data_format", "data_size", "data_install_size", "data_depend", "data_bdepend", "data_recommended", "data_conflict", NULL  }; 
     char                *data_attr_xpath[] = { "name", "format", "size", "install_size", "depend", "bdepend", "recommended", "conflict", NULL  }; 
     xmlDocPtr           xmldoc = NULL;
@@ -2768,7 +2768,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     db_exec( &db, "begin", NULL );  
 
     //update world
-    sql = "replace into world (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count, install_time) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'));";
+    sql = "replace into world (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count, install_time) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'));";
 
 
     ret = db_exec( &db, sql,  
