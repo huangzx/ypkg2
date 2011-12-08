@@ -2213,7 +2213,7 @@ void packages_free_remove_list( YPackageChangeList *list )
 /*
  * packages_check_package
  */
-int packages_check_package( YPackageManager *pm, char *ypk_path, char **extra, int extra_max_len )
+int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, int extra_max_len )
 {
     int                 i, ret, return_code = 0;
     char                *depend, *conflict, *token, *package_name, *arch, *version, *version2;
@@ -2253,7 +2253,7 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char **extra, i
 
                 if( extra && extra_max_len > 0 )
                 {
-                    strncpy( *extra, buf.machine, extra_max_len );
+                    strncpy( extra, buf.machine, extra_max_len );
                 }
 
                 goto return_point;
@@ -2276,7 +2276,7 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char **extra, i
 
                     if( extra && extra_max_len > 0 )
                     {
-                        strncpy( *extra, token, extra_max_len );
+                        strncpy( extra, token, extra_max_len );
                     }
 
                     goto return_point;
@@ -2298,7 +2298,7 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char **extra, i
 
                     if( extra && extra_max_len > 0 )
                     {
-                        strncpy( *extra, token, extra_max_len );
+                        strncpy( extra, token, extra_max_len );
                     }
 
                     goto return_point;
@@ -2324,7 +2324,7 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char **extra, i
 
             if( extra && extra_max_len > 0 )
             {
-                strncpy( *extra, version2, extra_max_len );
+                strncpy( extra, version2, extra_max_len );
             }
 
             goto return_point;
@@ -2628,7 +2628,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( !ypk_path || access( ypk_path, R_OK ) )
         return -1;
 
-    ret = packages_check_package( pm, ypk_path, (char **)&extra, 32 ); //ret = -4 ~ 3
+    ret = packages_check_package( pm, ypk_path, extra, 32 ); //ret = -4 ~ 3
 
     if( ret == -1 )
     {
