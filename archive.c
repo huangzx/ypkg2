@@ -244,7 +244,7 @@ errout:
 int archive_extract_all( char *arch_file, char *dest_dir )
 {
     int                     ret, flags;     
-    char                    *filename;
+    char                    *filename, *pwd = NULL;
     struct archive          *arch_r = NULL, *arch_w = NULL;
     struct archive_entry    *entry = NULL, *sparse = NULL;
     struct archive_entry_linkresolver *linkresolver;
@@ -276,6 +276,7 @@ int archive_extract_all( char *arch_file, char *dest_dir )
                 goto errout;
             }
         }
+        pwd = getcwd( NULL, 0 );
         chdir( dest_dir );
     }
 
@@ -307,12 +308,24 @@ int archive_extract_all( char *arch_file, char *dest_dir )
 
     archive_read_finish( arch_r );
     archive_write_finish( arch_w );
+    if( pwd )
+    {
+        chdir( pwd );
+        free( pwd );
+    }
     return 0;
 
 errout:
     if( arch_r )
         archive_read_finish( arch_r );
+
     if( arch_w )
         archive_write_finish( arch_w );
+
+    if( pwd )
+    {
+        chdir( pwd );
+        free( pwd );
+    }
     return -1;
 }

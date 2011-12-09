@@ -7,9 +7,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
+#include <fnmatch.h>
 #include <archive.h>
 #include <archive_entry.h>
-#include <fnmatch.h>
 
 
 /*

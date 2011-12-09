@@ -182,7 +182,7 @@ int packages_compare_version( char *version1, char *version2 );
  */
 int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, int extra_max_len );
 
-int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir );
+int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int unzip_info );
 int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path );
 
 

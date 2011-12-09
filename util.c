@@ -35,16 +35,24 @@ char *util_get_config(char *config_file, char *keyword)
 }
 
 
-char *util_rtrim(char *str)
+char *util_rtrim( char *str, char c )
 {
     int i;
 
     for(i = strlen(str)-1;  i >= 0; i--)
     {
-        if(str[i] == '\r' || str[i] == '\n' || str[i] == ' ' || str[i] == '\t' || str[i] == '\x0B' )
+        if( c && str[i] == c )
+        {
             str[i] = '\0';
+        }
+        else if(str[i] == '\r' || str[i] == '\n' || str[i] == ' ' || str[i] == '\t' || str[i] == '\x0B' )
+        {
+            str[i] = '\0';
+        }
         else
+        {
             break;
+        }
     }
     return str;
 }

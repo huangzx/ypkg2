@@ -71,7 +71,7 @@ int packages_check_update( YPackageManager *pm )
         return -1; 
     }
 
-    util_rtrim( content.text );
+    util_rtrim( content.text, 0 );
     timestamp = atoi( content.text );
 
     //cmp date
@@ -426,7 +426,7 @@ int packages_update( YPackageManager *pm )
     cnt = 0;
     while( list_line )
     {
-        util_rtrim( list_line );
+        util_rtrim( list_line, 0 );
         memset( xml_file, '\0', 32 );
         memset( sum, '\0', 48 );
         if( sscanf( list_line, "%s %d %s", xml_file, &timestamp, sum ) == 3 )
@@ -2347,9 +2347,10 @@ return_point:
 /*
  * packages_unpack_package
  */
-int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir )
+int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int unzip_info )
 {
-    char                tmp_ypk_data[] = "/tmp/ypkdata.XXXXXX";
+    char                tmp_ypk_data[] = "/tmp/ypkdata.XXXXXX", tmp_ypk_info[] = "/tmp/ypkinfo.XXXXXX";
+    char                *info_dest_dir;
 
     if( !ypk_path )
         return -1;
@@ -2357,7 +2358,7 @@ int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir
     if( !dest_dir )
         dest_dir = "./";
 
-    //unzip data
+    //unzip pkgdata
     mkstemp( tmp_ypk_data );
     if( archive_extract_file( ypk_path, "pkgdata", tmp_ypk_data ) == -1 )
     {
@@ -2373,6 +2374,30 @@ int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir
     }
     
     remove( tmp_ypk_data );
+
+    //unzip pkginfo
+    if( unzip_info )
+    {
+        mkstemp( tmp_ypk_info );
+        if( archive_extract_file( ypk_path, "pkginfo", tmp_ypk_info ) == -1 )
+        {
+            return -4;
+        }
+
+        util_rtrim( dest_dir, '/' );
+        info_dest_dir = util_strcat( dest_dir, "/YLMFOS", NULL );
+
+        if( archive_extract_all( tmp_ypk_info, info_dest_dir ) == -1 )
+        {
+            free(info_dest_dir);
+            remove( tmp_ypk_info );
+            return -5;
+        }
+        
+        free(info_dest_dir);
+        remove( tmp_ypk_info );
+    }
+
     return 0;
 }
 
@@ -2722,7 +2747,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
 
     //copy files 
     //printf( "copying files ...\n");
-    if( (ret = packages_unpack_package( pm, ypk_path, dest_dir )) != 0 )
+    if( (ret = packages_unpack_package( pm, ypk_path, dest_dir, 0 )) != 0 )
     {
         //printf("unpack ret:%d\n",ret);
         return_code = -8; 

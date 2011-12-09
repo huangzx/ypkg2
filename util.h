@@ -27,7 +27,7 @@ char *util_get_config(char *config_file, char *keyword);
 /*
  * string
  */
-char    *util_rtrim(char *str);
+char    *util_rtrim( char *str, char c );
 char    *util_mem_gets( char *mem );
 char    *util_strcpy( char *src );
 char    *util_strcat(char *first, ...);

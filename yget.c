@@ -358,7 +358,7 @@ int main( int argc, char **argv )
                             printf(",%s ", cur_package->name );
                             cur_package = cur_package->prev;
                         }
-                        printf( "\nDo you want to continue [Y/N]?" );
+                        printf( "\nDo you want to continue [y/N]?" );
                         confirm = getchar();
                         if( confirm == 'Y' || confirm == 'y' )
                         {
@@ -409,7 +409,7 @@ int main( int argc, char **argv )
                             printf(",%s ", cur_package->name );
                             cur_package = cur_package->prev;
                         }
-                        printf( "\nDo you want to continue [Y/N]?" );
+                        printf( "\nDo you want to continue [Y/n]?" );
                         confirm = getchar();
                         if( confirm != 'n' && confirm != 'N' )
                         {
@@ -454,7 +454,7 @@ int main( int argc, char **argv )
                             printf(",%s ", cur_package->name );
                             cur_package = cur_package->prev;
                         }
-                        printf( "\nDo you want to continue [Y/N]?" );
+                        printf( "\nDo you want to continue [y/N]?" );
                         confirm = getchar();
 
                         if( confirm == 'Y' || confirm == 'y' )
@@ -476,7 +476,7 @@ int main( int argc, char **argv )
          * Clean
          */
         case 'C':
-            printf( "Do you want to remove all downloaded packages? [Y/N]?" );
+            printf( "Do you want to remove all downloaded packages? [y/N]?" );
             confirm = getchar();
             if( confirm == 'Y' || confirm == 'y' )
             {
@@ -731,7 +731,7 @@ int main( int argc, char **argv )
                             cur_package = cur_package->prev;
                         }
 
-                        printf( "\nDo you want to continue [Y/N]?" );
+                        printf( "\nDo you want to continue [y/N]?" );
                         confirm = getchar();
                         if( confirm == 'Y' || confirm == 'y' )
                         {

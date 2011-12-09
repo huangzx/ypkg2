@@ -66,7 +66,7 @@ Options:\n\
 int main( int argc, char **argv )
 {
     int             c, force, i, j, action, ret, err, flag, len;
-    char            *tmp, *package_name, *file_name, *install_time, *version, *version2, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type;
+    char            *tmp, *package_name, *ypk_path, *unzip_path, *file_name, *install_time, *version, *version2, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type;
     YPackageManager *pm;
     YPackage        *pkg, *pkg2;
     YPackageData    *pkg_data;
@@ -518,13 +518,51 @@ int main( int argc, char **argv )
          * unpack ypk package
          */
         case 'x':
-            if( argc != 4 )
+            if( argc < 3 && argc > 4 )
             {
                 err = 1;
             }
             else
             {
-                packages_unpack_package( pm, argv[2], argv[3] );
+                ypk_path = argv[2];
+                tmp = argc == 4 ? argv[3] : NULL;
+                unzip_path = NULL;
+                pkg = NULL;
+
+                if( access( ypk_path, R_OK ) )
+                {
+                    printf( COLOR_RED "* %s not found\n" COLOR_RESET,  ypk_path );
+                    break;
+                }
+
+                if( packages_check_package( pm, ypk_path, NULL, 0 ) == -1 )
+                {
+                    printf( COLOR_RED "Error: Invalid format[%s]\n" COLOR_RESET, ypk_path );
+                    break;
+                }
+
+                if( !tmp )
+                {
+                    if( packages_get_package_from_ypk( ypk_path, &pkg, NULL ) )
+                    {
+                        printf( COLOR_RED "Error: Invalid format[%s]\n" COLOR_RESET, ypk_path );
+                        break;
+                    }
+                    else
+                    {
+                        package_name = packages_get_package_attr( pkg, "name" );
+                        version = packages_get_package_attr( pkg, "version" );
+                        unzip_path = util_strcat( package_name, "_", version, NULL );
+                    }
+                }
+
+                packages_unpack_package( pm, ypk_path, tmp ? tmp : unzip_path , 1 );
+
+                if( pkg )
+                    packages_free_package( pkg );
+
+                if( unzip_path )
+                    free( unzip_path );
             }
             break;
 
