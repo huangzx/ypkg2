@@ -193,6 +193,9 @@ int packages_install_package( YPackageManager *pm, char *package_name );
 //int packages_install_history_package( YPackageManager *pm, char *package_name, char *version );
 
 YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *package_name );
+YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name );
+YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name );
+YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name );
 void packages_free_install_list( YPackageChangeList *list );
 YPackageChangeList *packages_get_dev_list( YPackageManager *pm, char *package_name );
 void packages_free_dev_list( YPackageChangeList *list );
@@ -251,8 +254,6 @@ static int packages_get_last_update_timestamp( YPackageManager *pm );
 static int packages_set_last_update_timestamp( YPackageManager *pm, int last_update );
 
 
-static YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name );
-static YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name );
 static void packages_free_change_list( YPackageChangeList *list );
 
 static void *packages_check_update_backend_thread( void *data );

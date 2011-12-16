@@ -261,7 +261,7 @@ int main( int argc, char **argv )
     YPackageData    *pkg_data;
     YPackageFile    *pkg_file;
     YPackageList    *pkg_list;
-    YPackageChangeList     *install_list, *remove_list, *upgrade_list, *cur_package;       
+    YPackageChangeList     *depend_list, *recommended_list, *sub_list, *install_list, *remove_list, *upgrade_list, *cur_package;       
 
     if( argc == 1 )
     {
@@ -394,13 +394,16 @@ int main( int argc, char **argv )
             }
             else
             {
+                install_list = NULL;
+                depend_list = NULL;
+                recommended_list = NULL;
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
-                    install_list = packages_get_install_list( pm, package_name );
-                    confirm = 'N';
 
-                    if( install_list )
+                    /*
+                    install_list = packages_get_install_list( pm, package_name );
+                    if(install_list)
                     {
                         printf( "Install: %s", install_list->name );
                         cur_package = install_list->prev;
@@ -409,18 +412,105 @@ int main( int argc, char **argv )
                             printf(",%s ", cur_package->name );
                             cur_package = cur_package->prev;
                         }
-                        printf( "\nDo you want to continue [Y/n]?" );
-                        confirm = getchar();
-                        if( confirm != 'n' && confirm != 'N' )
-                        {
-                            yget_install_list( pm, install_list );
-                        }
-                        packages_free_install_list( install_list );
+                        continue;
                     }
-                    else
+                    */
+
+                    if( packages_has_installed( pm, package_name, NULL ) )
                     {
                         printf( "%s has installed.\n", package_name );
+                        continue;
                     }
+                    else if( !packages_exists( pm, package_name, NULL ) )
+                    {
+                        printf( "Error: %s not found.\n",  package_name );
+                        continue;
+                    }
+
+                    cur_package =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
+                    len = strlen( package_name );
+                    cur_package->name = (char *)malloc( len + 1 );
+                    strncpy( cur_package->name, package_name, len );
+                    cur_package->name[len] = 0;
+                    cur_package->type = 1;
+                    cur_package->prev = install_list;
+                    install_list = cur_package;
+
+
+                    sub_list = packages_get_depend_list( pm, package_name );
+                    if( sub_list )
+                    {
+                        cur_package = sub_list;
+                        while( cur_package->prev )
+                            cur_package = cur_package->prev;
+                        cur_package->prev = depend_list;
+                        depend_list = sub_list;
+                    }
+
+
+                    sub_list = packages_get_recommended_list( pm, package_name );
+                    if( sub_list )
+                    {
+                        cur_package = sub_list;
+                        while( cur_package->prev )
+                            cur_package = cur_package->prev;
+                        cur_package->prev = recommended_list;
+                        recommended_list = sub_list;
+                    }
+
+                }
+
+                confirm = 'N';
+
+                if( install_list )
+                {
+                    printf( "Install: %s", install_list->name );
+                    cur_package = install_list->prev;
+                    while( cur_package )
+                    {
+                        printf(",%s ", cur_package->name );
+                        cur_package = cur_package->prev;
+                    }
+
+                    if( depend_list )
+                    {
+                        printf( "\nAuto-install: %s", depend_list->name );
+                        cur_package = depend_list->prev;
+                        while( cur_package )
+                        {
+                            printf(",%s ", cur_package->name );
+                            cur_package = cur_package->prev;
+                        }
+                    }
+
+                    if( recommended_list )
+                    {
+                        printf( "\nRecommended-install: %s", recommended_list->name );
+                        cur_package = recommended_list->prev;
+                        while( cur_package )
+                        {
+                            printf(",%s ", cur_package->name );
+                            cur_package = cur_package->prev;
+                        }
+                    }
+
+
+                    printf( "\nDo you want to continue [Y/n]?" );
+                    confirm = getchar();
+                    if( confirm != 'n' && confirm != 'N' )
+                    {
+                        if( !yget_install_list( pm, depend_list ) )
+                        {
+                            if( !yget_install_list( pm, install_list ) )
+                            {
+                                yget_install_list( pm, recommended_list );
+                            }
+                        }
+                    }
+
+                    packages_free_install_list( install_list );
+                    packages_free_install_list( depend_list );
+                    packages_free_install_list( recommended_list );
                 }
             }
             break;

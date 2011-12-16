@@ -1881,10 +1881,10 @@ return_point:
 }
 
 
-static YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name )
+YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name )
 {
     int             i, len;
-    char            *token, *depend, *recommended;
+    char            *token, *depend;
     YPackageData    *pkg_data;
     YPackageChangeList    *list, *cur_pkg, *sub_list, *tmp;
 
@@ -1930,6 +1930,31 @@ static YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *
                 }
             }
 
+        }
+        packages_free_package_data( pkg_data );
+    }
+
+    return list;
+}
+
+YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name )
+{
+    int             i, len;
+    char            *token, *recommended;
+    YPackageData    *pkg_data;
+    YPackageChangeList    *list, *cur_pkg, *sub_list, *tmp;
+
+    if( packages_has_installed( pm, package_name, NULL ) )
+    {
+        return NULL;
+    }
+    
+    list = NULL;
+
+    if( pkg_data = packages_get_package_data( pm, package_name, 0 ) )
+    {
+        for( i = 0; i < pkg_data->cnt; i++ )
+        {
             recommended = packages_get_package_data_attr( pkg_data, i, "data_recommended");
             if( recommended )
             {
@@ -1947,7 +1972,7 @@ static YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *
                         cur_pkg->prev = list;
                         list = cur_pkg;
 
-                        sub_list = packages_get_depend_list( pm, cur_pkg->name );
+                        sub_list = packages_get_recommended_list( pm, cur_pkg->name );
                         if( sub_list )
                         {
                             tmp = sub_list;
@@ -1967,7 +1992,7 @@ static YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *
     return list;
 }
 
-static YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name )
+YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name )
 {
     int                     i, len;
     char                    *token, *depend, *dev, *bdepend;
@@ -2070,14 +2095,25 @@ YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *packag
     
     list = NULL;
 
+    depend = packages_get_recommended_list( pm, package_name );
+    if( depend )
+    {
+        cur_pkg = depend;
+        while( cur_pkg->prev )
+            cur_pkg = cur_pkg->prev;
+        cur_pkg->prev = list;
+        list = depend;
+    }
+    
     cur_pkg =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
     len = strlen( package_name );
     cur_pkg->name = (char *)malloc( len + 1 );
     strncpy( cur_pkg->name, package_name, len );
     cur_pkg->name[len] = 0;
     cur_pkg->type = 1;
-    cur_pkg->prev = NULL;
+    cur_pkg->prev = list;
     list = cur_pkg;
+
     depend = packages_get_depend_list( pm, package_name );
     if( depend )
     {
@@ -2087,6 +2123,7 @@ YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *packag
         cur_pkg->prev = list;
         list = depend;
     }
+
 
     return list;
 }
