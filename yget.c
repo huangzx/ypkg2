@@ -1,3 +1,11 @@
+/* yget2
+ *
+ * Copyright (c) 2011 Ylmf OS
+ *
+ * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
+ * Version: 0.1
+ * Date: 2012.1.4
+ */
 #include <stdio.h>
 #include <getopt.h>
 #include <time.h>
@@ -64,7 +72,40 @@ void usage()
     printf( "%s\n", usage );
 }
 
-int yget_download_progress_callback( void *cb_arg, double dltotal, double dlnow )
+int yget_progress_callback( void *cb_arg, char *package_name, int action, double progress, char *msg )
+{
+    YPackageManager *pm;
+
+    pm = (YPackageManager *)cb_arg;
+
+    if( !action )
+    {
+        printf( "%s %s \n", msg, package_name );
+        packages_log( pm, package_name, msg );
+
+    }
+    else if( action == 9 )
+    {
+        packages_log( pm, package_name, "finish" );
+    }
+    else
+    {
+        if( progress == 0 || progress == -1 )
+        {
+            printf( "%s... ", msg );
+            packages_log( pm, package_name, msg );
+        }
+
+        if( progress == 1 )
+            printf( "%s\n", "done" );
+    }
+
+    fflush( stdout );
+    return 0;
+}
+
+
+int yget_download_progress_callback( void *cb_arg, char *package_name, double dltotal, double dlnow )
 {
     int                 progress, bar_len;
     long                speed;
@@ -78,6 +119,7 @@ int yget_download_progress_callback( void *cb_arg, double dltotal, double dlnow 
     progress = (int)(dlnow * 100 / dltotal);
     if( progress < 0 || progress == statp->progress )
         return 0;
+
 
     statp->progress = progress;
     if( !gettimeofday( &now, NULL ) )
@@ -129,12 +171,14 @@ int yget_install_package( YPackageManager *pm, char *package_name )
     int                 ret, return_code;
     char                *target_url = NULL, *package_url = NULL, *package_path = NULL;
     YPackage            *pkg;
-    YPackageDCB         dcb;
+    //YPackageDCB         dcb;
     DownloadStat        dl_stat;
 
     if( !package_name )
         return -1;
 
+    packages_log( pm, package_name, "install" );
+    packages_log( pm, package_name, "initialization" );
 
     return_code = 0;
     pkg = packages_get_package( pm, package_name, 0 );
@@ -155,14 +199,15 @@ int yget_install_package( YPackageManager *pm, char *package_name )
     package_path = util_strcat( pm->package_dest, "/", package_url+2, NULL );
     target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
 
+    packages_log( pm, package_name, "downloading" );
     printf( "Downloading %s to %s\n", target_url, package_path  );
     dl_stat.progress = 0;
     dl_stat.cnt = 0;
     dl_stat.st.tv_sec = 0;
     dl_stat.st.tv_usec = 0;
-    dcb.cb = yget_download_progress_callback;
-    dcb.arg = &dl_stat;
-    if( packages_download_package( NULL, NULL, target_url, package_path, 0, &dcb ) < 0 )
+    //dcb.cb = yget_download_progress_callback;
+    //dcb.arg = &dl_stat;
+    if( packages_download_package( NULL, package_name, target_url, package_path, 0, yget_download_progress_callback,&dl_stat, yget_progress_callback, pm ) < 0 )
     {
         printf( COLOR_RED "Error: Can't download the package %s from %s.\n" COLOR_RESET, package_name, target_url );
         return -4;
@@ -170,7 +215,7 @@ int yget_install_package( YPackageManager *pm, char *package_name )
     }
 
     printf( "Installing %s\n", package_path );
-    if( ret = packages_install_local_package( pm, package_path, "/", 0 ) )
+    if( ret = packages_install_local_package( pm, package_path, "/", 0, yget_progress_callback, pm ) )
     {
         switch( ret )
         {
@@ -265,6 +310,7 @@ int main( int argc, char **argv )
 
     if( argc == 1 )
     {
+
         usage();
         return 1;
     }
@@ -362,7 +408,7 @@ int main( int argc, char **argv )
                         confirm = getchar();
                         if( confirm == 'Y' || confirm == 'y' )
                         {
-                            packages_remove_list( pm, remove_list );
+                            packages_remove_list( pm, remove_list, yget_progress_callback, pm );
                         }
                         packages_free_remove_list( remove_list );
                     }
@@ -549,7 +595,7 @@ int main( int argc, char **argv )
 
                         if( confirm == 'Y' || confirm == 'y' )
                         {
-                            packages_install_list( pm, install_list );
+                            packages_install_list( pm, install_list, yget_progress_callback, pm );
                         }
 
                         packages_free_dev_list( install_list );
@@ -825,7 +871,7 @@ int main( int argc, char **argv )
                         confirm = getchar();
                         if( confirm == 'Y' || confirm == 'y' )
                         {
-                            packages_upgrade_list( pm, upgrade_list );
+                            packages_upgrade_list( pm, upgrade_list, yget_progress_callback, pm );
                         }
 
                         packages_free_upgrade_list( upgrade_list );
@@ -851,9 +897,11 @@ int main( int argc, char **argv )
                 ret = packages_check_update( pm );
                 if(ret)
                 {
-                    printf("Updating ...\n");
-                    packages_update( pm );
-                    printf("Done!\n");
+                    if( packages_update( pm, yget_progress_callback, pm ) == -1 )
+                        printf("Failed!\n");
+                    else
+                        printf("Done!\n");
+
                 }
                 else
                 {

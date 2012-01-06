@@ -1,3 +1,11 @@
+/* Libypk
+ *
+ * Copyright (c) 2011 Ylmf OS
+ *
+ * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
+ * Version: 0.1
+ * Date: 2012.1.4
+ */
 #define LIBYPK 1
 #include "ypackage.h"
 
@@ -23,9 +31,11 @@ YPackageManager *packages_manager_init()
     pm->source_uri = util_get_config( config_file, "YPPATH_URI" );
     if( !pm->source_uri )
         return NULL;
+
     pm->accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
     pm->package_dest = util_get_config( config_file, "YPPATH_PKGDEST" );
     pm->db_name = util_strcpy( DB_NAME );
+    pm->log = util_get_config( config_file, "LOG" );
 
     return pm;
 }
@@ -37,12 +47,18 @@ void packages_manager_cleanup( YPackageManager *pm )
 
     if( pm->source_uri )
         free( pm->source_uri );
+
     if( pm->accept_repo )
         free( pm->accept_repo );
+
     if( pm->package_dest )
         free( pm->package_dest );
+
     if( pm->db_name )
         free( pm->db_name );
+
+    if( pm->log )
+        free( pm->log );
 
     free( pm );
 }
@@ -396,19 +412,25 @@ int packages_import_local_data( YPackageManager *pm )
     return 0;
 }
 
-int packages_update( YPackageManager *pm )
+int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg )
 {
-    int             timestamp, last_update, cnt;
-    char            *target_url, *list_file, *list_line, xml_file[32],  sum[48];
-    char            *sql;
-    int             time_update;
+    int             timestamp, last_update, time_update, cnt;
+    char            *sql, *msg, *target_url, *list_file, *list_line, xml_file[32],  sum[48];
     DB              db;
-    DownloadContent  content;
+    DownloadContent content;
 
     if( !pm )
         return -1;
 
+    msg = NULL;
+
     //download updates list
+    if( cb )
+    {
+        cb( cb_arg, "*", 0, 1, "resynchronize the package information" );
+        cb( cb_arg, "*", 1, -1, "initialization" );
+    }
+
     list_file = UPDATE_DIR "/" LIST_FILE;
     target_url = util_strcat( pm->source_uri, "/", list_file, NULL );
     content.text = malloc(1);
@@ -419,6 +441,11 @@ int packages_update( YPackageManager *pm )
         free(target_url);
         target_url = NULL;
         return -1; 
+    }
+
+    if( cb )
+    {
+        cb( cb_arg, "*", 1, 1, NULL );
     }
 
     list_line = util_mem_gets( content.text );
@@ -434,8 +461,8 @@ int packages_update( YPackageManager *pm )
             if( timestamp > last_update )
             {
                 //printf("xml:%s time:%d sum:%s\n",  xml_file, timestamp, sum);
-                printf("importing: %s %d %s\n",  xml_file, timestamp, sum);
-                packages_update_single_xml( pm, xml_file, sum );
+                //printf("importing: %s %d %s\n",  xml_file, timestamp, sum);
+                packages_update_single_xml( pm, xml_file, sum, cb, cb_arg  );
                 last_update = timestamp;
                 cnt++;
             }
@@ -448,6 +475,11 @@ int packages_update( YPackageManager *pm )
     free(content.text);
     free(target_url);
     target_url = NULL;
+
+    if( cb )
+    {
+        cb( cb_arg, "*", 9, 1, NULL );
+    }
 
     return cnt;
 }
@@ -486,7 +518,7 @@ YPackageChangeList *packages_get_upgrade_list( YPackageManager *pm )
 
 }
 
-int packages_upgrade_list( YPackageManager *pm, YPackageChangeList *list )
+int packages_upgrade_list( YPackageManager *pm, YPackageChangeList *list, ypk_progress_callback cb, void *cb_arg   )
 {
     YPackageChangeList    *cur_pkg;
 
@@ -498,8 +530,8 @@ int packages_upgrade_list( YPackageManager *pm, YPackageChangeList *list )
     {
         cur_pkg = list;
         
-        printf("upgrading %s ...\n", cur_pkg->name );
-        packages_install_package( pm, cur_pkg->name );
+        //printf("upgrading %s ...\n", cur_pkg->name );
+        packages_install_package( pm, cur_pkg->name, cb, cb_arg  );
         list = list->prev;
     }
 }
@@ -521,10 +553,10 @@ void packages_free_upgrade_list( YPackageChangeList *list )
     }
 }
 
-static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum )
+static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, ypk_progress_callback cb, void *cb_arg )
 {
     int                 i, xml_ret, db_ret, is_desktop, do_replace;
-    char                *target_url, xml_value, *sql, *sql_data, *sql_history, *sql_history_data, *package_name, *version, *idx, *data_key, *installed, *old_version, *can_update;
+    char                *target_url, *msg, xml_value, *sql, *sql_data, *sql_history, *sql_history_data, *package_name, *version, *idx, *data_key, *installed, *old_version, *can_update;
     char                tmp_bz2[] = "/tmp/tmp_bz2.XXXXXX";
     char                tmp_xml[] = "/tmp/tmp_xml.XXXXXX";
     char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
@@ -535,8 +567,23 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
     if( !pm || !xml_file || !sum )
         return -1;
 
+
     //donload xml
     target_url = util_strcat( pm->source_uri, "/", UPDATE_DIR, "/", xml_file, NULL );
+
+    if( cb )
+    {
+        msg = util_strcat( "get: ", target_url, NULL );
+
+        cb( cb_arg, "*", 2, -1, msg ? msg : NULL );
+
+        if( msg )
+        {
+            free( msg );
+            msg = NULL;
+        }
+    }
+
     mkstemp(tmp_bz2);
     file.file = tmp_bz2;
     file.stream = NULL;
@@ -550,6 +597,13 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
     fclose(file.stream);
     free(target_url);
     target_url = NULL;
+
+
+    if( cb )
+    {
+
+        cb( cb_arg, "*", 2, 1, NULL );
+    }
 
     //compare sum
     /*
@@ -570,6 +624,19 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
     */
 
     //unzip
+    if( cb )
+    {
+        msg = util_strcpy( "extracting information" );
+
+        cb( cb_arg, "*", 4, -1, msg ? msg : NULL );
+
+        if( msg )
+        {
+            free( msg );
+            msg = NULL;
+        }
+    }
+
     mkstemp(tmp_xml);
     if( archive_extract_file( file.file, "update.xml", tmp_xml ) == -1 )
     {
@@ -578,6 +645,24 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
         return -1;
     }
 
+    if( cb )
+    {
+        cb( cb_arg, "*", 4, 1, NULL );
+    }
+
+
+    if( cb )
+    {
+        msg = util_strcpy( "updating the database" );
+
+        cb( cb_arg, "*", 8, -1, msg ? msg : NULL );
+
+        if( msg )
+        {
+            free( msg );
+            msg = NULL;
+        }
+    }
 
     //parse xml
     reader_open( tmp_xml,  &xml_handle );
@@ -739,6 +824,12 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
     //clean up
     db_close( &db );
     reader_cleanup( &xml_handle );
+
+    if( cb )
+    {
+        cb( cb_arg, "*", 8, 1, NULL );
+    }
+
     remove(tmp_bz2);
     remove(tmp_xml);
 }
@@ -964,11 +1055,13 @@ int packages_get_package_from_ypk( char *ypk_path, YPackage **package, YPackageD
     int                 i, ret, return_code = 0, cur_data_index, data_count;
     void                *pkginfo = NULL, *control = NULL;
     size_t              pkginfo_len = 0, control_len = 0;
-    char                *cur_key, *cur_value, *cur_xpath, **attr_keys_offset, **attr_xpath_offset, *idx, *data_key;
+    char                *cur_key, *cur_value, *cur_xpath, **attr_keys_offset, **attr_xpath_offset, *idx, *data_key, *package_name;
+    char                *desktop_file; //for ypki2
     char                *attr_keys[] = { "name", "yversion", "generic_name", "category", "arch", "priority", "version", "install", "license", "homepage", "repo", "description", "sha", "size", "build_date", "packager", "uri", "data_count", "is_desktop", NULL  }; 
     char                *attr_xpath[] = { "//Package/@name", "//yversion", "//genericname/keyword", "//category", "//arch", "//priority", "//version", "//install", "//license", "//homepage", "//repo", "//description/keyword", "//sha", "//size", "//build_date", "//packager", "//uri", "//data_count", "//genericname[@type='desktop']", NULL  }; 
     char                *data_attr_keys[] = { "data_name", "data_format", "data_size", "data_install_size", "data_depend", "data_bdepend", "data_recommended", "data_conflict", NULL  }; 
     char                *data_attr_xpath[] = { "name", "format", "size", "install_size", "depend", "bdepend", "recommended", "conflict", NULL  }; 
+    char                tmp_ypk_desktop[] = "/tmp/ypkdesktop.XXXXXX"; //for ypki2
     xmlDocPtr           xmldoc = NULL;
     xmlXPathObjectPtr   xpath;
     YPackage             *pkg;
@@ -996,12 +1089,7 @@ int packages_get_package_from_ypk( char *ypk_path, YPackage **package, YPackageD
         goto return_point;
     }
 
-    if( pkginfo )
-    {
-        free( pkginfo );
-        pkginfo = NULL;
-    }
-
+    
     //parse info
 	if( ( xmldoc = xpath_open2( control, control_len ) ) == (xmlDocPtr)-1 )
     {
@@ -1095,6 +1183,16 @@ int packages_get_package_from_ypk( char *ypk_path, YPackage **package, YPackageD
         }
     }
 
+    package_name = packages_get_package_attr( (*package), "name"); //ypki2
+    desktop_file = util_strcat( package_name, ".desktop", NULL ); //ypkg2
+    ret = archive_extract_file3( pkginfo, pkginfo_len, desktop_file, tmp_ypk_desktop );//ypki2
+    free( desktop_file ); //ypki2
+
+    if( pkginfo )
+    {
+        free( pkginfo );
+        pkginfo = NULL;
+    }
 
     if( xmldoc )
         xmlFreeDoc( xmldoc );
@@ -1741,23 +1839,34 @@ char *packages_get_list_attr2( YPackageList *pkg_list, int index, char *key )
 }
 
 
-static int packages_download_progress_callback( void *cb_arg,double dltotal, double dlnow, double ultotal, double ulnow )
+static int packages_download_progress_callback( void *arg,double dltotal, double dlnow, double ultotal, double ulnow )
 {
-    YPackageDCB *dcb;
+    YPackageDCB         *cb;
 
-    dcb = (YPackageDCB *)cb_arg;
-    return dcb->cb( dcb->arg, dltotal, dlnow );
+    if( !arg )
+        return 1;
+
+    cb = (YPackageDCB *)arg;
+    if( cb->dcb )
+        return cb->dcb( cb->dcb_arg, cb->package_name, dltotal, dlnow );
+    else if( cb->pcb )
+        return cb->pcb( cb->pcb_arg, cb->package_name, 2, dlnow / dltotal, NULL );
+    else
+        return 1;
+
+    //return cb->cb( dcb->arg, dltotal, dlnow );
 }
 
 /*
  * packages_download_package
  */
-int packages_download_package( YPackageManager *pm, char *package_name, char *url, char *dest, int force, YPackageDCB *dcb )
+int packages_download_package( YPackageManager *pm, char *package_name, char *url, char *dest, int force, ypk_download_callback dcb, void *dcb_arg, ypk_progress_callback pcb, void *pcb_arg  )
 {
     int                 return_code;
     char                *target_url, *package_url, *package_path;
     DownloadFile        file;
     YPackage            *pkg;
+    YPackageDCB         *cb;
 
     if( (!url || !dest) && (!pm || !package_name) )
         return -1;
@@ -1793,10 +1902,27 @@ int packages_download_package( YPackageManager *pm, char *package_name, char *ur
     {
         file.file = package_path;
         file.stream = NULL;
-        if( dcb )
+        cb = NULL;
+        if( dcb || pcb )
         {
+            cb = (YPackageDCB *)malloc( sizeof( YPackageDCB ) );
+
+            cb->package_name = package_name;
+            if( dcb )
+            {
+                cb->dcb = dcb;
+                cb->dcb_arg = dcb_arg;
+            }
+
+            if( pcb )
+            {
+                cb->pcb = pcb;
+                cb->pcb_arg = pcb_arg;
+            }
+
+
             file.cb = packages_download_progress_callback;
-            file.cb_arg = (void *)dcb;
+            file.cb_arg = (void *)cb;
         }
         else
         {
@@ -1812,6 +1938,8 @@ int packages_download_package( YPackageManager *pm, char *package_name, char *ur
             goto return_point;
         }
         fclose( file.stream );
+        if( cb )
+            free( cb );
     }
 
 return_point:
@@ -1830,16 +1958,20 @@ return_point:
 /*
  * packages_install_package
  */
-int packages_install_package( YPackageManager *pm, char *package_name )
+int packages_install_package( YPackageManager *pm, char *package_name, ypk_progress_callback cb, void *cb_arg  )
 {
     int                 return_code;
     char                *target_url = NULL, *package_url = NULL, *package_path = NULL;
     YPackage            *pkg;
-    YPackageDCB         dcb;
 
     if( !package_name )
         return -1;
 
+    if( cb )
+    {
+        cb( cb_arg, package_name, 0, 2, "install" );
+        cb( cb_arg, package_name, 1, -1, "initialization" );
+    }
 
     return_code = 0;
     pkg = packages_get_package( pm, package_name, 0 );
@@ -1855,16 +1987,21 @@ int packages_install_package( YPackageManager *pm, char *package_name )
         goto return_point;
     }
 
+    if( cb )
+    {
+        cb( cb_arg, package_name, 1, 1, NULL );
+    }
+
     package_path = util_strcat( pm->package_dest, "/", package_url+2, NULL );
     target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
 
-    if( packages_download_package( NULL, NULL, target_url, package_path, 0, NULL ) < 0 )
+    if( packages_download_package( NULL, package_name, target_url, package_path, 0, NULL, NULL, cb, cb_arg  ) < 0 )
     {
         return -4;
         goto return_point;
     }
 
-    if( packages_install_local_package( pm, package_path, "/", 0 ) )
+    if( packages_install_local_package( pm, package_path, "/", 0, cb, cb_arg ) )
     {
         return_code = -5;
     }
@@ -2150,7 +2287,7 @@ void packages_free_dev_list( YPackageChangeList *list )
 /*
  * packages_install_list
  */
-int packages_install_list( YPackageManager *pm, YPackageChangeList *list )
+int packages_install_list( YPackageManager *pm, YPackageChangeList *list, ypk_progress_callback cb, void *cb_arg )
 {
     int                     ret;
     YPackageChangeList      *cur_pkg;
@@ -2163,7 +2300,7 @@ int packages_install_list( YPackageManager *pm, YPackageChangeList *list )
     {
         cur_pkg = list;
         
-        ret = packages_install_package( pm, cur_pkg->name );
+        ret = packages_install_package( pm, cur_pkg->name, cb, cb_arg );
         if( ret )
         {
             return -1;
@@ -2223,7 +2360,7 @@ YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package
 /*
  * packages_remove_list
  */
-int packages_remove_list( YPackageManager *pm, YPackageChangeList *list )
+int packages_remove_list( YPackageManager *pm, YPackageChangeList *list, ypk_progress_callback cb, void *cb_arg  )
 {
     YPackageChangeList    *cur_pkg;
 
@@ -2235,8 +2372,8 @@ int packages_remove_list( YPackageManager *pm, YPackageChangeList *list )
     {
         cur_pkg = list;
         
-        printf("removing %s ...\n", cur_pkg->name );
-        packages_remove_package( pm, cur_pkg->name );
+        //printf("removing %s ...\n", cur_pkg->name );
+        packages_remove_package( pm, cur_pkg->name, cb, cb_arg );
         list = list->prev;
     }
 }
@@ -2662,12 +2799,12 @@ int packages_exec_script( char *script, char *package_name, char *version, char 
 /*
  * packages_install_local_package
  */
-int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int force )
+int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int force, ypk_progress_callback cb, void *cb_arg  )
 {
     int                 i, j, ret, installed, upgrade, return_code;
     size_t              pkginfo_len, filelist_len;
     void                *pkginfo, *filelist;
-    char                *sql, *sql_data, *sql_filelist, *sql_filelist2, *install_file, *list_line;
+    char                *msg, *sql, *sql_data, *sql_filelist, *sql_filelist2, *install_file, *list_line;
     char                *package_name, *version, *version2, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *can_update;
     char                tmp_ypk_install[] = "/tmp/ypkinstall.XXXXXX";
     char                extra[32];
@@ -2680,6 +2817,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     installed = 0;
     upgrade = 0;
     return_code = 0;
+    msg = NULL;
     pkginfo = NULL; 
     filelist = NULL;
     pkg = NULL; 
@@ -2690,7 +2828,50 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( !ypk_path || access( ypk_path, R_OK ) )
         return -1;
 
+
+    if( cb )
+    {
+        cb( cb_arg, ypk_path, 3, -1, "check dependencies of package" );
+    }
+
     ret = packages_check_package( pm, ypk_path, extra, 32 ); //ret = -4 ~ 3
+
+    if( cb )
+    {
+        switch( ret )
+        {
+            case 1:
+            case 2:
+                msg = util_strcat( "The latest version has installed.", NULL );
+                break;
+
+            case -1:
+                msg = util_strcat( "Error: Invalid format or File not found.", NULL );
+                break;
+
+            case -2:
+                msg = util_strcat( "Error: Architecture does not match.", NULL );
+                break;
+
+            case -3:
+                msg = util_strcat( "Error: missing runtime deps: ", extra, NULL );
+                break;
+
+            case -4:
+                msg = util_strcat( "Error: conflicting deps: ", extra, NULL );
+                break;
+
+        }
+
+        cb( cb_arg, ypk_path, 3, 1, msg ? msg : NULL );
+
+        if( msg )
+        {
+            free( msg );
+            msg = NULL;
+        }
+    }
+
 
     if( ret == -1 )
     {
@@ -2722,11 +2903,17 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     }
 
 
+
     if( !dest_dir )
         dest_dir = "/";
 
 
     //get package infomations
+    if( cb )
+    {
+        cb( cb_arg, ypk_path, 4, -1, "reading package information" );
+    }
+
     packages_get_package_from_ypk( ypk_path, &pkg, &pkg_data );
     if( !pkg || !pkg_data )
     {
@@ -2736,8 +2923,17 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     package_name = packages_get_package_attr( pkg, "name" );
     version = packages_get_package_attr( pkg, "version" );
 
+    if( cb )
+    {
+        cb( cb_arg, ypk_path, 4, 1, NULL );
+    }
 
     //extract install script
+    if( cb )
+    {
+        cb( cb_arg, ypk_path, 5, -1, "executing pre_install script" );
+    }
+
     mkstemp( tmp_ypk_install );
     ret = archive_extract_file2( ypk_path, "pkginfo", &pkginfo, &pkginfo_len );
     if( ret == -1 )
@@ -2753,7 +2949,6 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     //exec pre_x script
     if( ret != -1 )
     {
-        //printf( "running pre_install script ...\n" );
         if( !upgrade )
         {
             if( packages_exec_script( tmp_ypk_install, package_name, version, NULL, "pre_install" ) == -1 )
@@ -2782,8 +2977,18 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         }
     }
 
+    if( cb )
+    {
+        cb( cb_arg, ypk_path, 5, 1, NULL );
+    }
+
     //copy files 
     //printf( "copying files ...\n");
+    if( cb )
+    {
+        cb( cb_arg, ypk_path, 6, -1, "copying files" );
+    }
+
     if( (ret = packages_unpack_package( pm, ypk_path, dest_dir, 0 )) != 0 )
     {
         //printf("unpack ret:%d\n",ret);
@@ -2791,10 +2996,19 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         goto return_point;
     }
 
+    if( cb )
+    {
+        cb( cb_arg, ypk_path, 6, 1, NULL );
+    }
+
     //exec post_x script
+    if( cb )
+    {
+        cb( cb_arg, ypk_path, 7, -1, "executing post_install script" );
+    }
+
     if( !access( tmp_ypk_install, R_OK ) )
     {
-        //printf( "running post_install script ...\n" );
         if( !upgrade )
         {
             if( packages_exec_script( tmp_ypk_install, package_name, version, NULL, "post_install" ) == -1 )
@@ -2823,8 +3037,18 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         }
     }
 
+    if( cb )
+    {
+        cb( cb_arg, ypk_path, 7, 1, NULL );
+    }
+
     //update db
     //printf( "updating database ...\n");
+    if( cb )
+    {
+        cb( cb_arg, ypk_path, 8, -1, "updating database" );
+    }
+
     db_init( &db, pm->db_name, OPEN_WRITE );
     db_cleanup( &db );
     db_exec( &db, "begin", NULL );  
@@ -2986,6 +3210,16 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     db_exec( &db, "commit", NULL );  
     db_close( &db );
 
+    if( cb )
+    {
+        cb( cb_arg, ypk_path, 8, 1, NULL );
+    }
+
+    if( cb )
+    {
+        cb( cb_arg, ypk_path, 9, 1, NULL );
+    }
+
 return_point:
     if( pkginfo )
         free( pkginfo );
@@ -3008,7 +3242,7 @@ return_point:
     return return_code;
 }
 
-int packages_remove_package( YPackageManager *pm, char *package_name )
+int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progress_callback cb, void *cb_arg  )
 {
     int             ret, return_code = 0;
     char            *install_file, *version, *install_file_path = NULL, *sql_file, *file_path;
@@ -3017,6 +3251,12 @@ int packages_remove_package( YPackageManager *pm, char *package_name )
 
     if( !package_name )
         return -1;
+
+    if( cb )
+    {
+        cb( cb_arg, package_name, 0, 3, "remove" );
+        cb( cb_arg, package_name, 1, -1, "initialization" );
+    }
 
     //get info from db
     pkg = packages_get_package( pm, package_name, 1 );
@@ -3027,6 +3267,17 @@ int packages_remove_package( YPackageManager *pm, char *package_name )
 
     install_file = packages_get_package_attr( pkg, "install" );
     version = packages_get_package_attr( pkg, "version" );
+
+    if( cb )
+    {
+        cb( cb_arg, package_name, 1, 1, NULL );
+    }
+
+    if( cb )
+    {
+        cb( cb_arg, package_name, 5, -1, "executing pre_remove script" );
+    }
+
     //exec pre_remove script
     if( install_file && strlen( install_file ) > 8 )
     {
@@ -3040,6 +3291,16 @@ int packages_remove_package( YPackageManager *pm, char *package_name )
                 goto return_point;
             }
         }
+    }
+
+    if( cb )
+    {
+        cb( cb_arg, package_name, 5, 1, NULL );
+    }
+
+    if( cb )
+    {
+        cb( cb_arg, package_name, 6, -1, "deleting files" );
     }
 
     //delete files
@@ -3059,6 +3320,7 @@ int packages_remove_package( YPackageManager *pm, char *package_name )
             */
     }
 
+
     //delete directories
     sql_file = "select * from world_file where type='D' and name=?";
     db_query( &db, sql_file, package_name, NULL);
@@ -3077,6 +3339,16 @@ int packages_remove_package( YPackageManager *pm, char *package_name )
     }
     db_close( &db );
 
+    if( cb )
+    {
+        cb( cb_arg, package_name, 6, 1, NULL );
+    }
+
+    if( cb )
+    {
+        cb( cb_arg, package_name, 7, -1, "executing post_remove script" );
+    }
+
     //exec post_remove script
     if( install_file_path && !access( install_file_path, R_OK ) )
     {
@@ -3088,11 +3360,22 @@ int packages_remove_package( YPackageManager *pm, char *package_name )
         }
     }
 
+
     //delete /var/ypkg/db/$N
     file_path = util_strcat( PACKAGE_DB_DIR, "/", package_name, NULL );
     //printf( "deleting %s ... \n", file_path );
     util_remove_dir( file_path );
     free( file_path );
+
+    if( cb )
+    {
+        cb( cb_arg, package_name, 7, 1, NULL );
+    }
+
+    if( cb )
+    {
+        cb( cb_arg, package_name, 8, -1, "updating database" );
+    }
 
     //update db
     db_init( &db, pm->db_name, OPEN_WRITE );
@@ -3103,6 +3386,16 @@ int packages_remove_package( YPackageManager *pm, char *package_name )
     db_exec( &db, "update universe set can_update='0', installed='0' where name=?", package_name, NULL );  
     db_exec( &db, "end", NULL );  
     db_close( &db );
+
+    if( cb )
+    {
+        cb( cb_arg, package_name, 8, 1, NULL );
+    }
+
+    if( cb )
+    {
+        cb( cb_arg, package_name, 9, 1, NULL );
+    }
 
 
 return_point:
@@ -3120,6 +3413,42 @@ return_point:
 int packages_cleanup_package( YPackageManager *pm )
 {
     return util_remove_files( pm->package_dest, ".ypk" );
+}
+
+
+/*
+ * log
+ */
+int packages_log( YPackageManager *pm, char *package_name, char *msg )
+{
+    char    *time_str, *log;
+    time_t  t; 
+    FILE    *log_file;
+
+    if( !msg )
+        return -1;
+
+    log = pm->log ? pm->log : LOG_FILE;
+    log_file = fopen( log, "a" );
+
+    if( log_file )
+    {
+
+        if( ( t = time( NULL ) ) == -1 )
+        {
+            fclose( log_file );
+            return -1;
+        }
+
+        time_str = util_time_to_str( t );
+        fprintf( log_file, "%s %s : %s\n", time_str, package_name ? package_name : "", msg );
+
+        fflush( log_file );
+        fclose( log_file );
+        return 0;
+    }
+
+    return -1;
 }
 
 
@@ -3200,7 +3529,7 @@ static void *packages_update_backend_thread( void *data )
 
     params = (AsyncQueryParams  *)data;
 
-    ret = packages_update( params->pm );
+    ret = packages_update( params->pm, NULL, NULL );
 
     if( params->cb )
         params->cb( (void *)ret );

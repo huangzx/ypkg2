@@ -1,3 +1,12 @@
+/* Libypk utility functions
+ *
+ * Copyright (c) 2011 Ylmf OS
+ *
+ * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
+ * Version: 0.1
+ * Date: 2011.12.8
+ */
+
 #include "util.h"
 
 char *util_get_config(char *config_file, char *keyword)

@@ -1,3 +1,11 @@
+/* ypkg2
+ *
+ * Copyright (c) 2011 Ylmf OS
+ *
+ * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
+ * Version: 0.1
+ * Date: 2012.1.4
+ */
 #include <stdio.h>
 #include <getopt.h>
 #include <time.h>
@@ -61,6 +69,39 @@ Options:\n\
        ";
 
     printf( "%s\n", usage );
+}
+
+
+int ypkg_progress_callback( void *cb_arg, char *package_name, int action, double progress, char *msg )
+{
+    YPackageManager *pm;
+
+    pm = (YPackageManager *)cb_arg;
+
+    if( !action )
+    {
+        printf( "%s %s \n", msg, package_name );
+        packages_log( pm, package_name, msg );
+
+    }
+    else if( action == 9 )
+    {
+        packages_log( pm, package_name, "finish" );
+    }
+    else
+    {
+        if( progress == 0 || progress == -1 )
+        {
+            printf( "%s... ", msg );
+            packages_log( pm, package_name, msg );
+        }
+
+        if( progress == 1 )
+            printf( "%s\n", "done" );
+    }
+
+    fflush( stdout );
+    return 0;
 }
 
 int main( int argc, char **argv )
@@ -155,8 +196,8 @@ int main( int argc, char **argv )
             {
                 for( i = optind; i < argc; i++)
                 {
-                    printf("removing %s ... ", argv[i]);
-                    ret = packages_remove_package( pm, argv[i] );
+                    packages_log( pm, argv[i], "remove" );
+                    ret = packages_remove_package( pm, argv[i], ypkg_progress_callback, pm );
                     printf( "%s\n", ret < 0 ? "failed" : "successed" );
                 }
             }
@@ -179,8 +220,9 @@ int main( int argc, char **argv )
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
+                    packages_log( pm, package_name, "install" );
                     printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", package_name );
-                    ret = packages_install_local_package( pm, package_name, "/", force );
+                    ret = packages_install_local_package( pm, package_name, "/", force, ypkg_progress_callback, pm );
 
                     switch( ret )
                     {

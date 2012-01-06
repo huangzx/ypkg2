@@ -1,3 +1,11 @@
+/* Database operating functions
+ *
+ * Copyright (c) 2011 Ylmf OS
+ *
+ * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
+ * Version: 0.1
+ * Date: 2011.11.23
+ */
 #ifndef DB_H
 #define DB_H
 
