@@ -1,10 +1,10 @@
 /* Libypk
  *
- * Copyright (c) 2011 Ylmf OS
+ * Copyright (c) 2011-2012 Ylmf OS
  *
  * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.1.4
+ * Date: 2012.1.11
  */
 #define LIBYPK 1
 #include "ypackage.h"
@@ -34,7 +34,7 @@ YPackageManager *packages_manager_init()
 
     pm->accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
     pm->package_dest = util_get_config( config_file, "YPPATH_PKGDEST" );
-    pm->db_name = util_strcpy( DB_NAME );
+    pm->db_name = strdup( DB_NAME );
     pm->log = util_get_config( config_file, "LOG" );
 
     return pm;
@@ -626,7 +626,7 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
     //unzip
     if( cb )
     {
-        msg = util_strcpy( "extracting information" );
+        msg = strdup( "extracting information" );
 
         cb( cb_arg, "*", 4, -1, msg ? msg : NULL );
 
@@ -653,7 +653,7 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
 
     if( cb )
     {
-        msg = util_strcpy( "updating the database" );
+        msg = strdup( "updating the database" );
 
         cb( cb_arg, "*", 8, -1, msg ? msg : NULL );
 
@@ -1874,8 +1874,8 @@ int packages_download_package( YPackageManager *pm, char *package_name, char *ur
     return_code = 0;
     if( url && dest )
     {
-        target_url = util_strcpy( url );
-        package_path = util_strcpy( dest );
+        target_url = strdup( url );
+        package_path = strdup( dest );
         pkg = NULL;
     }
     else
@@ -2098,7 +2098,7 @@ YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *pa
                 token = strtok( recommended, " ,");
                 while( token )
                 {
-                    if( !packages_has_installed( pm, packages_get_package_data_attr( pkg_data, i, token ), NULL ) )
+                    if( !packages_has_installed( pm, token, NULL ) )
                     {
                         cur_pkg =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
                         len = strlen( token );
@@ -2444,7 +2444,7 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
             token = strtok( depend, " ,");
             while( token )
             {
-                if( !packages_has_installed( pm, packages_get_package_data_attr( pkg_data, i, token ), NULL ) )
+                if( !packages_has_installed( pm, token, NULL ) )
                 {
                     return_code = -3; 
 
@@ -2466,7 +2466,7 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
             token = strtok( conflict, " ,");
             while( token )
             {
-                if( packages_has_installed( pm, packages_get_package_data_attr( pkg_data, i, token ), NULL ) )
+                if( packages_has_installed( pm, token, NULL ) )
                 {
                     return_code = -4; 
 
@@ -2520,6 +2520,8 @@ return_point:
 
 /*
  * packages_unpack_package
+ *
+ * params: unzip_info - 0,1,2
  */
 int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int unzip_info )
 {
@@ -2533,21 +2535,24 @@ int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir
         dest_dir = "./";
 
     //unzip pkgdata
-    mkstemp( tmp_ypk_data );
-    if( archive_extract_file( ypk_path, "pkgdata", tmp_ypk_data ) == -1 )
+    if( unzip_info < 2 )
     {
-        return -2;
-    }
+        mkstemp( tmp_ypk_data );
+        if( archive_extract_file( ypk_path, "pkgdata", tmp_ypk_data ) == -1 )
+        {
+            return -2;
+        }
 
-    //copy files 
-    //printf( "unpacking files ...\n");
-    if( archive_extract_all( tmp_ypk_data, dest_dir ) == -1 )
-    {
+        //copy files 
+        //printf( "unpacking files ...\n");
+        if( archive_extract_all( tmp_ypk_data, dest_dir ) == -1 )
+        {
+            remove( tmp_ypk_data );
+            return -3;
+        }
+        
         remove( tmp_ypk_data );
-        return -3;
     }
-    
-    remove( tmp_ypk_data );
 
     //unzip pkginfo
     if( unzip_info )
@@ -2781,7 +2786,7 @@ int packages_exec_script( char *script, char *package_name, char *version, char 
     if( !script || !package_name || !version || !action )
         return -1;
 
-    if( access( script, R_OK ) == -1 )
+    if( access( script, R_OK ) != 0 )
         return -1;
 
     cmd = util_strcat( "source '", script, "'; if type ", action, " >/dev/null 2>1; then ", action, " ", package_name, " ", version, " ", version2 ? version2 : "", "; fi", NULL );
@@ -2834,6 +2839,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         cb( cb_arg, ypk_path, 3, -1, "check dependencies of package" );
     }
 
+    memset( extra, 0, 32 );
     ret = packages_check_package( pm, ypk_path, extra, 32 ); //ret = -4 ~ 3
 
     if( cb )
@@ -2850,7 +2856,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
                 break;
 
             case -2:
-                msg = util_strcat( "Error: Architecture does not match.", NULL );
+                msg = util_strcat( "Error: Architecture does not match. (",  extra, ")", NULL );
                 break;
 
             case -3:
@@ -2863,7 +2869,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
 
         }
 
-        cb( cb_arg, ypk_path, 3, 1, msg ? msg : NULL );
+        cb( cb_arg, ypk_path, 3, 1, msg ? msg : "ok" );
 
         if( msg )
         {
@@ -3470,16 +3476,16 @@ static YPackageManager *packages_manager_clone(  YPackageManager *pm )
         return NULL;
 
     if( pm->source_uri )
-        pm_copy->source_uri = util_strcpy( pm->source_uri );
+        pm_copy->source_uri = strdup( pm->source_uri );
 
     if( pm->accept_repo )
-        pm_copy->accept_repo = util_strcpy( pm->accept_repo );
+        pm_copy->accept_repo = strdup( pm->accept_repo );
 
     if( pm->package_dest )
-        pm_copy->package_dest = util_strcpy( pm->package_dest );
+        pm_copy->package_dest = strdup( pm->package_dest );
 
     if( pm->db_name )
-        pm_copy->db_name = util_strcpy( pm->db_name );
+        pm_copy->db_name = strdup( pm->db_name );
 
     return pm_copy;
 }
@@ -3589,8 +3595,8 @@ int packages_get_list_async( YPackageManager *pm, int limit, int offset, char *k
     params->pm = packages_manager_clone( pm );
     params->limit = limit;
     params->offset = offset;
-    params->key = util_strcpy(key);
-    params->keyword = util_strcpy(keyword);
+    params->key = strdup(key);
+    params->keyword = strdup(keyword);
     params->wildcards = wildcards;
     params->wildcards = installed;
     params->cb = cb;
@@ -3618,8 +3624,8 @@ int packages_get_list_async2( YPackageManager *pm, int page_size, int page_no, c
     params->limit = page_size;
     offset = ( page_no - 1 ) * page_size;
     params->offset = offset;
-    params->key = util_strcpy(key);
-    params->keyword = util_strcpy(keyword);
+    params->key = strdup(key);
+    params->keyword = strdup(keyword);
     params->wildcards = wildcards;
     params->cb = cb;
 

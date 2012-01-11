@@ -1,10 +1,10 @@
 /* Libypk utility functions
  *
- * Copyright (c) 2011 Ylmf OS
+ * Copyright (c) 2011-2012 Ylmf OS
  *
  * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2011.12.8
+ * Date: 2012.1.11
  */
 
 #include "util.h"
@@ -112,28 +112,15 @@ char *util_mem_gets( char *mem )
         len = pos - cur_pos;
 
     str = malloc( len + 1 );
+    if( !str )
+        return NULL;
+
     strncpy( str, cur_pos, len );
     str[len] = '\0';
     cur_pos = pos + 1;
     cur_len -= len + 1;
 
     return str;
-}
-
-char *util_strcpy( char *src )
-{
-    int     len;
-    char    *dest;
-
-    if( !src )
-        return NULL;
-
-    len = strlen( src );
-    dest = malloc( len + 1 );
-    memset( dest, '\0', len + 1);
-    strncpy( dest, src, len + 1);
-    
-    return dest;
 }
 
 char *util_strcat(char *first, ...)
@@ -154,6 +141,8 @@ char *util_strcat(char *first, ...)
     va_end(ap);
 
     result = malloc( len + 1 );
+    if( !result )
+        return NULL;
     memset( result, '\0', len + 1);
     strncpy( result, first, strlen( first ) );
 
@@ -207,19 +196,65 @@ char *util_int_to_str( int i )
     char *result;
 
     result = malloc( 11 );
+    if( !result )
+        return NULL;
     snprintf( result, 11, "%ld", i );
     result[10] = '\0';
 
     return result;
 }
 
-void util_log( char *log, char *msg )
+int util_log( char *log, char *msg )
 {
     FILE *fp;
 
     fp = fopen( log, "a" );
+    if( !fp )
+        return -1;
     fprintf( fp, msg );
     fclose( fp );
+
+    return 0;
+}
+
+
+int util_mkdir( char *dir )
+{
+    char *tmp, *parent_dir;
+
+    if( !access( dir, F_OK ) )
+    {
+        return 0;
+    }
+
+    tmp = strdup( dir );
+    if( !tmp )
+        return -1;
+
+    parent_dir = dirname( tmp );
+
+    if( !access( parent_dir, F_OK ) )
+    {
+        if( !access( parent_dir, W_OK | X_OK ) )
+        {
+            mkdir( dir, 0755 );
+        }
+        else
+        {
+            free( tmp );
+            return -1;
+        }
+    }
+    else
+    {
+        if( !util_mkdir( parent_dir ) )
+        {
+            mkdir( dir, 0755 );
+        }
+    }
+
+    free( tmp );
+    return 0;
 }
 
 int util_remove_dir( char *dir_path )
@@ -324,6 +359,8 @@ char *util_time_to_str( time_t time )
         return NULL;
 
     result = malloc( 20 );
+    if( !result )
+        return NULL;
     memset( result, '\0', 20 );
     if( strftime( result, 20, "%Y-%m-%d %H:%M:%S", tmp) == 0 ) 
     {

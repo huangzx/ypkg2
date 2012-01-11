@@ -1,10 +1,10 @@
 /* Libypk utility functions
  *
- * Copyright (c) 2011 Ylmf OS
+ * Copyright (c) 2011-2012 Ylmf OS
  *
  * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2011.12.8
+ * Date: 2012.1.12
  */
 #ifndef UTIL_H
 #define UTIL_H
@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <libgen.h>
 #include <stdarg.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -37,7 +38,6 @@ char *util_get_config(char *config_file, char *keyword);
  */
 char    *util_rtrim( char *str, char c );
 char    *util_mem_gets( char *mem );
-char    *util_strcpy( char *src );
 char    *util_strcat(char *first, ...);
 char    *util_strcat2( char *dest, int size, char *first, ...);
 char    *util_int_to_str( int i );
@@ -48,7 +48,7 @@ int     util_ends_with( char *str, char *suffix );
 /*
  * log
  */
-void util_log( char *log, char *msg );
+int util_log( char *log, char *msg );
 
 
 /*

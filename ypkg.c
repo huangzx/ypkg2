@@ -1,10 +1,10 @@
 /* ypkg2
  *
- * Copyright (c) 2011 Ylmf OS
+ * Copyright (c) 2011-2012 Ylmf OS
  *
  * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.1.4
+ * Date: 2012.1.11
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -29,6 +29,7 @@ struct option longopts[] = {
     { "list-files", no_argument, NULL, 'l' },
     { "depend", no_argument, NULL, 'k' },
     { "unpack-binary", no_argument, NULL, 'x' },
+    { "unpack-info", no_argument, NULL, 'X' },
     { "pack-directory", no_argument, NULL, 'b' },
     { "list-installed", no_argument, NULL, 'L' },
     { "whatrequires", no_argument, NULL, 's' },
@@ -53,6 +54,7 @@ Commands:\n\
         -l|--list-files                         list all files of installed package\n\
         -k|--depend                             show dependency of package\n\
         -x|--unpack-binary [*.ypk]              unpack ypk package \n\
+        -X|--unpack-info [*.ypk]                unpack ypkinfo \n\
         -b|--pack-directory                     pack directory to package\n\
         -L|--list-installed                     list all installed packages\n\
         -s|--whatrequires                       show which package needs package\n\
@@ -97,7 +99,17 @@ int ypkg_progress_callback( void *cb_arg, char *package_name, int action, double
         }
 
         if( progress == 1 )
-            printf( "%s\n", "done" );
+        {
+            if( action == 3)
+            {
+                printf( "\n%s\n", msg );
+                packages_log( pm, package_name, msg );
+            }
+            else 
+            {
+                printf( "%s\n", "done" );
+            }
+        }
     }
 
     fflush( stdout );
@@ -127,7 +139,7 @@ int main( int argc, char **argv )
     infile = NULL;
     outfile = NULL;
 
-    while( ( c = getopt_long( argc, argv, ":hCIclkxbLsSmi:o:f", longopts, NULL ) ) != -1 )
+    while( ( c = getopt_long( argc, argv, ":hCIclkxXbLsSmi:o:f", longopts, NULL ) ) != -1 )
     {
         switch( c )
         {
@@ -141,6 +153,7 @@ int main( int argc, char **argv )
             case 's': //show which package needs package
             case 'S': //search which package provide this file
             case 'x': //unpack ypk package
+            case 'X': //unpack ypkinfo
             case 'b': //pack directory to package
             case 'm': //comprare two version strings
                 if( !action )
@@ -599,6 +612,58 @@ int main( int argc, char **argv )
                 }
 
                 packages_unpack_package( pm, ypk_path, tmp ? tmp : unzip_path , 1 );
+
+                if( pkg )
+                    packages_free_package( pkg );
+
+                if( unzip_path )
+                    free( unzip_path );
+            }
+            break;
+
+        /*
+         * unpack ypkinfo
+         */
+        case 'X':
+            if( argc < 3 && argc > 4 )
+            {
+                err = 1;
+            }
+            else
+            {
+                ypk_path = argv[2];
+                tmp = argc == 4 ? argv[3] : NULL;
+                unzip_path = NULL;
+                pkg = NULL;
+
+                if( access( ypk_path, R_OK ) )
+                {
+                    printf( COLOR_RED "* %s not found\n" COLOR_RESET,  ypk_path );
+                    break;
+                }
+
+                if( packages_check_package( pm, ypk_path, NULL, 0 ) == -1 )
+                {
+                    printf( COLOR_RED "Error: Invalid format[%s]\n" COLOR_RESET, ypk_path );
+                    break;
+                }
+
+                if( !tmp )
+                {
+                    if( packages_get_package_from_ypk( ypk_path, &pkg, NULL ) )
+                    {
+                        printf( COLOR_RED "Error: Invalid format[%s]\n" COLOR_RESET, ypk_path );
+                        break;
+                    }
+                    else
+                    {
+                        package_name = packages_get_package_attr( pkg, "name" );
+                        version = packages_get_package_attr( pkg, "version" );
+                        unzip_path = util_strcat( package_name, "_", version, NULL );
+                    }
+                }
+
+                packages_unpack_package( pm, ypk_path, tmp ? tmp : unzip_path , 2 );
 
                 if( pkg )
                     packages_free_package( pkg );

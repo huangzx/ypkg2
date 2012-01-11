@@ -1,10 +1,10 @@
 /* Archive functions
  *
- * Copyright (c) 2011 Ylmf OS
+ * Copyright (c) 2011-2012 Ylmf OS
  *
  * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2011.12.8
+ * Date: 2012.1.11
  */
 #include "archive.h"
 
@@ -269,7 +269,7 @@ int archive_extract_all( char *arch_file, char *dest_dir )
 
     if( dest_dir )
     {
-        if( mkdir( dest_dir, 0755 ) == -1 )
+        if( util_mkdir( dest_dir, 0755 ) == -1 )
         {
             if( errno == EEXIST )
             {

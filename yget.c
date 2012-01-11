@@ -1,10 +1,10 @@
 /* yget2
  *
- * Copyright (c) 2011 Ylmf OS
+ * Copyright (c) 2011-2012 Ylmf OS
  *
  * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.1.4
+ * Date: 2012.1.11
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -97,7 +97,17 @@ int yget_progress_callback( void *cb_arg, char *package_name, int action, double
         }
 
         if( progress == 1 )
-            printf( "%s\n", "done" );
+        {
+            if( action == 3)
+            {
+                printf( "\n%s\n", msg );
+                packages_log( pm, package_name, msg );
+            }
+            else 
+            {
+                printf( "%s\n", "done" );
+            }
+        }
     }
 
     fflush( stdout );
