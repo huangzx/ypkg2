@@ -4,7 +4,7 @@
  *
  * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.1.11
+ * Date: 2012.2.3
  */
 #define LIBYPK 1
 #include "ypackage.h"
@@ -556,12 +556,12 @@ void packages_free_upgrade_list( YPackageChangeList *list )
 static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, ypk_progress_callback cb, void *cb_arg )
 {
     int                 i, xml_ret, db_ret, is_desktop, do_replace;
-    char                *target_url, *msg, xml_value, *sql, *sql_data, *sql_history, *sql_history_data, *package_name, *version, *idx, *data_key, *installed, *old_version, *can_update;
+    char                *xml_sha, *target_url, *msg, xml_value, *sql, *sql_data, *sql_history, *sql_history_data, *package_name, *version, *delete, *idx, *data_key, *installed, *old_version, *can_update;
     char                tmp_bz2[] = "/tmp/tmp_bz2.XXXXXX";
     char                tmp_xml[] = "/tmp/tmp_xml.XXXXXX";
     char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
-    DownloadFile         file;
-    XMLReaderHandle   xml_handle;
+    DownloadFile        file;
+    XMLReaderHandle     xml_handle;
     DB                  db;
 
     if( !pm || !xml_file || !sum )
@@ -591,6 +591,10 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
     file.cb_arg = NULL;
     if( download_file( target_url, &file ) != 0 )
     {
+        if( cb )
+        {
+            cb( cb_arg, "Download failed.", 2, 1, NULL );
+        }
         remove(tmp_bz2);
         return -1; 
     }
@@ -599,29 +603,21 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
     target_url = NULL;
 
 
+    //compare sum
+    xml_sha = util_sha1( tmp_bz2 );
+    if( strncmp( xml_sha, sum, 41 ) != 0 )
+    {
+        if( cb )
+        {
+            cb( cb_arg, "sha1 checksum does not match.", 2, 1, NULL );
+        }
+        return -1;
+    }
+
     if( cb )
     {
-
         cb( cb_arg, "*", 2, 1, NULL );
     }
-
-    //compare sum
-    /*
-    db_init(&db, pm->db_name);
-    db_query(&db, "select sha1sum, time_update from config", NULL);
-    if(db_fetch_row(&db) == 0)
-    {
-        return 1;
-    }
-    memset(sha1sum_old, '\0', 64);
-    strncpy(sha1sum_old, db.crow[0], strlen(db.crow[0]));
-    time_update = atoi(db.crow[1]);
-
-    if( strncmp( sha1sum_new, sha1sum_old, strlen(sha1sum_old) ) == 0 )
-    {
-        return 1;
-    }
-    */
 
     //unzip
     if( cb )
@@ -679,133 +675,161 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
 
     while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
     {
-        is_desktop = (int)reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
         package_name = reader_get_value2( &xml_handle, "name" );
         version = reader_get_value2( &xml_handle, "version" );
+        delete = reader_get_value( &xml_handle, "delete" );
 
-
-        //get original value
-        do_replace = 0;
-        can_update = "0";
-        installed = "0";
-        db_query( &db, "select version, installed from universe where name=?", package_name, NULL);
-        if( db_fetch_assoc( &db ) )
+        if( delete )
         {
-            old_version = db_get_value_by_key( &db, "version" );
-            installed =  db_get_value_by_key( &db, "installed" );
-            //printf("name: %s , version: %s , new:%s,", package_name, old_version, version);
-            if( version && (strlen( version ) > 0) && old_version && (strlen( old_version ) > 0) && packages_compare_version( version, old_version ) > 0 )
+            if( strncmp( delete, "all", 3 ) == 0 )
             {
-                //printf("replace, ");
-                if( installed[0] == '1' )
-                {
-                    can_update = "1";
-                    //printf("can update, ");
-                }
-                do_replace = 1;
-            }
-            //printf("\n");
+                db_exec( &db, "delete from universe where name=?", package_name, NULL );  
 
-            db_cleanup( &db );
+                db_exec( &db, "delete from universe_data where name=?", package_name, NULL );  
+
+                db_exec( &db, "delete from universe_history where name=?", package_name, NULL );  
+
+                db_exec( &db, "delete from universe_history_data where name=?", package_name, NULL );  
+            }
+            else if( strncmp( delete, "single", 6 ) == 0 )
+            {
+                db_exec( &db, "delete from universe where name=? and version=?", package_name, version, NULL );  
+
+                db_exec( &db, "delete from universe_data where name=? and version=?", package_name, version, NULL );  
+
+                db_exec( &db, "delete from universe_history where name=? and version=?", package_name, version, NULL );  
+
+                db_exec( &db, "delete from universe_history_data where name=? and version=?", package_name, version, NULL );  
+            }
         }
         else
         {
-            do_replace = 1;
-        }
+            is_desktop = (int)reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
 
-        //universe
-        if( do_replace )
-        {
-            db_ret = db_exec( &db, sql,  
-                    package_name, //name
-                    reader_get_value2( &xml_handle, "yversion" ), //yversion
-                    is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
-                    is_desktop ? "1" : "0", //desktop
-                    reader_get_value2( &xml_handle, "category" ), //category
-                    reader_get_value2( &xml_handle, "arch" ), //arch
-                    version, //version
-                    reader_get_value2( &xml_handle, "priority" ), //priority
-                    reader_get_value2( &xml_handle, "install" ), //install
-                    reader_get_value2( &xml_handle, "license" ), //license
-                    reader_get_value2( &xml_handle, "homepage" ), //homepage
-                    reader_get_value2( &xml_handle, "repo" ), //repo
-                    reader_get_value2( &xml_handle, "size" ), //size
-                    reader_get_value2( &xml_handle, "sha" ), //sha
-                    reader_get_value2( &xml_handle, "build_date" ), //build_date
-                    reader_get_value2( &xml_handle, "packager" ), //packager
-                    reader_get_value2( &xml_handle, "uri" ), //uri
-                    is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
-                    reader_get_value2( &xml_handle, "data_count" ), //data_count
-                    can_update,
-                    installed,
-                    NULL);
-
-            db_ret = db_exec( &db, sql_history,  
-                    package_name, //name
-                    reader_get_value2( &xml_handle, "yversion" ), //yversion
-                    is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
-                    is_desktop ? "1" : "0", //desktop
-                    reader_get_value2( &xml_handle, "category" ), //category
-                    reader_get_value2( &xml_handle, "arch" ), //arch
-                    version, //version
-                    reader_get_value2( &xml_handle, "priority" ), //priority
-                    reader_get_value2( &xml_handle, "install" ), //install
-                    reader_get_value2( &xml_handle, "license" ), //license
-                    reader_get_value2( &xml_handle, "homepage" ), //homepage
-                    reader_get_value2( &xml_handle, "repo" ), //repo
-                    reader_get_value2( &xml_handle, "size" ), //size
-                    reader_get_value2( &xml_handle, "sha" ), //sha
-                    reader_get_value2( &xml_handle, "build_date" ), //build_date
-                    reader_get_value2( &xml_handle, "packager" ), //packager
-                    reader_get_value2( &xml_handle, "uri" ), //uri
-                    is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
-                    reader_get_value2( &xml_handle, "data_count" ), //data_count
-                    NULL);
-        
-            //universe_data
-            db_exec( &db, "delete from universe_data where name=?", package_name, NULL );  
-
-            db_exec( &db, "delete from universe_history_data where name=? and version=?", package_name, version, NULL );  
-
-            data_key = (char *)malloc( 32 );
-            for( i = 0; ; i++ )
+            //get original value
+            do_replace = 0;
+            can_update = "0";
+            installed = "0";
+            db_query( &db, "select version, installed from universe where name=?", package_name, NULL);
+            if( db_fetch_assoc( &db ) )
             {
-                idx = util_int_to_str( i );
-                if( !reader_get_value( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ) )
+                old_version = db_get_value_by_key( &db, "version" );
+                installed =  db_get_value_by_key( &db, "installed" );
+                //printf("name: %s , version: %s , new:%s,", package_name, old_version, version);
+                if( version && (strlen( version ) > 0) && old_version && (strlen( old_version ) > 0) && packages_compare_version( version, old_version ) > 0 )
                 {
-                    free( idx );
-                    break;
+                    //printf("replace, ");
+                    if( installed[0] == '1' )
+                    {
+                        can_update = "1";
+                        //printf("can update, ");
+                    }
+                    do_replace = 1;
                 }
-                db_exec( &db, sql_data,  
+                //printf("\n");
+
+                db_cleanup( &db );
+            }
+            else
+            {
+                do_replace = 1;
+            }
+
+            //universe
+            if( do_replace )
+            {
+                db_ret = db_exec( &db, sql,  
                         package_name, //name
+                        reader_get_value2( &xml_handle, "yversion" ), //yversion
+                        is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
+                        is_desktop ? "1" : "0", //desktop
+                        reader_get_value2( &xml_handle, "category" ), //category
+                        reader_get_value2( &xml_handle, "arch" ), //arch
                         version, //version
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                        reader_get_value2( &xml_handle, "priority" ), //priority
+                        reader_get_value2( &xml_handle, "install" ), //install
+                        reader_get_value2( &xml_handle, "license" ), //license
+                        reader_get_value2( &xml_handle, "homepage" ), //homepage
+                        reader_get_value2( &xml_handle, "repo" ), //repo
+                        reader_get_value2( &xml_handle, "size" ), //size
+                        reader_get_value2( &xml_handle, "sha" ), //sha
+                        reader_get_value2( &xml_handle, "build_date" ), //build_date
+                        reader_get_value2( &xml_handle, "packager" ), //packager
+                        reader_get_value2( &xml_handle, "uri" ), //uri
+                        is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
+                        reader_get_value2( &xml_handle, "data_count" ), //data_count
+                        can_update,
+                        installed,
                         NULL);
 
-                db_exec( &db, sql_history_data,  
+                db_ret = db_exec( &db, sql_history,  
                         package_name, //name
+                        reader_get_value2( &xml_handle, "yversion" ), //yversion
+                        is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
+                        is_desktop ? "1" : "0", //desktop
+                        reader_get_value2( &xml_handle, "category" ), //category
+                        reader_get_value2( &xml_handle, "arch" ), //arch
                         version, //version
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                        reader_get_value2( &xml_handle, "priority" ), //priority
+                        reader_get_value2( &xml_handle, "install" ), //install
+                        reader_get_value2( &xml_handle, "license" ), //license
+                        reader_get_value2( &xml_handle, "homepage" ), //homepage
+                        reader_get_value2( &xml_handle, "repo" ), //repo
+                        reader_get_value2( &xml_handle, "size" ), //size
+                        reader_get_value2( &xml_handle, "sha" ), //sha
+                        reader_get_value2( &xml_handle, "build_date" ), //build_date
+                        reader_get_value2( &xml_handle, "packager" ), //packager
+                        reader_get_value2( &xml_handle, "uri" ), //uri
+                        is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
+                        reader_get_value2( &xml_handle, "data_count" ), //data_count
                         NULL);
+            
+                //universe_data
+                db_exec( &db, "delete from universe_data where name=?", package_name, NULL );  
 
-                free( idx );
-            }//for
-            free( data_key );
-        }//if
+                db_exec( &db, "delete from universe_history_data where name=? and version=?", package_name, version, NULL );  
+
+                data_key = (char *)malloc( 32 );
+                for( i = 0; ; i++ )
+                {
+                    idx = util_int_to_str( i );
+                    if( !reader_get_value( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ) )
+                    {
+                        free( idx );
+                        break;
+                    }
+                    db_exec( &db, sql_data,  
+                            package_name, //name
+                            version, //version
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                            NULL);
+
+                    db_exec( &db, sql_history_data,  
+                            package_name, //name
+                            version, //version
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
+                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                            NULL);
+
+                    free( idx );
+                }//for
+                free( data_key );
+            }//if
+
+        }
     }//while
 
     db_ret = db_exec( &db, "commit", NULL );  
@@ -972,23 +996,88 @@ int packages_get_count( YPackageManager *pm, char *key, char *keyword, int wildc
 
 int packages_has_installed( YPackageManager *pm, char *name, char *version )
 {
+    int     count, ret;
+    char    *version_installed;
     DB      db;
-    int     count;
 
     if( !pm || !name )
         return -1;
 
     db_init( &db, pm->db_name, OPEN_READ );
-    if( version)
-        db_query( &db, "select count(*) from world where name=? and version=?", name, version, NULL);
-    else
-        db_query( &db, "select count(*) from world where name=?", name, NULL);
 
-    db_fetch_num( &db );
-    count = atoi( db_get_value_by_index( &db, 0 ) );
+    if( version )
+    {
+        version_installed = NULL;
+
+        db_query( &db, "select version from world where name=?", name, NULL);
+
+        if( db_fetch_num( &db ) )
+        {
+            version_installed = db_get_value_by_index( &db, 0 );
+        }
+
+        if( version[0] == '>' || version[0] == '=' || version[0] == '!' || version[0] == '<')
+        {
+            if( version[1] == '=' )
+            {
+                ret = packages_compare_version( version_installed, version + 2 );
+                switch( version[0] )
+                {
+                    case '>':
+                        ret = ret != -1;
+                        break;
+
+                    case '!':
+                        ret = ret != 0;
+                        break;
+
+                    case '<':
+                        ret = ret != 1;
+                        break;
+
+                    default:
+                        ret = ret == 0;
+                }
+            }
+            else
+            {
+                ret = packages_compare_version( version_installed, version + 1 );
+                switch( version[0] )
+                {
+                    case '=':
+                        ret = ret == 0;
+                        break;
+
+                    case '>':
+                        ret = ret == 1;
+                        break;
+
+                    case '<':
+                        ret = ret == -1;
+                        break;
+
+                    default:
+                        ret = ret == 0;
+                }
+            }
+        }
+        else
+        {
+            ret = packages_compare_version( version, version_installed ) == 0;
+        }
+    }
+    else
+    {
+        db_query( &db, "select count(*) from world where name=?", name, NULL);
+        db_fetch_num( &db );
+        count = atoi( db_get_value_by_index( &db, 0 ) );
+        ret = count > 0;
+    }
+
+
     db_close( &db );
 
-    return count > 0;
+    return ret;
 }
 
 int packages_exists( YPackageManager *pm, char *name, char *version )
@@ -1866,7 +1955,7 @@ int packages_download_package( YPackageManager *pm, char *package_name, char *ur
     char                *target_url, *package_url, *package_path;
     DownloadFile        file;
     YPackage            *pkg;
-    YPackageDCB         *cb;
+    YPackageDCB         *cb = NULL;
 
     if( (!url || !dest) && (!pm || !package_name) )
         return -1;
@@ -1906,23 +1995,32 @@ int packages_download_package( YPackageManager *pm, char *package_name, char *ur
         if( dcb || pcb )
         {
             cb = (YPackageDCB *)malloc( sizeof( YPackageDCB ) );
-
-            cb->package_name = package_name;
-            if( dcb )
+            if( cb )
             {
-                cb->dcb = dcb;
-                cb->dcb_arg = dcb_arg;
-            }
+                memset( cb, 0, sizeof( YPackageDCB ) );
 
-            if( pcb )
+                cb->package_name = package_name;
+                if( dcb )
+                {
+                    cb->dcb = dcb;
+                    cb->dcb_arg = dcb_arg;
+                }
+
+                if( pcb )
+                {
+                    cb->pcb = pcb;
+                    cb->pcb_arg = pcb_arg;
+                }
+
+
+                file.cb = packages_download_progress_callback;
+                file.cb_arg = (void *)cb;
+            }
+            else
             {
-                cb->pcb = pcb;
-                cb->pcb_arg = pcb_arg;
+                file.cb = NULL;
+                file.cb_arg = NULL;
             }
-
-
-            file.cb = packages_download_progress_callback;
-            file.cb_arg = (void *)cb;
         }
         else
         {
@@ -1939,7 +2037,10 @@ int packages_download_package( YPackageManager *pm, char *package_name, char *ur
         }
         fclose( file.stream );
         if( cb )
+        {
             free( cb );
+            cb = NULL;
+        }
     }
 
 return_point:
@@ -1951,6 +2052,9 @@ return_point:
 
     if( pkg )
         packages_free_package( pkg );
+
+    if( cb )
+        free( cb );
     return return_code;
 }
 
@@ -1961,7 +2065,7 @@ return_point:
 int packages_install_package( YPackageManager *pm, char *package_name, ypk_progress_callback cb, void *cb_arg  )
 {
     int                 return_code;
-    char                *target_url = NULL, *package_url = NULL, *package_path = NULL;
+    char                *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
     YPackage            *pkg;
 
     if( !package_name )
@@ -1994,11 +2098,44 @@ int packages_install_package( YPackageManager *pm, char *package_name, ypk_progr
 
     package_path = util_strcat( pm->package_dest, "/", package_url+2, NULL );
     target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
+    pkg_sha = packages_get_package_attr( pkg, "sha" );
 
-    if( packages_download_package( NULL, package_name, target_url, package_path, 0, NULL, NULL, cb, cb_arg  ) < 0 )
+    if( !access( package_path, F_OK ) )
     {
-        return -4;
-        goto return_point;
+        ypk_sha = util_sha1( package_path );
+
+        if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
+        {
+            if( packages_download_package( NULL, package_name, target_url, package_path, 1, NULL, NULL, cb, cb_arg  ) < 0 )
+            {
+                return -4;
+                goto return_point;
+            }
+
+            free( ypk_sha );
+
+            ypk_sha = util_sha1( package_path );
+            if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
+            {
+                return -4;
+                goto return_point;
+            }
+        }
+    }
+    else
+    {
+        if( packages_download_package( NULL, package_name, target_url, package_path, 0, NULL, NULL, cb, cb_arg  ) < 0 )
+        {
+            return -4;
+            goto return_point;
+        }
+
+        ypk_sha = util_sha1( package_path );
+        if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
+        {
+            return -4;
+            goto return_point;
+        }
     }
 
     if( packages_install_local_package( pm, package_path, "/", 0, cb, cb_arg ) )
@@ -2012,6 +2149,9 @@ return_point:
 
     if( target_url )
         free( target_url );
+
+    if( ypk_sha )
+        free( ypk_sha );
 
     packages_free_package( pkg );
     return return_code;
@@ -2789,7 +2929,7 @@ int packages_exec_script( char *script, char *package_name, char *version, char 
     if( access( script, R_OK ) != 0 )
         return -1;
 
-    cmd = util_strcat( "source '", script, "'; if type ", action, " >/dev/null 2>1; then ", action, " ", package_name, " ", version, " ", version2 ? version2 : "", "; fi", NULL );
+    cmd = util_strcat( "source '", script, "'; if type ", action, " >/dev/null 2>&1; then ", action, " ", package_name, " ", version, " ", version2 ? version2 : "", "; fi", NULL );
     //printf( "exec: %s\n", cmd );
     status = system( cmd );
     free( cmd );

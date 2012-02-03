@@ -8,6 +8,7 @@
  */
 
 #include "util.h"
+#include "sha1.h"
 
 char *util_get_config(char *config_file, char *keyword)
 {
@@ -366,6 +367,47 @@ char *util_time_to_str( time_t time )
     {
         free( result );
         return NULL;
+    }
+
+    return result;
+}
+
+
+char *util_sha1( char *file )
+{
+    char            c;
+    char            *result;
+    FILE            *fp;
+    SHA1Context     sha;
+
+    if ( !( fp = fopen( file,"r" ) ) )
+    {
+        return NULL;
+    }
+
+
+    SHA1Reset( &sha );
+
+    c = fgetc( fp );
+    while( !feof( fp ) )
+    {
+        SHA1Input( &sha, &c, 1 );
+        c = fgetc( fp );
+    }
+
+    fclose(fp);
+
+    if( !SHA1Result( &sha ) )
+    {
+        return NULL;
+    }
+    else
+    {
+        result = malloc( 41 );
+        if( !result )
+            return NULL;
+
+        snprintf( result, 41, "%08x%08x%08x%08x%08x", sha.Message_Digest[0], sha.Message_Digest[1], sha.Message_Digest[2], sha.Message_Digest[3], sha.Message_Digest[4] );
     }
 
     return result;

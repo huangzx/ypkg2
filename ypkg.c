@@ -4,7 +4,7 @@
  *
  * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.1.11
+ * Date: 2012.2.1
  */
 #include <stdio.h>
 #include <getopt.h>

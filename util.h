@@ -54,7 +54,13 @@ int util_log( char *log, char *msg );
 /*
  * file
  */
+int util_mkdir( char *dir );
 int util_remove_dir( char *dir_path );
 int util_remove_files( char *dir_path, char *suffix );
+
+/*
+ * hash
+ */
+char *util_sha1( char *file );
 
 #endif /* !UTIL_H */

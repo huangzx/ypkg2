@@ -4,7 +4,7 @@
  *
  * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.1.11
+ * Date: 2012.2.3
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -179,7 +179,7 @@ int yget_download_progress_callback( void *cb_arg, char *package_name, double dl
 int yget_install_package( YPackageManager *pm, char *package_name )
 {
     int                 ret, return_code;
-    char                *target_url = NULL, *package_url = NULL, *package_path = NULL;
+    char                *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
     YPackage            *pkg;
     //YPackageDCB         dcb;
     DownloadStat        dl_stat;
@@ -217,15 +217,53 @@ int yget_install_package( YPackageManager *pm, char *package_name )
     dl_stat.st.tv_usec = 0;
     //dcb.cb = yget_download_progress_callback;
     //dcb.arg = &dl_stat;
-    if( packages_download_package( NULL, package_name, target_url, package_path, 0, yget_download_progress_callback,&dl_stat, yget_progress_callback, pm ) < 0 )
+
+    pkg_sha = packages_get_package_attr( pkg, "sha" );
+
+    if( !access( package_path, F_OK ) )
     {
-        printf( COLOR_RED "Error: Can't download the package %s from %s.\n" COLOR_RESET, package_name, target_url );
-        return -4;
-        goto return_point;
+        ypk_sha = util_sha1( package_path );
+
+        if( strncmp( pkg_sha, ypk_sha, 41 ) )
+        {
+            if( packages_download_package( NULL, package_name, target_url, package_path, 1, yget_download_progress_callback,&dl_stat, yget_progress_callback, pm ) < 0 )
+            {
+                printf( COLOR_RED "Error: Can't download the package %s from %s.\n" COLOR_RESET, package_name, target_url );
+                return -4;
+                goto return_point;
+            }
+
+            free( ypk_sha );
+
+            ypk_sha = util_sha1( package_path );
+            if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
+            {
+                printf( COLOR_RED "Error: Download failed, sha1 checksum does not match. [%s sha1sum:%s]\n" COLOR_RESET, package_path, ypk_sha );
+                return -4;
+                goto return_point;
+            }
+        }
+    }
+    else
+    {
+        if( packages_download_package( NULL, package_name, target_url, package_path, 0, yget_download_progress_callback,&dl_stat, yget_progress_callback, pm ) < 0 )
+        {
+            printf( COLOR_RED "Error: Can't download the package %s from %s.\n" COLOR_RESET, package_name, target_url );
+            return -4;
+            goto return_point;
+        }
+
+        ypk_sha = util_sha1( package_path );
+        if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
+        {
+            printf( COLOR_RED "Error: Download failed, sha1 checksum does not match. [%s sha1sum:%s]\n" COLOR_RESET, package_path, ypk_sha );
+            return -4;
+            goto return_point;
+        }
     }
 
     printf( "Installing %s\n", package_path );
-    if( ret = packages_install_local_package( pm, package_path, "/", 0, yget_progress_callback, pm ) )
+    if( ret = packages_install_local_package( pm, package_path, "/", 1, yget_progress_callback, pm ) )
     {
         switch( ret )
         {
@@ -472,16 +510,27 @@ int main( int argc, char **argv )
                     }
                     */
 
-                    if( packages_has_installed( pm, package_name, NULL ) )
-                    {
-                        printf( "%s has installed.\n", package_name );
-                        continue;
-                    }
-                    else if( !packages_exists( pm, package_name, NULL ) )
+                    if( !packages_exists( pm, package_name, NULL ) )
                     {
                         printf( "Error: %s not found.\n",  package_name );
                         continue;
                     }
+
+                    if( pkg = packages_get_package( pm, package_name, 0 ) )
+                    {
+                        version = packages_get_package_attr( pkg, "version" );
+                        if( packages_has_installed( pm, package_name, version ) )
+                        {
+                            printf( "%s(%s) has installed.\n", package_name, version );
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        printf( "Error: %s not found.\n",  package_name );
+                        continue;
+                    }
+
 
                     cur_package =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
                     len = strlen( package_name );
@@ -873,7 +922,7 @@ int main( int argc, char **argv )
                         cur_package = upgrade_list->prev;
                         while( cur_package )
                         {
-                            printf(",%s", cur_package->name );
+                            printf(" %s", cur_package->name );
                             cur_package = cur_package->prev;
                         }
 

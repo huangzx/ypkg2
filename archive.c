@@ -288,7 +288,7 @@ int archive_extract_all( char *arch_file, char *dest_dir )
         chdir( dest_dir );
     }
 
-    flags = ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_PERM | ARCHIVE_EXTRACT_ACL | ARCHIVE_EXTRACT_FFLAGS;
+    flags = ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_PERM | ARCHIVE_EXTRACT_ACL | ARCHIVE_EXTRACT_FFLAGS | ARCHIVE_EXTRACT_OWNER;
     arch_w = archive_write_disk_new();
     archive_write_disk_set_options( arch_w, flags );
     archive_write_disk_set_standard_lookup( arch_w );
