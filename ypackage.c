@@ -1014,57 +1014,61 @@ int packages_has_installed( YPackageManager *pm, char *name, char *version )
         if( db_fetch_num( &db ) )
         {
             version_installed = db_get_value_by_index( &db, 0 );
-        }
-
-        if( version[0] == '>' || version[0] == '=' || version[0] == '!' || version[0] == '<')
-        {
-            if( version[1] == '=' )
+            if( version[0] == '>' || version[0] == '=' || version[0] == '!' || version[0] == '<')
             {
-                ret = packages_compare_version( version_installed, version + 2 );
-                switch( version[0] )
+                if( version[1] == '=' )
                 {
-                    case '>':
-                        ret = ret != -1;
-                        break;
+                    ret = packages_compare_version( version_installed, version + 2 );
+                    switch( version[0] )
+                    {
+                        case '>':
+                            ret = ret != -1;
+                            break;
 
-                    case '!':
-                        ret = ret != 0;
-                        break;
+                        case '!':
+                            ret = ret != 0;
+                            break;
 
-                    case '<':
-                        ret = ret != 1;
-                        break;
+                        case '<':
+                            ret = ret != 1;
+                            break;
 
-                    default:
-                        ret = ret == 0;
+                        default:
+                            ret = ret == 0;
+                    }
+                }
+                else
+                {
+                    ret = packages_compare_version( version_installed, version + 1 );
+                    switch( version[0] )
+                    {
+                        case '=':
+                            ret = ret == 0;
+                            break;
+
+                        case '>':
+                            ret = ret == 1;
+                            break;
+
+                        case '<':
+                            ret = ret == -1;
+                            break;
+
+                        default:
+                            ret = ret == 0;
+                    }
                 }
             }
             else
             {
-                ret = packages_compare_version( version_installed, version + 1 );
-                switch( version[0] )
-                {
-                    case '=':
-                        ret = ret == 0;
-                        break;
-
-                    case '>':
-                        ret = ret == 1;
-                        break;
-
-                    case '<':
-                        ret = ret == -1;
-                        break;
-
-                    default:
-                        ret = ret == 0;
-                }
+                ret = packages_compare_version( version, version_installed ) == 0;
             }
         }
         else
         {
-            ret = packages_compare_version( version, version_installed ) == 0;
+            ret = 0;
         }
+
     }
     else
     {
