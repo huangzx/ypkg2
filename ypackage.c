@@ -725,7 +725,7 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
                             {
                                 can_update = "1"; //can upgrade
                             }
-                            else
+                            else if( cmp_ret == -1 )
                             {
                                 can_update = "-1"; //can downgrade
                             }
