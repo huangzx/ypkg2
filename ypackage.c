@@ -555,7 +555,7 @@ void packages_free_upgrade_list( YPackageChangeList *list )
 
 static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, ypk_progress_callback cb, void *cb_arg )
 {
-    int                 i, xml_ret, db_ret, is_desktop, do_replace;
+    int                 i, xml_ret, db_ret, cmp_ret, is_desktop, do_replace;
     char                *xml_sha, *target_url, *msg, xml_value, *sql, *sql_data, *sql_history, *sql_history_data, *package_name, *version, *delete, *idx, *data_key, *installed, *old_version, *can_update;
     char                tmp_bz2[] = "/tmp/tmp_bz2.XXXXXX";
     char                tmp_xml[] = "/tmp/tmp_xml.XXXXXX";
@@ -715,19 +715,24 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
             {
                 old_version = db_get_value_by_key( &db, "version" );
                 installed =  db_get_value_by_key( &db, "installed" );
-                //printf("name: %s , version: %s , new:%s,", package_name, old_version, version);
-                if( version && (strlen( version ) > 0) && old_version && (strlen( old_version ) > 0) && packages_compare_version( version, old_version ) > 0 )
-                {
-                    //printf("replace, ");
-                    if( installed[0] == '1' )
-                    {
-                        can_update = "1";
-                        //printf("can update, ");
-                    }
-                    do_replace = 1;
-                }
-                //printf("\n");
 
+                if( installed[0] == '1' )
+                {
+                    if( version && (strlen( version ) > 0) && old_version && (strlen( old_version ) > 0)  )
+                    {
+                            cmp_ret = packages_compare_version( version, old_version );
+                            if( cmp_ret == 1 )
+                            {
+                                can_update = "1"; //can upgrade
+                            }
+                            else
+                            {
+                                can_update = "-1"; //can downgrade
+                            }
+                    }
+                }
+
+                do_replace = 1;
                 db_cleanup( &db );
             }
             else
