@@ -59,10 +59,7 @@ Commands:\n\
         -L|--list-installed                     list all installed packages\n\
         -s|--whatrequires                       show which package needs package\n\
         -S|--whatprovides [file]                search which package provide this file\n\
-        --compare-version old new               comprare two version strings \n\
-                                               return 0 if same. \n\
-                                               return 1 if old is grater than new \n\
-                                               return 2 if old is lesser then new\n\
+        --compare-version old_package new_package               comprare two version strings \n\
 \n\
 Options:\n\
         -i|--in infile\n\
@@ -690,10 +687,15 @@ int main( int argc, char **argv )
             {
                 err = 1;
             }
+            else if( access( argv[optind], R_OK ) || access( argv[optind+1], R_OK ) )
+            {
+                err = 1;
+            }
             else
             {
                 version = NULL;
                 version2 = NULL;
+                
                 if( !packages_get_package_from_ypk( argv[optind], &pkg, NULL ) )
                 {
                     version = packages_get_package_attr( pkg, "version" );
