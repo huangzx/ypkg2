@@ -59,7 +59,10 @@ Commands:\n\
         -L|--list-installed                     list all installed packages\n\
         -s|--whatrequires                       show which package needs package\n\
         -S|--whatprovides [file]                search which package provide this file\n\
-        --compare-version old_package new_package               comprare two version strings \n\
+        --compare-version old new               comprare two version strings \n\
+                                               return 0 if same. \n\
+                                               return 1 if old is grater than new \n\
+                                               return 2 if old is lesser then new\n\
 \n\
 Options:\n\
         -i|--in infile\n\
@@ -115,7 +118,7 @@ int ypkg_progress_callback( void *cb_arg, char *package_name, int action, double
 
 int main( int argc, char **argv )
 {
-    int             c, force, i, j, action, ret, err, flag, len;
+    int             c, force, i, j, action, ret, err, flag, len, exit_code;
     char            *tmp, *package_name, *ypk_path, *unzip_path, *file_name, *install_time, *version, *version2, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type;
     YPackageManager *pm;
     YPackage        *pkg, *pkg2;
@@ -133,6 +136,7 @@ int main( int argc, char **argv )
     err = 0;
     flag = 0;
     force = 0;
+    exit_code = 0;
     infile = NULL;
     outfile = NULL;
 
@@ -689,7 +693,25 @@ int main( int argc, char **argv )
             }
             else if( access( argv[optind], R_OK ) || access( argv[optind+1], R_OK ) )
             {
-                err = 1;
+                version = argv[optind];
+                version2 = argv[optind+1];
+
+                ret = packages_compare_version( version, version2 );
+                if( ret > 0 )
+                {
+                    printf( "[version:%s] is grater than [version:%s]\n", version,  version2 );
+                    exit_code = 1;
+                }
+                else if( ret < 0 )
+                {
+                    printf( "[version:%s] is lesser than [version:%s]\n", version,  version2  );
+                    exit_code = 2;
+                }
+                else
+                {
+                    printf( "[version:%s] is equal to [version:%s]\n",  version, version2  );
+                    exit_code = 0;
+                }
             }
             else
             {
@@ -706,11 +728,20 @@ int main( int argc, char **argv )
 
                         ret = packages_compare_version( version, version2 );
                         if( ret > 0 )
+                        {
                             printf( "%s[version:%s] is newer than %s[version:%s]\n", argv[optind], version, argv[optind+1], version2 );
+                            exit_code = 1;
+                        }
                         else if( ret < 0 )
+                        {
                             printf( "%s[version:%s] is older than %s[version:%s]\n", argv[optind], version, argv[optind+1], version2  );
+                            exit_code = 2;
+                        }
                         else
+                        {
                             printf( "%s[version:%s] and %s[version:%s] has the same version\n", argv[optind], version, argv[optind+1], version2  );
+                            exit_code = 0;
+                        }
 
                     }
                     else
@@ -740,5 +771,9 @@ int main( int argc, char **argv )
         usage();
     else if( err == 2 )
         fprintf( stderr, "Permission Denied!\n" );
-    return err;
+
+    if( err )
+        exit_code = err;
+
+    return exit_code;
 }
