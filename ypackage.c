@@ -679,8 +679,10 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
         version = reader_get_value2( &xml_handle, "version" );
         delete = reader_get_value( &xml_handle, "delete" );
 
+            asm( "nop" );
         if( delete )
         {
+            asm( "nop" );
             if( strncmp( delete, "all", 3 ) == 0 )
             {
                 db_exec( &db, "delete from universe where name=?", package_name, NULL );  
@@ -1942,7 +1944,7 @@ static int packages_download_progress_callback( void *arg,double dltotal, double
     YPackageDCB         *cb;
 
     if( !arg )
-        return 1;
+        return 0;
 
     cb = (YPackageDCB *)arg;
     if( cb->dcb )
@@ -1950,7 +1952,7 @@ static int packages_download_progress_callback( void *arg,double dltotal, double
     else if( cb->pcb )
         return cb->pcb( cb->pcb_arg, cb->package_name, 2, dlnow / dltotal, NULL );
     else
-        return 1;
+        return 0;
 
     //return cb->cb( dcb->arg, dltotal, dlnow );
 }

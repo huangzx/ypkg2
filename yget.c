@@ -347,7 +347,7 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list )
 
 int main( int argc, char **argv )
 {
-    int             c, force, verbose, i, j, action, ret, err, flag, len, size, install_size;
+    int             c, force, verbose, i, j, action, ret, err, flag, len, size, install_size, pkg_count;
     char            confirm, *tmp, *package_name, *file_name, *install_date, *build_date, *version, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type, *installed, *can_update, *repo, *homepage;
     YPackageManager *pm;
     YPackage        *pkg, *pkg2;
@@ -694,76 +694,84 @@ int main( int argc, char **argv )
                 {
                     package_name = argv[i];
 
-                    pkg_list = packages_get_list( pm, 10, 0, "name", package_name, 1, 0 );
-                    if( pkg_list )
+                    pkg_count = packages_get_count( pm, "name", package_name, 1, 0 );
+                    if( pkg_count > 0 )
                     {
-                        for( j = 0; j < pkg_list->cnt; j++ )
+                        pkg_list = packages_get_list( pm, pkg_count, 0, "name", package_name, 1, 0 );
+                        if( pkg_list )
                         {
-                            installed = packages_get_list_attr( pkg_list, j, "installed" );
-                            can_update = packages_get_list_attr( pkg_list, j, "can_update" );
-                            installed = installed[0] == '0' ? "[*]" : ( can_update[0] == '0' ? "[I]" : "[U]" );
-                            repo = packages_get_list_attr( pkg_list, j, "repo" );
+                            for( j = 0; j < pkg_list->cnt; j++ )
+                            {
+                                installed = packages_get_list_attr( pkg_list, j, "installed" );
+                                can_update = packages_get_list_attr( pkg_list, j, "can_update" );
+                                installed = installed[0] == '0' ? "[*]" : ( can_update[0] == '0' ? "[I]" : "[U]" );
+                                repo = packages_get_list_attr( pkg_list, j, "repo" );
 
-                            /*
-                            if( !verbose )
-                            {
-                            */
-                                printf( 
-                                        COLOR_GREEN "%-s "  COLOR_RESET  "\t%-s \t%-10s \t%-8s \t%-s\n",
-                                        installed, 
-                                        packages_get_list_attr( pkg_list, j, "name"), 
-                                        packages_get_list_attr( pkg_list, j, "version"), 
-                                        repo, 
-                                        packages_get_list_attr( pkg_list, j, "description") 
-                                        );
                                 /*
-                            }
-                            else
-                            {
-                                printf( COLOR_GREEN "%s "  COLOR_RESET  "%s\n", installed, package_name );
-                                        
-                                if( installed[1] != '*' && (pkg = packages_get_package( pm, package_name, 1 ) ) )
+                                if( !verbose )
                                 {
-                                    tmp = packages_get_package_attr( pkg, "build_date" );
+                                */
+                                    printf( 
+                                            COLOR_GREEN "%-s "  COLOR_RESET  "\t%-s \t%-10s \t%-8s \t%-s\n",
+                                            installed, 
+                                            packages_get_list_attr( pkg_list, j, "name"), 
+                                            packages_get_list_attr( pkg_list, j, "version"), 
+                                            repo, 
+                                            packages_get_list_attr( pkg_list, j, "description") 
+                                            );
+                                    /*
+                                }
+                                else
+                                {
+                                    printf( COLOR_GREEN "%s "  COLOR_RESET  "%s\n", installed, package_name );
+                                            
+                                    if( installed[1] != '*' && (pkg = packages_get_package( pm, package_name, 1 ) ) )
+                                    {
+                                        tmp = packages_get_package_attr( pkg, "build_date" );
+                                        if( tmp )
+                                            build_date = util_time_to_str( atoi( tmp ) );
+                                        else
+                                            build_date = NULL;
+
+                                        printf( 
+                                                "\tInstalled: %s[%s]\t%s\n", 
+                                                packages_get_package_attr( pkg, "version"),
+                                                packages_get_package_attr( pkg, "repo"),
+                                                build_date
+                                                );
+
+                                        if( build_date )
+                                            free( build_date );
+
+                                    }
+
+                                    homepage = packages_get_list_attr( pkg_list, j, "homepage" );
+                                    tmp = packages_get_list_attr( pkg_list, j, "build_date" );
                                     if( tmp )
                                         build_date = util_time_to_str( atoi( tmp ) );
                                     else
                                         build_date = NULL;
 
                                     printf( 
-                                            "\tInstalled: %s[%s]\t%s\n", 
-                                            packages_get_package_attr( pkg, "version"),
-                                            packages_get_package_attr( pkg, "repo"),
-                                            build_date
+                                            "\tAvailable: %s[%s]\t%s\n\tDescription: %s\n", 
+                                            packages_get_list_attr( pkg_list, j, "version"), 
+                                            repo, 
+                                            build_date,
+                                            packages_get_list_attr( pkg_list, j, "description") 
                                             );
 
                                     if( build_date )
                                         free( build_date );
-
                                 }
+                                */
 
-                                homepage = packages_get_list_attr( pkg_list, j, "homepage" );
-                                tmp = packages_get_list_attr( pkg_list, j, "build_date" );
-                                if( tmp )
-                                    build_date = util_time_to_str( atoi( tmp ) );
-                                else
-                                    build_date = NULL;
-
-                                printf( 
-                                        "\tAvailable: %s[%s]\t%s\n\tDescription: %s\n", 
-                                        packages_get_list_attr( pkg_list, j, "version"), 
-                                        repo, 
-                                        build_date,
-                                        packages_get_list_attr( pkg_list, j, "description") 
-                                        );
-
-                                if( build_date )
-                                    free( build_date );
                             }
-                            */
-
+                            packages_free_list( pkg_list );
                         }
-                        packages_free_list( pkg_list );
+                        else
+                        {
+                            printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                        }
                     }
                     else
                     {
