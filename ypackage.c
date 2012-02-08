@@ -233,9 +233,12 @@ int packages_import_local_data( YPackageManager *pm )
     reader_cleanup( &xml_handle );
 
     //world
-    //printf( "Import world  ...\n" );
+    printf( "Import world  ...\n" );
     reader_open( LOCAL_WORLD,  &xml_handle );
     sql = "replace into world (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+    //char * sql_test;
+    //sql_test = "replace into world (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');";
 
     while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
     {
@@ -265,7 +268,30 @@ int packages_import_local_data( YPackageManager *pm )
                 is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
                 reader_get_value2( &xml_handle, "data_count" ), //data_count
                 NULL);
-    
+        /*
+        printf( sql_test,
+                package_name, //name
+                reader_get_value2( &xml_handle, "yversion" ), //yversion
+                is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
+                is_desktop ? "1" : "0", //desktop
+                reader_get_value2( &xml_handle, "category" ), //category
+                reader_get_value2( &xml_handle, "arch" ), //arch
+                version, //version
+                reader_get_value2( &xml_handle, "priority" ), //priority
+                reader_get_value2( &xml_handle, "install" ), //install
+                reader_get_value2( &xml_handle, "license" ), //license
+                reader_get_value2( &xml_handle, "homepage" ), //homepage
+                reader_get_value2( &xml_handle, "repo" ), //repo
+                reader_get_value2( &xml_handle, "size" ), //size
+                reader_get_value2( &xml_handle, "sha" ), //sha
+                reader_get_value2( &xml_handle, "build_date" ), //build_date
+                reader_get_value2( &xml_handle, "packager" ), //packager
+                reader_get_value2( &xml_handle, "uri" ), //uri
+                is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
+                reader_get_value2( &xml_handle, "data_count" ) //data_count
+     );
+     */
+
         //world_data
         db_exec( &db, "delete from world_data where name=?", package_name, NULL );  
 
@@ -679,10 +705,8 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
         version = reader_get_value2( &xml_handle, "version" );
         delete = reader_get_value( &xml_handle, "delete" );
 
-            asm( "nop" );
         if( delete )
         {
-            asm( "nop" );
             if( strncmp( delete, "all", 3 ) == 0 )
             {
                 db_exec( &db, "delete from universe where name=?", package_name, NULL );  
@@ -2743,7 +2767,7 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
  */
 int packages_compare_version( char *version1, char *version2 )
 {
-    int         buf_size = 16, result;
+    int         buf_size = 64, result;
     char        *pattern = "(?<ver>(.*?)+)(-(?<ver1>.*?))?(-(?<ver2>.*?))?(-(?<ver3>.*?))?$";
     char        buf1[buf_size], buf2[buf_size], *sub_ver1, *sub_ver2;
     PREGInfo    pi1, pi2;
