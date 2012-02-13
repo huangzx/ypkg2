@@ -1966,17 +1966,18 @@ char *packages_get_list_attr2( YPackageList *pkg_list, int index, char *key )
 static int packages_download_progress_callback( void *arg,double dltotal, double dlnow, double ultotal, double ulnow )
 {
     YPackageDCB         *cb;
-
+    int res = 0;
     if( !arg )
         return 0;
 
     cb = (YPackageDCB *)arg;
     if( cb->dcb )
-        return cb->dcb( cb->dcb_arg, cb->package_name, dltotal, dlnow );
+        res = cb->dcb( cb->dcb_arg, cb->package_name, dltotal, dlnow );
     else if( cb->pcb )
-        return cb->pcb( cb->pcb_arg, cb->package_name, 2, dlnow / dltotal, NULL );
-    else
-        return 0;
+        res = !cb->pcb( cb->pcb_arg, cb->package_name, 2, dlnow / dltotal, NULL );
+
+//    printf("pcb return %d\n",res);
+    return res;
 
     //return cb->cb( dcb->arg, dltotal, dlnow );
 }
