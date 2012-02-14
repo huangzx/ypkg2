@@ -101,7 +101,7 @@ typedef struct _YPackageChangeList {
     char                    *name;
     char                    *version;
     int                     size;
-    int                     type; //self:1 ,depend:2, recommended:3
+    int                     type; //self:1 ,depend:2, recommended:3, upgrade: 4, downgrade: 5
     struct _YPackageChangeList    *prev;
 }YPackageChangeList;
 

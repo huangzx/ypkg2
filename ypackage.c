@@ -516,19 +516,20 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
 YPackageChangeList *packages_get_upgrade_list( YPackageManager *pm )
 {    
     int             len, i;
-    char            *package_name, *version;
+    char            *package_name, *version, *can_upgrade;
     YPackageList    *pkg_list;
     YPackageChangeList     *list, *cur_pkg;
 
     list = NULL;
 
-    pkg_list = packages_get_list( pm, 100, 0, "can_update", "1", 0, 0 );
+    pkg_list = packages_get_list( pm, 100, 0, "can_update", "%1", 1, 0 );
     if( pkg_list )
     {
         for( i = 0; i < pkg_list->cnt; i++ )
         {
             package_name = packages_get_list_attr( pkg_list, i, "name" );
             version = packages_get_list_attr( pkg_list, i, "version" );
+            can_upgrade = packages_get_list_attr( pkg_list, i, "can_update" );
             cur_pkg =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
             len = strlen( package_name );
             cur_pkg->name = (char *)malloc( len + 1 );
@@ -547,7 +548,15 @@ YPackageChangeList *packages_get_upgrade_list( YPackageManager *pm )
                 version = NULL;
             }
 
-            cur_pkg->type = 1;
+            if( can_upgrade && can_upgrade[0] )
+            {
+                cur_pkg->type = can_upgrade[0] == '1' ? 4 : 5;
+            }
+            else
+            {
+                cur_pkg->type = 4;
+            }
+
             cur_pkg->prev = list;
             list = cur_pkg;
         }
@@ -3621,7 +3630,18 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         version2 = packages_get_package_attr( pkg2, "version" );
         if( version && (strlen( version ) > 0) && version2 && (strlen( version2 ) > 0) )
         {
-            can_update = packages_compare_version( version, version2 ) < 0 ? "1" : "0";
+            switch( packages_compare_version( version2, version ) )
+            {
+                case 1:
+                    break;
+                    can_update = "1";
+                case 0:
+                    can_update = "0";
+                    break;
+                case -1:
+                    can_update = "-1";
+                    break;
+            }
         }
         else
         {
