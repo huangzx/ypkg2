@@ -2297,10 +2297,12 @@ YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package
     YPackageData    *pkg_data;
     YPackageChangeList    *list, *cur_pkg, *sub_list, *tmp_list;
 
+    /*
     if( packages_has_installed( pm, package_name, version ) )
     {
         return NULL;
     }
+    */
     
     list = NULL;
 
@@ -2383,10 +2385,12 @@ YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *pa
     YPackageData    *pkg_data;
     YPackageChangeList    *list, *cur_pkg, *sub_list, *tmp_list;
 
+    /*
     if( packages_has_installed( pm, package_name, NULL ) )
     {
         return NULL;
     }
+    */
     
     list = NULL;
 
