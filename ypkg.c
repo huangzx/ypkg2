@@ -343,9 +343,18 @@ int main( int argc, char **argv )
                     else
                         pkg_file =  packages_get_package_file_from_ypk( package_name );
 
+                    if( pkg = packages_get_package( pm, package_name, 1 ) )
+                    {
+                        version = packages_get_package_attr( pkg, "version" );
+                    }
+                    else
+                    {
+                        version = "Unknown";
+                    }
+
                     if( pkg_file )
                     {
-                        printf( COLOR_YELLO "* Contents of %s:\n" COLOR_RESET, package_name );
+                        printf( COLOR_YELLO "* Contents of %s_%s:\n" COLOR_RESET, package_name, version );
                         for( j = 0; j < pkg_file->cnt; j++ )
                         {
                             printf( "%s|%10s| %s\n",  packages_get_package_file_attr( pkg_file, j, "type"), packages_get_package_file_attr( pkg_file, j, "size"), packages_get_package_file_attr( pkg_file, j, "file") );
@@ -353,7 +362,7 @@ int main( int argc, char **argv )
                         packages_free_package_file( pkg_file );
 
                         printf( "\nFile: %d, Dir: %d, Link: %d, Size: %dK\n", pkg_file->cnt_file,  pkg_file->cnt_dir, pkg_file->cnt_link, pkg_file->size );
-                        printf( COLOR_YELLO "--- Contents of %s ---\n" COLOR_RESET, package_name );
+                        printf( COLOR_YELLO "--- Contents of %s_%s ---\n" COLOR_RESET, package_name, version );
                     }
                     else
                     {

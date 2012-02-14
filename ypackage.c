@@ -110,7 +110,7 @@ int packages_import_local_data( YPackageManager *pm )
 {
     int                 xml_ret, db_ret, is_desktop, i, list_len;
     char                xml_value, *sql, *sql_history, *sql_data, *sql_history_data, *sql_filelist, *idx, *data_key, *file_path, *file_path_sub, *list_line;
-    char                *package_name, *version, *install_time, *install_size, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *last_update;
+    char                 *saveptr, *package_name, *version, *install_time, *install_size, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *last_update;
     char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
     struct stat         statbuf, statbuf_sub;
     struct dirent       *entry, *entry_sub;
@@ -387,14 +387,14 @@ int packages_import_local_data( YPackageManager *pm )
                         {
                             if( list_line[0] != 'I' )
                             {
-                                file_type = strtok( list_line, " ,");
-                                file_file = strtok( NULL, " ,");
-                                file_size = strtok( NULL, " ,");
-                                file_perms = strtok( NULL, " ,");
-                                file_uid = strtok( NULL, " ,");
-                                file_gid = strtok( NULL, " ,");
-                                file_mtime = strtok( NULL, " ,");
-                                file_extra = strtok( NULL, " ,");
+                                file_type = strtok_r( list_line, " ,", &saveptr );
+                                file_file = strtok_r( NULL, " ,", &saveptr );
+                                file_size = strtok_r( NULL, " ,", &saveptr );
+                                file_perms = strtok_r( NULL, " ,", &saveptr );
+                                file_uid = strtok_r( NULL, " ,", &saveptr );
+                                file_gid = strtok_r( NULL, " ,", &saveptr );
+                                file_mtime = strtok_r( NULL, " ,", &saveptr );
+                                file_extra = strtok_r( NULL, " ,", &saveptr );
 
                                 db_ret = db_exec( &db, sql_filelist, 
                                         package_name,
@@ -516,7 +516,7 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
 YPackageChangeList *packages_get_upgrade_list( YPackageManager *pm )
 {    
     int             len, i;
-    char            *package_name;
+    char            *package_name, *version;
     YPackageList    *pkg_list;
     YPackageChangeList     *list, *cur_pkg;
 
@@ -528,11 +528,25 @@ YPackageChangeList *packages_get_upgrade_list( YPackageManager *pm )
         for( i = 0; i < pkg_list->cnt; i++ )
         {
             package_name = packages_get_list_attr( pkg_list, i, "name" );
+            version = packages_get_list_attr( pkg_list, i, "version" );
             cur_pkg =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
             len = strlen( package_name );
             cur_pkg->name = (char *)malloc( len + 1 );
             strncpy( cur_pkg->name, package_name, len );
             cur_pkg->name[len] = 0;
+
+            if( version)
+            {
+                len = strlen( version );
+                cur_pkg->version = (char *)malloc( len + 1 );
+                strncpy( cur_pkg->version, version, len );
+                cur_pkg->version[len] = 0;
+            }
+            else
+            {
+                version = NULL;
+            }
+
             cur_pkg->type = 1;
             cur_pkg->prev = list;
             list = cur_pkg;
@@ -557,7 +571,7 @@ int packages_upgrade_list( YPackageManager *pm, YPackageChangeList *list, ypk_pr
         cur_pkg = list;
         
         //printf("upgrading %s ...\n", cur_pkg->name );
-        packages_install_package( pm, cur_pkg->name, cb, cb_arg  );
+        packages_install_package( pm, cur_pkg->name, cur_pkg->version, cb, cb_arg  );
         list = list->prev;
     }
 }
@@ -575,6 +589,8 @@ void packages_free_upgrade_list( YPackageChangeList *list )
         cur_pkg = list;
         list = list->prev;
         free( cur_pkg->name );
+        if( cur_pkg->version )
+            free( cur_pkg->version );
         free( cur_pkg );
     }
 }
@@ -736,28 +752,26 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
             do_replace = 0;
             can_update = "0";
             installed = "0";
-            db_query( &db, "select version, installed from universe where name=?", package_name, NULL);
+
+            db_query( &db, "select version from world where name=?", package_name, NULL);
             if( db_fetch_assoc( &db ) )
             {
                 old_version = db_get_value_by_key( &db, "version" );
-                installed =  db_get_value_by_key( &db, "installed" );
 
-                if( installed[0] == '1' )
+                if( version && (strlen( version ) > 0) && old_version && (strlen( old_version ) > 0)  )
                 {
-                    if( version && (strlen( version ) > 0) && old_version && (strlen( old_version ) > 0)  )
-                    {
-                            cmp_ret = packages_compare_version( version, old_version );
-                            if( cmp_ret == 1 )
-                            {
-                                can_update = "1"; //can upgrade
-                            }
-                            else if( cmp_ret == -1 )
-                            {
-                                can_update = "-1"; //can downgrade
-                            }
-                    }
+                        cmp_ret = packages_compare_version( version, old_version );
+                        if( cmp_ret == 1 )
+                        {
+                            can_update = "1"; //can upgrade
+                        }
+                        else if( cmp_ret == -1 )
+                        {
+                            can_update = "-1"; //can downgrade
+                        }
                 }
 
+                installed = "1";
                 do_replace = 1;
                 db_cleanup( &db );
             }
@@ -1117,23 +1131,92 @@ int packages_has_installed( YPackageManager *pm, char *name, char *version )
 
 int packages_exists( YPackageManager *pm, char *name, char *version )
 {
+    int     count, ret;
+    char    *version_installed;
     DB      db;
-    int     count;
 
     if( !pm || !name )
         return -1;
 
     db_init( &db, pm->db_name, OPEN_READ );
-    if( version)
-        db_query( &db, "select count(*) from universe where name=? and version=?", name, version, NULL);
-    else
-        db_query( &db, "select count(*) from universe where name=?", name, NULL);
 
-    db_fetch_num( &db );
-    count = atoi( db_get_value_by_index( &db, 0 ) );
+    if( version )
+    {
+        version_installed = NULL;
+
+        db_query( &db, "select version from universe where name=?", name, NULL);
+
+        if( db_fetch_num( &db ) )
+        {
+            version_installed = db_get_value_by_index( &db, 0 );
+            if( version[0] == '>' || version[0] == '=' || version[0] == '!' || version[0] == '<')
+            {
+                if( version[1] == '=' )
+                {
+                    ret = packages_compare_version( version_installed, version + 2 );
+                    switch( version[0] )
+                    {
+                        case '>':
+                            ret = ret != -1;
+                            break;
+
+                        case '!':
+                            ret = ret != 0;
+                            break;
+
+                        case '<':
+                            ret = ret != 1;
+                            break;
+
+                        default:
+                            ret = ret == 0;
+                    }
+                }
+                else
+                {
+                    ret = packages_compare_version( version_installed, version + 1 );
+                    switch( version[0] )
+                    {
+                        case '=':
+                            ret = ret == 0;
+                            break;
+
+                        case '>':
+                            ret = ret == 1;
+                            break;
+
+                        case '<':
+                            ret = ret == -1;
+                            break;
+
+                        default:
+                            ret = ret == 0;
+                    }
+                }
+            }
+            else
+            {
+                ret = packages_compare_version( version, version_installed ) == 0;
+            }
+        }
+        else
+        {
+            ret = 0;
+        }
+
+    }
+    else
+    {
+        db_query( &db, "select count(*) from universe where name=?", name, NULL);
+        db_fetch_num( &db );
+        count = atoi( db_get_value_by_index( &db, 0 ) );
+        ret = count > 0;
+    }
+
+
     db_close( &db );
 
-    return count > 0;
+    return ret;
 }
 
 YPackage *packages_get_package( YPackageManager *pm, char *name, int installed )
@@ -1561,7 +1644,7 @@ YPackageFile *packages_get_package_file_from_ypk( char *ypk_path )
     int                 ret, file_count, cur_file_index;
     size_t              pkginfo_len = 0, filelist_len = 0;
     void                *pkginfo = NULL, *filelist = NULL;
-    char                *package_name, *yversion, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra;
+    char                *saveptr, *package_name, *yversion, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra;
     char                *list_line, *cur_key, *cur_value, **attr_keys_offset;
     char                *attr_keys[] = { "type", "file", "size", "perms", "uid", "gid", "mtime", "extra", NULL  }; 
     YPackageFile        *pkg_file = NULL;
@@ -1602,22 +1685,22 @@ YPackageFile *packages_get_package_file_from_ypk( char *ypk_path )
             }
 
             attr_keys_offset = attr_keys;
-            cur_value = strtok( list_line, " ,");
+            cur_value = strtok_r( list_line, " ,", &saveptr );
             while( cur_key = *attr_keys_offset++ )
             {
                 hash_table_list_add_data( pkg_file->htl, cur_file_index, cur_key, cur_value );
-                cur_value =  strtok( NULL, " ,");
+                cur_value =  strtok_r( NULL, " ,", &saveptr );
             }
             cur_file_index++;
         }
         else
         {
-            strtok( list_line, " ,");
-            pkg_file->cnt_file = atoi( strtok( NULL, " ,") );
-            pkg_file->cnt_dir = atoi( strtok( NULL, " ,") );
-            pkg_file->cnt_link = atoi( strtok( NULL, " ,") );
-            strtok( NULL, " ,");
-            pkg_file->size = atoi( strtok( NULL, " ,") );
+            strtok_r( list_line, " ,", &saveptr );
+            pkg_file->cnt_file = atoi( strtok_r( NULL, " ,", &saveptr ) );
+            pkg_file->cnt_dir = atoi( strtok_r( NULL, " ,", &saveptr ) );
+            pkg_file->cnt_link = atoi( strtok_r( NULL, " ,", &saveptr ) );
+            strtok_r( NULL, " ,", &saveptr );
+            pkg_file->size = atoi( strtok_r( NULL, " ,", &saveptr ) );
         }
         free( list_line );
         list_line = util_mem_gets( NULL );
@@ -1966,18 +2049,17 @@ char *packages_get_list_attr2( YPackageList *pkg_list, int index, char *key )
 static int packages_download_progress_callback( void *arg,double dltotal, double dlnow, double ultotal, double ulnow )
 {
     YPackageDCB         *cb;
-    int res = 0;
+
     if( !arg )
         return 0;
 
     cb = (YPackageDCB *)arg;
     if( cb->dcb )
-        res = cb->dcb( cb->dcb_arg, cb->package_name, dltotal, dlnow );
+        return cb->dcb( cb->dcb_arg, cb->package_name, dltotal, dlnow );
     else if( cb->pcb )
-        res = !cb->pcb( cb->pcb_arg, cb->package_name, 2, dlnow / dltotal, NULL );
-
-//    printf("pcb return %d\n",res);
-    return res;
+        return cb->pcb( cb->pcb_arg, cb->package_name, 2, dlnow / dltotal, NULL );
+    else
+        return 0;
 
     //return cb->cb( dcb->arg, dltotal, dlnow );
 }
@@ -2098,7 +2180,7 @@ return_point:
 /*
  * packages_install_package
  */
-int packages_install_package( YPackageManager *pm, char *package_name, ypk_progress_callback cb, void *cb_arg  )
+int packages_install_package( YPackageManager *pm, char *package_name, char *version, ypk_progress_callback cb, void *cb_arg  )
 {
     int                 return_code;
     char                *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
@@ -2114,6 +2196,11 @@ int packages_install_package( YPackageManager *pm, char *package_name, ypk_progr
     }
 
     return_code = 0;
+    if( !packages_exists( pm, package_name, version ) )
+    {
+        return -2;
+    }
+
     pkg = packages_get_package( pm, package_name, 0 );
     if( !pkg )
     {
@@ -2194,14 +2281,14 @@ return_point:
 }
 
 
-YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name )
+YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name, char *version )
 {
     int             i, len;
-    char            *token, *depend;
+    char            *token, *saveptr, *depend, *version2, *tmp, *tmp2;
     YPackageData    *pkg_data;
-    YPackageChangeList    *list, *cur_pkg, *sub_list, *tmp;
+    YPackageChangeList    *list, *cur_pkg, *sub_list, *tmp_list;
 
-    if( packages_has_installed( pm, package_name, NULL ) )
+    if( packages_has_installed( pm, package_name, version ) )
     {
         return NULL;
     }
@@ -2215,31 +2302,60 @@ YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package
             depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
             if( depend )
             {
-                token = strtok( depend, " ,");
+                version2 = NULL;
+                token = strtok_r( depend, " ,", &saveptr );
                 while( token )
                 {
-                    if( !packages_has_installed( pm, token, NULL ) )
+                    tmp = util_strcat( token, NULL );
+                    if( version2 = strchr( tmp, '(' ) )
+                    {
+                        *version2++ = 0;
+
+                        while( *version2 == ' ' )
+                            version2++;
+
+                        if( tmp2 = strchr( version2, ')' ) )
+                            *tmp2 = 0;
+                    }
+
+                    if( !packages_has_installed( pm, tmp, version2 ) )
                     {
                         cur_pkg =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
-                        len = strlen( token );
+                        len = strlen( tmp );
                         cur_pkg->name = (char *)malloc( len + 1 );
-                        strncpy( cur_pkg->name, token, len );
+                        strncpy( cur_pkg->name, tmp, len );
                         cur_pkg->name[len] = 0;
+                        
+                        if( version2 )
+                        {
+                            len = strlen( version2 );
+                            cur_pkg->version = (char *)malloc( len + 1 );
+                            strncpy( cur_pkg->version, version2, len );
+                            cur_pkg->version[len] = 0;
+                        }
+                        else
+                        {
+                            cur_pkg->version = NULL;
+                        }
+
                         cur_pkg->type = 2;
                         cur_pkg->prev = list;
                         list = cur_pkg;
 
-                        sub_list = packages_get_depend_list( pm, cur_pkg->name );
+                        sub_list = packages_get_depend_list( pm, cur_pkg->name, cur_pkg->version );
                         if( sub_list )
                         {
-                            tmp = sub_list;
-                            while( tmp->prev )
-                                tmp = tmp->prev;
-                            tmp->prev = list;
+                            tmp_list = sub_list;
+                            while( tmp_list->prev )
+                                tmp_list = tmp_list->prev;
+                            tmp_list->prev = list;
                             list = sub_list;
                         }
                     }
-                    token = strtok( NULL, " ,");
+
+                    free( tmp );
+                    version2 = NULL;
+                    token = strtok_r( NULL, " ,", &saveptr );
                 }
             }
 
@@ -2247,15 +2363,16 @@ YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package
         packages_free_package_data( pkg_data );
     }
 
+    packages_remove_duplicate_item( list );
     return list;
 }
 
-YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name )
+YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name, char *version )
 {
     int             i, len;
-    char            *token, *recommended;
+    char            *token, *saveptr, *recommended, *version2, *tmp, *tmp2;
     YPackageData    *pkg_data;
-    YPackageChangeList    *list, *cur_pkg, *sub_list, *tmp;
+    YPackageChangeList    *list, *cur_pkg, *sub_list, *tmp_list;
 
     if( packages_has_installed( pm, package_name, NULL ) )
     {
@@ -2271,46 +2388,104 @@ YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *pa
             recommended = packages_get_package_data_attr( pkg_data, i, "data_recommended");
             if( recommended )
             {
-                token = strtok( recommended, " ,");
+                version2 = NULL;
+                token = strtok_r( recommended, " ,", &saveptr );
                 while( token )
                 {
-                    if( !packages_has_installed( pm, token, NULL ) )
+                    tmp = util_strcat( token, NULL );
+                    if( version2 = strchr( tmp, '(' ) )
+                    {
+                        *version2++ = 0;
+
+                        while( *version2 == ' ' )
+                            version2++;
+
+                        if( tmp2 = strchr( version2, ')' ) )
+                            *tmp2 = 0;
+                    }
+
+                    if( !packages_has_installed( pm, tmp, version2 ) )
                     {
                         cur_pkg =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
-                        len = strlen( token );
+                        len = strlen( tmp );
                         cur_pkg->name = (char *)malloc( len + 1 );
-                        strncpy( cur_pkg->name, token, len );
+                        strncpy( cur_pkg->name, tmp, len );
                         cur_pkg->name[len] = 0;
+
+                        if( version2 )
+                        {
+                            len = strlen( version2 );
+                            cur_pkg->version = (char *)malloc( len + 1 );
+                            strncpy( cur_pkg->version, version2, len );
+                            cur_pkg->version[len] = 0;
+                        }
+                        else
+                        {
+                            cur_pkg->version = NULL;
+                        }
+
                         cur_pkg->type = 3;
                         cur_pkg->prev = list;
                         list = cur_pkg;
 
-                        sub_list = packages_get_recommended_list( pm, cur_pkg->name );
+                        sub_list = packages_get_recommended_list( pm, cur_pkg->name, cur_pkg->version );
                         if( sub_list )
                         {
-                            tmp = sub_list;
-                            while( tmp->prev )
-                                tmp = tmp->prev;
-                            tmp->prev = list;
+                            tmp_list = sub_list;
+                            while( tmp_list->prev )
+                                tmp_list = tmp_list->prev;
+                            tmp_list->prev = list;
                             list = sub_list;
                         }
                     }
-                    token = strtok( NULL, " ,");
+                    free( tmp );
+                    version2 = NULL;
+                    token = strtok_r( NULL, " ,", &saveptr );
                 }
             }
         }
         packages_free_package_data( pkg_data );
     }
-
+    packages_remove_duplicate_item( list );
     return list;
 }
 
-YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name )
+YPackageChangeList *packages_remove_duplicate_item( YPackageChangeList *change_list )
+{
+    YPackageChangeList    *cur_pkg, *cmp_pkg, *tmp_pkg;
+
+    cur_pkg = change_list;
+    cmp_pkg = cur_pkg;
+
+    while( cur_pkg )
+    {
+        while( cmp_pkg )
+        {
+            if( cmp_pkg->prev && (!strcmp( cur_pkg->name, cmp_pkg->prev->name ) ) )
+            {
+                tmp_pkg = cmp_pkg->prev;
+                cmp_pkg->prev = cmp_pkg->prev->prev;
+                free( tmp_pkg->name );
+                if( tmp_pkg->version )
+                    free( tmp_pkg->version );
+                free( tmp_pkg );
+            }
+            cmp_pkg = cmp_pkg->prev;
+        }
+
+        cur_pkg = cur_pkg->prev;
+        cmp_pkg = cur_pkg;
+    }
+
+    return change_list;
+}
+
+YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name, char *version )
 {
     int                     i, len;
-    char                    *token, *depend, *dev, *bdepend;
+    char                    *token, *saveptr, *depend, *dev, *bdepend, *tmp;
     YPackageData            *pkg_data;
-    YPackageChangeList      *list, *cur_pkg, *sub_list, *tmp;
+    YPackageChangeList      *list, *cur_pkg;
 
     list = NULL;
 
@@ -2321,14 +2496,14 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
             depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
             if( depend )
             {
-                token = strtok( depend, " ,");
+                token = strtok_r( depend, " ,", &saveptr );
                 while( token )
                 {
                     dev = util_strcat( token, "-dev", NULL );
                     if( !packages_exists( pm, dev, NULL ) )
                     {
                         free( dev );
-                        token = strtok( NULL, " ,");
+                        token = strtok_r( NULL, " ,", &saveptr );
                         continue;
                     }
 
@@ -2339,19 +2514,20 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
                         cur_pkg->name = (char *)malloc( len + 1 );
                         strncpy( cur_pkg->name, dev, len );
                         cur_pkg->name[len] = 0;
+                        cur_pkg->version = NULL;
                         cur_pkg->type = 2;
                         cur_pkg->prev = list;
                         list = cur_pkg;
                     }
                     free( dev );
-                    token = strtok( NULL, " ,");
+                    token = strtok_r( NULL, " ,", &saveptr );
                 }
             }
 
             bdepend = packages_get_package_data_attr( pkg_data, i, "data_bdepend");
             if( bdepend )
             {
-                token = strtok( bdepend, " ,");
+                token = strtok_r( bdepend, " ,", &saveptr );
                 while( token )
                 {
                     if( !packages_has_installed( pm, token, NULL ) )
@@ -2361,11 +2537,12 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
                         cur_pkg->name = (char *)malloc( len + 1 );
                         strncpy( cur_pkg->name, token, len );
                         cur_pkg->name[len] = 0;
+                        cur_pkg->version = NULL;
                         cur_pkg->type = 2;
                         cur_pkg->prev = list;
                         list = cur_pkg;
                     }
-                    token = strtok( NULL, " ,");
+                    token = strtok_r( NULL, " ,", &saveptr );
                 }
             }
 
@@ -2373,6 +2550,7 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
         packages_free_package_data( pkg_data );
     }
 
+    packages_remove_duplicate_item( list );
     return list;
 }
 
@@ -2388,7 +2566,12 @@ static void packages_free_change_list( YPackageChangeList *list )
     {
         cur_pkg = list;
         list = list->prev;
+
         free( cur_pkg->name );
+
+        if( cur_pkg->version )
+            free( cur_pkg->version );
+
         free( cur_pkg );
     }
 }
@@ -2396,19 +2579,19 @@ static void packages_free_change_list( YPackageChangeList *list )
 /*
  * packages_get_install_list
  */
-YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *package_name )
+YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *package_name, char *version )
 {
     int             len;
     YPackageChangeList    *list, *depend, *cur_pkg;
 
-    if( packages_has_installed( pm, package_name, NULL ) )
+    if( packages_has_installed( pm, package_name, version ) )
     {
         return NULL;
     }
     
     list = NULL;
 
-    depend = packages_get_recommended_list( pm, package_name );
+    depend = packages_get_recommended_list( pm, package_name, version );
     if( depend )
     {
         cur_pkg = depend;
@@ -2423,11 +2606,24 @@ YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *packag
     cur_pkg->name = (char *)malloc( len + 1 );
     strncpy( cur_pkg->name, package_name, len );
     cur_pkg->name[len] = 0;
+
+    if( version )
+    {
+        len = strlen( version );
+        cur_pkg->version = (char *)malloc( len + 1 );
+        strncpy( cur_pkg->version, version, len );
+        cur_pkg->version[len] = 0;
+    }
+    else
+    {
+        cur_pkg->version = NULL;
+    }
+
     cur_pkg->type = 1;
     cur_pkg->prev = list;
     list = cur_pkg;
 
-    depend = packages_get_depend_list( pm, package_name );
+    depend = packages_get_depend_list( pm, package_name, version );
     if( depend )
     {
         cur_pkg = depend;
@@ -2449,9 +2645,9 @@ void packages_free_install_list( YPackageChangeList *list )
 /*
  * packages_get_dev_list
  */
-YPackageChangeList *packages_get_dev_list( YPackageManager *pm, char *package_name )
+YPackageChangeList *packages_get_dev_list( YPackageManager *pm, char *package_name, char *version )
 {
-    return packages_get_bdepend_list( pm, package_name );
+    return packages_get_bdepend_list( pm, package_name, version );
 }
 
 void packages_free_dev_list( YPackageChangeList *list )
@@ -2476,7 +2672,7 @@ int packages_install_list( YPackageManager *pm, YPackageChangeList *list, ypk_pr
     {
         cur_pkg = list;
         
-        ret = packages_install_package( pm, cur_pkg->name, cb, cb_arg );
+        ret = packages_install_package( pm, cur_pkg->name,cur_pkg->version, cb, cb_arg );
         if( ret )
         {
             return -1;
@@ -2498,6 +2694,12 @@ YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package
     YPackageList    *pkg_list;
     YPackageChangeList     *list, *cur_pkg;
 
+
+    if( !packages_has_installed( pm, package_name, NULL ) )
+    {
+        return NULL;
+    }
+
     list = NULL;
 
     cur_pkg =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
@@ -2515,12 +2717,19 @@ YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package
         for( i = 0; i < pkg_list->cnt; i++ )
         {
             name =  packages_get_list_attr( pkg_list, i, "name");
+
+            if( !packages_has_installed( pm, name, NULL ) )
+            {
+                continue;
+            }
+
             size =  packages_get_list_attr( pkg_list, i, "size");
             cur_pkg =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
             len = strlen( name );
             cur_pkg->name = (char *)malloc( len + 1 );
             strncpy( cur_pkg->name, name, len );
             cur_pkg->name[len] = 0;
+            cur_pkg->version = NULL;
             cur_pkg->type = 1;
             cur_pkg->size = atoi( size );
             cur_pkg->prev = list;
@@ -2566,7 +2775,7 @@ void packages_free_remove_list( YPackageChangeList *list )
 int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, int extra_max_len )
 {
     int                 i, ret, return_code = 0;
-    char                *depend, *conflict, *token, *package_name, *arch, *version, *version2;
+    char                *depend, *conflict, *token, *saveptr, *package_name, *arch, *version, *version2, *tmp, *tmp2;
     struct utsname      buf;
     YPackage            *pkg = NULL, *pkg2 = NULL;
     YPackageData        *pkg_data = NULL;
@@ -2617,10 +2826,23 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
         depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
         if( depend )
         {
-            token = strtok( depend, " ,");
+            version2 = NULL;
+            token = strtok_r( depend, " ,", &saveptr );
             while( token )
             {
-                if( !packages_has_installed( pm, token, NULL ) )
+                tmp = util_strcat( token, NULL );
+                if( version2 = strchr( tmp, '(' ) )
+                {
+                    *version2++ = 0;
+
+                    while( *version2 == ' ' )
+                        version2++;
+
+                    if( tmp2 = strchr( version2, ')' ) )
+                        *tmp2 = 0;
+                }
+
+                if( !packages_has_installed( pm, tmp, version2 ) )
                 {
                     return_code = -3; 
 
@@ -2629,9 +2851,13 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
                         strncpy( extra, token, extra_max_len );
                     }
 
+                    free( tmp );
                     goto return_point;
                 }
-                token = strtok( NULL, " ,");
+
+                free( tmp );
+                version2 = NULL;
+                token = strtok_r( NULL, " ,", &saveptr );
             }
         }
 
@@ -2639,10 +2865,23 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
         conflict = packages_get_package_data_attr( pkg_data, i, "data_conflict");
         if( conflict )
         {
-            token = strtok( conflict, " ,");
+            version2 = NULL;
+            token = strtok_r( conflict, " ,", &saveptr );
             while( token )
             {
-                if( packages_has_installed( pm, token, NULL ) )
+                tmp = util_strcat( token, NULL );
+                if( version2 = strchr( tmp, '(' ) )
+                {
+                    *version2++ = 0;
+
+                    while( *version2 == ' ' )
+                        version2++;
+
+                    if( tmp2 = strchr( version2, ')' ) )
+                        *tmp2 = 0;
+                }
+
+                if( packages_has_installed( pm, tmp, version2 ) )
                 {
                     return_code = -4; 
 
@@ -2651,9 +2890,12 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
                         strncpy( extra, token, extra_max_len );
                     }
 
+                    free( tmp );
                     goto return_point;
                 }
-                token = strtok( NULL, " ,");
+                free( tmp );
+                version2 = NULL;
+                token = strtok_r( NULL, " ,", &saveptr );
             }
         }
     }
@@ -2986,7 +3228,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     size_t              pkginfo_len, filelist_len;
     void                *pkginfo, *filelist;
     char                *msg, *sql, *sql_data, *sql_filelist, *sql_filelist2, *install_file, *list_line;
-    char                *package_name, *version, *version2, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *can_update;
+    char                *saveptr, *package_name, *version, *version2, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *can_update;
     char                tmp_ypk_install[] = "/tmp/ypkinstall.XXXXXX";
     char                extra[32];
     YPackage            *pkg, *pkg2;
@@ -3297,14 +3539,14 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         {
             if( list_line[0] != 'I' )
             {
-                file_type = strtok( list_line, " ,");
-                file_file = strtok( NULL, " ,");
-                file_size = strtok( NULL, " ,");
-                file_perms = strtok( NULL, " ,");
-                file_uid = strtok( NULL, " ,");
-                file_gid = strtok( NULL, " ,");
-                file_mtime = strtok( NULL, " ,");
-                file_extra = strtok( NULL, " ,");
+                file_type = strtok_r( list_line, " ,", &saveptr );
+                file_file = strtok_r( NULL, " ,", &saveptr );
+                file_size = strtok_r( NULL, " ,", &saveptr );
+                file_perms = strtok_r( NULL, " ,", &saveptr );
+                file_uid = strtok_r( NULL, " ,", &saveptr );
+                file_gid = strtok_r( NULL, " ,", &saveptr );
+                file_mtime = strtok_r( NULL, " ,", &saveptr );
+                file_extra = strtok_r( NULL, " ,", &saveptr );
 
                 if( file_file )
                 {
@@ -3345,14 +3587,14 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     {
         if( list_line[0] != 'I' )
         {
-            file_type = strtok( list_line, " ,");
-            file_file = strtok( NULL, " ,");
-            file_size = strtok( NULL, " ,");
-            file_perms = strtok( NULL, " ,");
-            file_uid = strtok( NULL, " ,");
-            file_gid = strtok( NULL, " ,");
-            file_mtime = strtok( NULL, " ,");
-            file_extra = strtok( NULL, " ,");
+            file_type = strtok_r( list_line, " ,", &saveptr );
+            file_file = strtok_r( NULL, " ,", &saveptr );
+            file_size = strtok_r( NULL, " ,", &saveptr );
+            file_perms = strtok_r( NULL, " ,", &saveptr );
+            file_uid = strtok_r( NULL, " ,", &saveptr );
+            file_gid = strtok_r( NULL, " ,", &saveptr );
+            file_mtime = strtok_r( NULL, " ,", &saveptr );
+            file_extra = strtok_r( NULL, " ,", &saveptr );
 
 
             ret = db_exec( &db, sql_filelist2, 

@@ -176,10 +176,10 @@ int yget_download_progress_callback( void *cb_arg, char *package_name, double dl
 }
 
 
-int yget_install_package( YPackageManager *pm, char *package_name )
+int yget_install_package( YPackageManager *pm, char *package_name, char *version )
 {
     int                 ret, return_code;
-    char                *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
+    char                *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_version = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
     YPackage            *pkg;
     //YPackageDCB         dcb;
     DownloadStat        dl_stat;
@@ -191,10 +191,16 @@ int yget_install_package( YPackageManager *pm, char *package_name )
     packages_log( pm, package_name, "initialization" );
 
     return_code = 0;
+    if( !packages_exists( pm, package_name, version ) )
+    {
+        printf( COLOR_RED "Error: Can't find the package %s(%s).\n" COLOR_RESET, package_name, version );
+        return -2;
+    }
+
     pkg = packages_get_package( pm, package_name, 0 );
     if( !pkg )
     {
-        printf( COLOR_RED "Error: Can't find the package %s.\n" COLOR_RESET, package_name );
+        printf( COLOR_RED "Error: Can't find the package %s(%s).\n" COLOR_RESET, package_name, version );
         return -2;
     }
 
@@ -329,7 +335,7 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list )
         cur_pkg = list;
         
         printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
-        ret = yget_install_package( pm, cur_pkg->name );
+        ret = yget_install_package( pm, cur_pkg->name, cur_pkg->version );
         if( !ret )
         {
             printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
@@ -537,12 +543,13 @@ int main( int argc, char **argv )
                     cur_package->name = (char *)malloc( len + 1 );
                     strncpy( cur_package->name, package_name, len );
                     cur_package->name[len] = 0;
+                    cur_package->version = util_strcat( version, NULL );
                     cur_package->type = 1;
                     cur_package->prev = install_list;
                     install_list = cur_package;
 
 
-                    sub_list = packages_get_depend_list( pm, package_name );
+                    sub_list = packages_get_depend_list( pm, package_name, version );
                     if( sub_list )
                     {
                         cur_package = sub_list;
@@ -553,7 +560,7 @@ int main( int argc, char **argv )
                     }
 
 
-                    sub_list = packages_get_recommended_list( pm, package_name );
+                    sub_list = packages_get_recommended_list( pm, package_name, version );
                     if( sub_list )
                     {
                         cur_package = sub_list;
@@ -637,7 +644,7 @@ int main( int argc, char **argv )
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
-                    install_list = packages_get_dev_list( pm, package_name );
+                    install_list = packages_get_dev_list( pm, package_name, NULL );
                     confirm = 'N';
 
                     if( install_list )
@@ -831,11 +838,18 @@ int main( int argc, char **argv )
                     tmp = packages_get_package_data_attr( pkg_data, 0, "data_install_size");
                     install_size = tmp ? atoi( tmp ) : 0;
 
+                    repo = packages_get_package_attr( pkg, "repo");
+                    if(repo == NULL)
+                    {
+                        repo = "stable";
+                    }
+
                     printf( 
-                            "Name: %s\nVersion: %s\nArch: %s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nDescription: %s\nHomepage: %s\n", 
+                            "Name: %s\nVersion: %s\nArch: %s\nRepo:%s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nDescription: %s\nHomepage: %s\n", 
                             package_name,
                             pkg2 ? packages_get_package_attr( pkg2, "version") : packages_get_package_attr( pkg, "version"), 
                             packages_get_package_attr( pkg, "arch"), 
+                            repo,
                             packages_get_package_attr( pkg, "category"), 
                             packages_get_package_attr( pkg, "priority"), 
                             installed,
@@ -851,9 +865,9 @@ int main( int argc, char **argv )
                             packages_get_package_attr( pkg, "uri"), 
                             install_size > 1000000 ? install_size / 1000000 : (install_size > 1000 ? install_size / 1000 : install_size), 
                             install_size > 1000000 ? 'M' : (install_size > 1000 ? 'K' : 'B'), 
-                            packages_get_package_data_attr( pkg_data, 0, "data_depend"),  //depend
-                            packages_get_package_data_attr( pkg_data, 0, "data_bdepend"),  //bdepend
-                            packages_get_package_data_attr( pkg_data, 0, "data_recommended"),  //recommended
+                            util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_depend"), ',', ' ' ),  //depend
+                            util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_bdepend"), ',', ' ' ),  //bdepend
+                            util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_recommended"), ',', ' ' ),  //recommended
                             packages_get_package_data_attr( pkg_data, 0, "data_conflict"),  //conflict
                             packages_get_package_attr( pkg, "description"),
                             packages_get_package_attr( pkg, "homepage")

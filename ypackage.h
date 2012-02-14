@@ -99,6 +99,7 @@ typedef struct {
 
 typedef struct _YPackageChangeList {
     char                    *name;
+    char                    *version;
     int                     size;
     int                     type; //self:1 ,depend:2, recommended:3
     struct _YPackageChangeList    *prev;
@@ -220,15 +221,24 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
 int packages_download_package( YPackageManager *pm, char *package_name, char *url, char *dest, int force, ypk_download_callback dcb, void *dcb_arg, ypk_progress_callback pcb, void *pcb_arg  );
 int packages_exec_script( char *script, char *package_name, char *version, char *version2, char *action );
 int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int force, ypk_progress_callback cb, void *cb_arg );
-int packages_install_package( YPackageManager *pm, char *package_name, ypk_progress_callback cb, void *cb_arg  );
+int packages_install_package( YPackageManager *pm, char *package_name, char *version, ypk_progress_callback cb, void *cb_arg  );
 //int packages_install_history_package( YPackageManager *pm, char *package_name, char *version );
 
-YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *package_name );
-YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name );
-YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name );
-YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name );
+YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *package_name, char *version );
+
+YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name,char *version );
+
+YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name, char *version );
+
+YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name, char *version );
+
+YPackageChangeList *packages_remove_duplicate_item( YPackageChangeList *change_list );
+
 void packages_free_install_list( YPackageChangeList *list );
-YPackageChangeList *packages_get_dev_list( YPackageManager *pm, char *package_name );
+
+
+YPackageChangeList *packages_get_dev_list( YPackageManager *pm, char *package_name, char *version );
+
 void packages_free_dev_list( YPackageChangeList *list );
 int packages_install_list( YPackageManager *pm, YPackageChangeList *list, ypk_progress_callback cb, void *cb_arg  );
 

@@ -124,7 +124,18 @@ char *util_mem_gets( char *mem )
     return str;
 }
 
-char *util_strcat(char *first, ...)
+char *util_chr_replace( char *str, char chr_s, char chr_d )
+{
+    char *p;
+
+    while( p = strchr( str, chr_s ) )
+    {
+        *p = chr_d;
+    }
+    return str;
+}
+
+char *util_strcat( char *first, ... )
 {
     va_list ap;
     char    *arg, *result;
