@@ -2,9 +2,9 @@
  *
  * Copyright (c) 2011-2012 Ylmf OS
  *
- * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
+ * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.2.3
+ * Date: 2012.2.20
  */
 #define LIBYPK 1
 #include "ypackage.h"
@@ -466,6 +466,10 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
         free(content.text);
         free(target_url);
         target_url = NULL;
+        if( cb )
+        {
+            cb( cb_arg, "*", 1, 1, "Connection fails, check your network and configuration." );
+        }
         return -1; 
     }
 
@@ -2720,6 +2724,7 @@ YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package
     cur_pkg->name = (char *)malloc( len + 1 );
     strncpy( cur_pkg->name, package_name, len );
     cur_pkg->name[len] = 0;
+    cur_pkg->version = NULL;
     cur_pkg->type = 1;
     cur_pkg->prev = NULL;
     list = cur_pkg;
@@ -2743,7 +2748,7 @@ YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package
             strncpy( cur_pkg->name, name, len );
             cur_pkg->name[len] = 0;
             cur_pkg->version = NULL;
-            cur_pkg->type = 1;
+            cur_pkg->type = 2;
             cur_pkg->size = atoi( size );
             cur_pkg->prev = list;
             list = cur_pkg;
@@ -3593,7 +3598,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
 
     //update file list
     db_exec( &db, "delete from world_file where name=?", package_name, NULL );  
-    sql_filelist2 = "insert into world_file (name, version, type, file, size, perms, uid, gid, mtime) values (?, ?, ?, ?, ?, ?, ?, ?, ?)"; 
+    sql_filelist2 = "insert into world_file (name, version, type, file, size, perms, uid, gid, mtime, extra) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; 
 
     list_line = util_mem_gets( filelist );
     while( list_line )
@@ -3619,6 +3624,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
                     file_perms ? file_perms : "",
                     file_uid ? file_uid : "",
                     file_gid ? file_gid : "",
+                    file_mtime ? file_mtime : "",
                     file_extra ? file_extra : "",
                     NULL );
         }

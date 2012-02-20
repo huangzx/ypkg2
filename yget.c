@@ -2,9 +2,9 @@
  *
  * Copyright (c) 2011-2012 Ylmf OS
  *
- * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
+ * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
  * Version: 0.1
- * Date: 2012.2.3
+ * Date: 2012.2.20
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -468,43 +468,63 @@ int main( int argc, char **argv )
             }
             else
             {
-
+                remove_list = NULL;
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
-                    remove_list = packages_get_remove_list( pm, package_name );
-                    confirm = 'N';
+                    cur_package = packages_get_remove_list( pm, package_name );
 
-                    if( remove_list )
+                    if( cur_package )
                     {
-                        printf( "Remove: %s", remove_list->name );
-                        cur_package = remove_list->prev;
-                        while( cur_package )
-                        {
-                            printf(",%s ", cur_package->name );
-                            cur_package = cur_package->prev;
-                        }
-
-                        if( yes )
-                        {
-                            confirm = 'Y';
-                        }
-                        else
-                        {
-                            printf( "\nDo you want to continue [y/N]?" );
-                            confirm = getchar();
-                        }
-
-                        if( confirm == 'Y' || confirm == 'y' )
-                        {
-                            packages_remove_list( pm, remove_list, yget_progress_callback, pm );
-                        }
-                        packages_free_remove_list( remove_list );
+                        cur_package->prev = remove_list;
+                        remove_list = cur_package;
                     }
                     else
                     {
                         printf( "%s has no installed.\n", package_name );
                     }
+                }
+
+                confirm = 'N';
+
+                if( remove_list )
+                {
+                    printf( "Remove:" );
+                    cur_package = remove_list;
+                    while( cur_package )
+                    {
+                        if( cur_package->type == 1 )
+                            printf(" %s", cur_package->name );
+
+                        cur_package = cur_package->prev;
+                    }
+
+                    printf( "\nAuto-remove:" );
+                    cur_package = remove_list;
+                    while( cur_package )
+                    {
+                        if( cur_package->type == 2 )
+                            printf(" %s", cur_package->name );
+
+                        cur_package = cur_package->prev;
+                    }
+
+                    if( yes )
+                    {
+                        confirm = 'Y';
+                    }
+                    else
+                    {
+                        printf( "\nDo you want to continue [y/N]?" );
+                        confirm = getchar();
+                        getchar();
+                    }
+
+                    if( confirm == 'Y' || confirm == 'y' )
+                    {
+                        packages_remove_list( pm, remove_list, yget_progress_callback, pm );
+                    }
+                    packages_free_remove_list( remove_list );
                 }
             }
             break;
@@ -547,7 +567,7 @@ int main( int argc, char **argv )
                         cur_package = install_list->prev;
                         while( cur_package )
                         {
-                            printf(",%s ", cur_package->name );
+                            printf(" %s ", cur_package->name );
                             cur_package = cur_package->prev;
                         }
                         continue;
@@ -621,7 +641,7 @@ int main( int argc, char **argv )
                     cur_package = install_list->prev;
                     while( cur_package )
                     {
-                        printf(",%s ", cur_package->name );
+                        printf(" %s ", cur_package->name );
                         cur_package = cur_package->prev;
                     }
 
@@ -631,7 +651,7 @@ int main( int argc, char **argv )
                         cur_package = depend_list->prev;
                         while( cur_package )
                         {
-                            printf(",%s ", cur_package->name );
+                            printf(" %s ", cur_package->name );
                             cur_package = cur_package->prev;
                         }
                     }
@@ -642,7 +662,7 @@ int main( int argc, char **argv )
                         cur_package = recommended_list->prev;
                         while( cur_package )
                         {
-                            printf(",%s ", cur_package->name );
+                            printf(" %s ", cur_package->name );
                             cur_package = cur_package->prev;
                         }
                     }
@@ -704,7 +724,7 @@ int main( int argc, char **argv )
                         cur_package = install_list->prev;
                         while( cur_package )
                         {
-                            printf(",%s ", cur_package->name );
+                            printf(" %s ", cur_package->name );
                             cur_package = cur_package->prev;
                         }
 
@@ -904,7 +924,7 @@ int main( int argc, char **argv )
                     {
                         installed = "U";
                     }
-                    else if( can_update[0] == '-' &&  can_update[1] == 1 )
+                    else if( can_update[0] == '-' &&  can_update[1] == '1' )
                     {
                         installed = "D";
                     }
@@ -1005,7 +1025,27 @@ int main( int argc, char **argv )
                 {
                     installed = packages_get_package_attr( pkg, "installed" );
                     can_update = packages_get_package_attr( pkg, "can_update" );
-                    installed = installed[0] == '0' ? "N" : ( can_update[0] == '0' ? "I" : "U" );
+                    if( installed[0] != '0' )
+                    {
+                        pkg2 = packages_get_package( pm, package_name, 1 );
+                    }
+
+                    if( installed[0] == '0' )
+                    {
+                        installed = "*";
+                    }
+                    else if( can_update[0] == '1' )
+                    {
+                        installed = "U";
+                    }
+                    else if( can_update[0] == '-' &&  can_update[1] == '1' )
+                    {
+                        installed = "D";
+                    }
+                    else
+                    {
+                        installed = "I";
+                    }
                     printf( 
                             "Name: %s\nStatus: %s\nVersion: %s\nDescription: %s\n", 
                             package_name,
@@ -1037,14 +1077,24 @@ int main( int argc, char **argv )
 
                     if( upgrade_list )
                     {
-                        printf( "Change: %s[%s]", upgrade_list->name, upgrade_list->type == 4 ? "U" : "D" );
-
-                        cur_package = upgrade_list->prev;
+                        printf( "Upgrade:" );
+                        cur_package = upgrade_list;
                         while( cur_package )
                         {
-                            printf(" %s[%s]", cur_package->name, cur_package->type == 4 ? "U" : "D" );
+                            if( cur_package->type == 4 )
+                                printf(" %s", cur_package->name );
                             cur_package = cur_package->prev;
                         }
+
+                        printf( "\nDowngrade:" );
+                        cur_package = upgrade_list;
+                        while( cur_package )
+                        {
+                            if( cur_package->type == 5 )
+                                printf(" %s", cur_package->name );
+                            cur_package = cur_package->prev;
+                        }
+                        putchar( '\n' );
 
                         if( yes )
                         {
@@ -1052,7 +1102,7 @@ int main( int argc, char **argv )
                         }
                         else
                         {
-                            printf( "\nDo you want to continue [y/N]?" );
+                            printf( "Do you want to continue [y/N]?" );
                             confirm = getchar();
                         }
 

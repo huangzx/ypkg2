@@ -2,9 +2,9 @@
  *
  * Copyright (c) 2011-2012 Ylmf OS
  *
- * Written by: 0o0 <0o0@115.com> <0o0zzyz@gmail.com>
+ * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
  * Version: 0.1
- * Date: 2012.2.1
+ * Date: 2012.2.15
  */
 #include <stdio.h>
 #include <getopt.h>
