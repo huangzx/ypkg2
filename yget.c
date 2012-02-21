@@ -472,18 +472,24 @@ int main( int argc, char **argv )
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
-                    cur_package = packages_get_remove_list( pm, package_name );
+                    sub_list = packages_get_remove_list( pm, package_name, 0 );
 
-                    if( cur_package )
+                    if( sub_list )
                     {
+                        cur_package = sub_list;
+                        while( cur_package->prev )
+                            cur_package = cur_package->prev;
+
                         cur_package->prev = remove_list;
-                        remove_list = cur_package;
+                        remove_list = sub_list;
                     }
                     else
                     {
                         printf( "%s has no installed.\n", package_name );
                     }
                 }
+
+                packages_clist_remove_duplicate_item( remove_list );
 
                 confirm = 'N';
 

@@ -2378,7 +2378,7 @@ YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package
         packages_free_package_data( pkg_data );
     }
 
-    packages_remove_duplicate_item( list );
+    packages_clist_remove_duplicate_item( list );
     return list;
 }
 
@@ -2463,11 +2463,11 @@ YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *pa
         }
         packages_free_package_data( pkg_data );
     }
-    packages_remove_duplicate_item( list );
+    packages_clist_remove_duplicate_item( list );
     return list;
 }
 
-YPackageChangeList *packages_remove_duplicate_item( YPackageChangeList *change_list )
+YPackageChangeList *packages_clist_remove_duplicate_item( YPackageChangeList *change_list )
 {
     YPackageChangeList    *cur_pkg, *cmp_pkg, *tmp_pkg;
 
@@ -2495,6 +2495,21 @@ YPackageChangeList *packages_remove_duplicate_item( YPackageChangeList *change_l
     }
 
     return change_list;
+}
+
+YPackageChangeList *packages_clist_append( YPackageChangeList *list_s, YPackageChangeList *list_d )
+{
+    YPackageChangeList      *cur_pkg;
+
+    cur_pkg = list_d;
+    while( cur_pkg->prev )
+    {
+        cur_pkg = cur_pkg->prev;
+    }
+
+    cur_pkg->prev = list_s;
+
+    return list_d;
 }
 
 YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name, char *version )
@@ -2567,7 +2582,7 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
         packages_free_package_data( pkg_data );
     }
 
-    packages_remove_duplicate_item( list );
+    packages_clist_remove_duplicate_item( list );
     return list;
 }
 
@@ -2704,13 +2719,16 @@ int packages_install_list( YPackageManager *pm, YPackageChangeList *list, ypk_pr
 /*
  * package_get_remove_list
  */
-YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package_name )
+YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package_name, int depth )
 {
-    int             i, len;
-    char            *name, *size;
-    YPackageList    *pkg_list;
-    YPackageChangeList     *list, *cur_pkg;
+    int                     i, len;
+    char                    *name, *size;
+    YPackageList            *pkg_list;
+    YPackageChangeList      *list, *sub_list, *cur_pkg, *tmp_pkg;
 
+
+    if( depth > 4 )
+        return NULL;
 
     if( !packages_has_installed( pm, package_name, NULL ) )
     {
@@ -2725,7 +2743,7 @@ YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package
     strncpy( cur_pkg->name, package_name, len );
     cur_pkg->name[len] = 0;
     cur_pkg->version = NULL;
-    cur_pkg->type = 1;
+    cur_pkg->type = depth ? 2 : 1;
     cur_pkg->prev = NULL;
     list = cur_pkg;
 
@@ -2755,6 +2773,29 @@ YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package
         }
         packages_free_list( pkg_list );
     }
+
+    //here
+    if( list )
+    {
+        cur_pkg = list;
+        while( cur_pkg && cur_pkg->prev )
+        {
+            sub_list = packages_get_remove_list( pm, cur_pkg->name, depth+1 );
+            if( sub_list )
+            {
+                tmp_pkg = cur_pkg->prev;
+                packages_clist_append( tmp_pkg, sub_list );
+                cur_pkg->prev = sub_list;
+                cur_pkg = tmp_pkg;
+            }
+            else
+            {
+                cur_pkg = cur_pkg->prev;
+            }
+        }
+    }
+
+    packages_clist_remove_duplicate_item( list );
 
     return list;
 }

@@ -232,7 +232,8 @@ YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *pa
 
 YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name, char *version );
 
-YPackageChangeList *packages_remove_duplicate_item( YPackageChangeList *change_list );
+YPackageChangeList *packages_clist_remove_duplicate_item( YPackageChangeList *change_list );
+YPackageChangeList *packages_clist_append( YPackageChangeList *list_s, YPackageChangeList *list_d );
 
 void packages_free_install_list( YPackageChangeList *list );
 
@@ -244,7 +245,7 @@ int packages_install_list( YPackageManager *pm, YPackageChangeList *list, ypk_pr
 
 
 int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progress_callback cb, void *cb_arg  );
-YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package_name );
+YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package_name, int depth );
 int packages_remove_list( YPackageManager *pm, YPackageChangeList *list, ypk_progress_callback cb, void *cb_arg  );
 void packages_free_remove_list( YPackageChangeList *list );
 
