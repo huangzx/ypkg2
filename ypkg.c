@@ -297,10 +297,11 @@ int main( int argc, char **argv )
                     ret = packages_check_package( pm, package_name, NULL, 0 );
                     switch( ret )
                     {
-                        case 2:
+                        case 3:
                             printf( COLOR_GREEN "Can be upgraded.\n" COLOR_RESET );
                             break;
                         case 1:
+                        case 2:
                             printf( COLOR_WHILE "The latest version has installed.\n" COLOR_RESET );
                             break;
                         case 0:
@@ -342,22 +343,34 @@ int main( int argc, char **argv )
                     package_name = argv[i];
                     len = strlen( package_name );
                     if( strncmp( package_name+len-4, ".ypk", 4 ) || access( package_name, R_OK ) )
+                    {
                         pkg_file = packages_get_package_file( pm, package_name );
+                        if( pkg = packages_get_package( pm, package_name, 1 ) )
+                        {
+                            version = packages_get_package_attr( pkg, "version" );
+                        }
+                        else
+                        {
+                            version = "Unknown";
+                        }
+                    }
                     else
+                    {
                         pkg_file =  packages_get_package_file_from_ypk( package_name );
+                        if( !packages_get_package_from_ypk( package_name, &pkg, NULL ) )
+                        {
+                            version = packages_get_package_attr( pkg, "version" );
+                        }
+                        else
+                        {
+                            version = "Unknown";
+                        }
+                    }
 
-                    if( pkg = packages_get_package( pm, package_name, 1 ) )
-                    {
-                        version = packages_get_package_attr( pkg, "version" );
-                    }
-                    else
-                    {
-                        version = "Unknown";
-                    }
 
                     if( pkg_file )
                     {
-                        printf( COLOR_YELLO "* Contents of %s_%s:\n" COLOR_RESET, package_name, version );
+                        printf( COLOR_YELLO "* Contents of %s v%s:\n" COLOR_RESET, package_name, version );
                         for( j = 0; j < pkg_file->cnt; j++ )
                         {
                             printf( "%s|%10s| %s\n",  packages_get_package_file_attr( pkg_file, j, "type"), packages_get_package_file_attr( pkg_file, j, "size"), packages_get_package_file_attr( pkg_file, j, "file") );
@@ -365,7 +378,7 @@ int main( int argc, char **argv )
                         packages_free_package_file( pkg_file );
 
                         printf( "\nFile: %d, Dir: %d, Link: %d, Size: %dK\n", pkg_file->cnt_file,  pkg_file->cnt_dir, pkg_file->cnt_link, pkg_file->size );
-                        printf( COLOR_YELLO "--- Contents of %s_%s ---\n" COLOR_RESET, package_name, version );
+                        printf( COLOR_YELLO "--- Contents of %s v%s ---\n" COLOR_RESET, package_name, version );
                     }
                     else
                     {
@@ -406,19 +419,19 @@ int main( int argc, char **argv )
                         bdepend = packages_get_package_data_attr( pkg_data, i, "data_bdepend");
                         if( bdepend )
                         {
-                            printf( COLOR_GREEN "* Build_time"  COLOR_RESET  "\n%s\n",  bdepend );
+                            printf( COLOR_GREEN "* Build_time"  COLOR_RESET  "\n%s\n",  util_chr_replace( bdepend, ',', ' ' ) );
                         }
 
                         depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
                         if( depend )
                         {
-                            printf( COLOR_GREEN "* Run_time"  COLOR_RESET  "\n%s\n",  depend );
+                            printf( COLOR_GREEN "* Run_time"  COLOR_RESET  "\n%s\n",  util_chr_replace( depend, ',', ' ' ) );
                         }
 
                         recommended = packages_get_package_data_attr( pkg_data, i, "data_recommended");
                         if( recommended )
                         {
-                            printf( COLOR_GREEN "* Recommend"  COLOR_RESET  "\n%s\n",  recommended );
+                            printf( COLOR_GREEN "* Recommend"  COLOR_RESET  "\n%s\n",  util_chr_replace( recommended, ',', ' ' ) );
                         }
 
                         conflict = packages_get_package_data_attr( pkg_data, i, "data_conflict");
