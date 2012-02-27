@@ -109,8 +109,8 @@ int packages_check_update( YPackageManager *pm )
 int packages_import_local_data( YPackageManager *pm )
 {
     int                 xml_ret, db_ret, is_desktop, i, list_len;
-    char                xml_value, *sql, *sql_history, *sql_data, *sql_history_data, *sql_filelist, *idx, *data_key, *file_path, *file_path_sub, *list_line;
-    char                 *saveptr, *package_name, *version, *install_time, *install_size, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *last_update;
+    char                xml_value, *sql, *sql_testing, *sql_history, *sql_data, *sql_testing_data, *sql_history_data, *sql_filelist, *idx, *data_key, *file_path, *file_path_sub, *list_line;
+    char                 *saveptr, *package_name, *version, *repo, *install_time, *install_size, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *last_update;
     char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
     struct stat         statbuf, statbuf_sub;
     struct dirent       *entry, *entry_sub;
@@ -131,15 +131,43 @@ int packages_import_local_data( YPackageManager *pm )
     reader_open( LOCAL_UNIVERSE,  &xml_handle );
     sql = "replace into universe (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
+    sql_testing = "replace into universe_testing (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
     sql_history = "replace into universe_history (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
     while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
     {
         is_desktop = (int)reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
         package_name = reader_get_value2( &xml_handle, "name" );
         version = reader_get_value2( &xml_handle, "version" );
+        repo = reader_get_value( &xml_handle, "repo" );
 
         //universe
-        db_ret = db_exec( &db, sql,  
+        if( repo && !strcmp( repo, "stable" ) )
+        {
+            db_ret = db_exec( &db, sql,  
+                    package_name, //name
+                    reader_get_value2( &xml_handle, "yversion" ), //yversion
+                    is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
+                    is_desktop ? "1" : "0", //desktop
+                    reader_get_value2( &xml_handle, "category" ), //category
+                    reader_get_value2( &xml_handle, "arch" ), //arch
+                    version, //version
+                    reader_get_value2( &xml_handle, "priority" ), //priority
+                    reader_get_value2( &xml_handle, "install" ), //install
+                    reader_get_value2( &xml_handle, "license" ), //license
+                    reader_get_value2( &xml_handle, "homepage" ), //homepage
+                    reader_get_value2( &xml_handle, "repo" ), //repo
+                    reader_get_value2( &xml_handle, "size" ), //size
+                    reader_get_value2( &xml_handle, "sha" ), //sha
+                    reader_get_value2( &xml_handle, "build_date" ), //build_date
+                    reader_get_value2( &xml_handle, "packager" ), //packager
+                    reader_get_value2( &xml_handle, "uri" ), //uri
+                    is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
+                    reader_get_value2( &xml_handle, "data_count" ), //data_count
+                    NULL);
+        }
+
+        db_ret = db_exec( &db, sql_testing,  
                 package_name, //name
                 reader_get_value2( &xml_handle, "yversion" ), //yversion
                 is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
@@ -185,11 +213,18 @@ int packages_import_local_data( YPackageManager *pm )
                 NULL);
     
         //universe_data
-        db_exec( &db, "delete from universe_data where name=?", package_name, NULL );  
+        if( repo && !strcmp( repo, "stable" ) )
+        {
+            db_exec( &db, "delete from universe_data where name=?", package_name, NULL );  
+        }
+
+        db_exec( &db, "delete from universe_testing_data where name=?", package_name, NULL );  
 
         db_exec( &db, "delete from universe_history_data where name=? and version=?", package_name, version, NULL );  
 
         sql_data = "insert into universe_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+        sql_testing_data = "insert into universe_testing_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
         sql_history_data = "insert into universe_history_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
         data_key = (char *)malloc( 32 );
@@ -201,7 +236,23 @@ int packages_import_local_data( YPackageManager *pm )
                 free( idx );
                 break;
             }
-            db_exec( &db, sql_data,  
+            if( repo && !strcmp( repo, "stable" ) )
+            {
+                db_exec( &db, sql_data,  
+                        package_name, //name
+                        version, //version
+                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
+                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
+                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
+                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
+                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
+                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
+                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
+                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                        NULL);
+            }
+
+            db_exec( &db, sql_testing_data,  
                     package_name, //name
                     version, //version
                     reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
@@ -323,6 +374,7 @@ int packages_import_local_data( YPackageManager *pm )
 
         //update universe
         db_exec( &db, "update universe set installed=1  where name=?", package_name, NULL );  
+        db_exec( &db, "update universe_testing set installed=1  where name=?", package_name, NULL );  
     }
     reader_cleanup( &xml_handle );
 
@@ -425,7 +477,7 @@ int packages_import_local_data( YPackageManager *pm )
     closedir( dir );
 
     //update config
-    db_query( &db, "select max(build_date) from universe", NULL );
+    db_query( &db, "select max(build_date) from universe_testing", NULL );
     db_fetch_num( &db );
     last_update = db_get_value_by_index( &db, 0 );
     db_cleanup( &db );
@@ -611,7 +663,7 @@ void packages_free_upgrade_list( YPackageChangeList *list )
 static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, ypk_progress_callback cb, void *cb_arg )
 {
     int                 i, xml_ret, db_ret, cmp_ret, is_desktop, do_replace;
-    char                *xml_sha, *target_url, *msg, xml_value, *sql, *sql_data, *sql_history, *sql_history_data, *package_name, *version, *delete, *idx, *data_key, *installed, *old_version, *can_update;
+    char                *xml_sha, *target_url, *msg, xml_value, *sql, *sql_data, *sql_testing, *sql_testing_data, *sql_history, *sql_history_data, *package_name, *version, *repo, *delete, *idx, *data_key, *installed, *old_version, *can_update;
     char                tmp_bz2[] = "/tmp/tmp_bz2.XXXXXX";
     char                tmp_xml[] = "/tmp/tmp_xml.XXXXXX";
     char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
@@ -722,14 +774,27 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
 
     sql = "replace into universe (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count, can_update, installed ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
+    sql_testing = "replace into universe_testing (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count, can_update, installed ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+
     sql_history = "replace into universe_history (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     sql_data = "insert into universe_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+    sql_testing_data = "insert into universe_testing_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     sql_history_data = "insert into universe_history_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
     {
+        /*
+        repo = reader_get_value( &xml_handle, "repo" );
+        if( repo && strcmp( repo, pm->accept_repo ) )
+        {
+            continue;
+        }
+        */
+
         package_name = reader_get_value2( &xml_handle, "name" );
         version = reader_get_value2( &xml_handle, "version" );
         delete = reader_get_value( &xml_handle, "delete" );
@@ -742,6 +807,10 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
 
                 db_exec( &db, "delete from universe_data where name=?", package_name, NULL );  
 
+                db_exec( &db, "delete from universe_testing where name=?", package_name, NULL );  
+
+                db_exec( &db, "delete from universe_testing_data where name=?", package_name, NULL );  
+
                 db_exec( &db, "delete from universe_history where name=?", package_name, NULL );  
 
                 db_exec( &db, "delete from universe_history_data where name=?", package_name, NULL );  
@@ -751,6 +820,10 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
                 db_exec( &db, "delete from universe where name=? and version=?", package_name, version, NULL );  
 
                 db_exec( &db, "delete from universe_data where name=? and version=?", package_name, version, NULL );  
+
+                db_exec( &db, "delete from universe_testing where name=? and version=?", package_name, version, NULL );  
+
+                db_exec( &db, "delete from universe_testing_data where name=? and version=?", package_name, version, NULL );  
 
                 db_exec( &db, "delete from universe_history where name=? and version=?", package_name, version, NULL );  
 
@@ -796,7 +869,36 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
             //universe
             if( do_replace )
             {
-                db_ret = db_exec( &db, sql,  
+                repo = reader_get_value( &xml_handle, "repo" );
+
+                if( repo && !strcmp( repo, "stable" ) )
+                {
+                    db_ret = db_exec( &db, sql,  
+                            package_name, //name
+                            reader_get_value2( &xml_handle, "yversion" ), //yversion
+                            is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
+                            is_desktop ? "1" : "0", //desktop
+                            reader_get_value2( &xml_handle, "category" ), //category
+                            reader_get_value2( &xml_handle, "arch" ), //arch
+                            version, //version
+                            reader_get_value2( &xml_handle, "priority" ), //priority
+                            reader_get_value2( &xml_handle, "install" ), //install
+                            reader_get_value2( &xml_handle, "license" ), //license
+                            reader_get_value2( &xml_handle, "homepage" ), //homepage
+                            reader_get_value2( &xml_handle, "repo" ), //repo
+                            reader_get_value2( &xml_handle, "size" ), //size
+                            reader_get_value2( &xml_handle, "sha" ), //sha
+                            reader_get_value2( &xml_handle, "build_date" ), //build_date
+                            reader_get_value2( &xml_handle, "packager" ), //packager
+                            reader_get_value2( &xml_handle, "uri" ), //uri
+                            is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
+                            reader_get_value2( &xml_handle, "data_count" ), //data_count
+                            can_update,
+                            installed,
+                            NULL);
+                }
+
+                db_ret = db_exec( &db, sql_testing,  
                         package_name, //name
                         reader_get_value2( &xml_handle, "yversion" ), //yversion
                         is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
@@ -843,7 +945,12 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
                         NULL);
             
                 //universe_data
-                db_exec( &db, "delete from universe_data where name=?", package_name, NULL );  
+                if( repo && !strcmp( repo, "stable" ) )
+                {
+                    db_exec( &db, "delete from universe_data where name=?", package_name, NULL );  
+                }
+
+                db_exec( &db, "delete from universe_testing_data where name=?", package_name, NULL );  
 
                 db_exec( &db, "delete from universe_history_data where name=? and version=?", package_name, version, NULL );  
 
@@ -856,7 +963,25 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
                         free( idx );
                         break;
                     }
-                    db_exec( &db, sql_data,  
+
+                    if( repo && !strcmp( repo, "stable" ) )
+                    {
+                        db_exec( &db, sql_data,  
+                                package_name, //name
+                                version, //version
+                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
+                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
+                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
+                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
+                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
+                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
+                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
+                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                                NULL);
+                    }
+
+
+                    db_exec( &db, sql_testing_data,  
                             package_name, //name
                             version, //version
                             reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
@@ -1010,14 +1135,19 @@ static int packages_set_last_update_timestamp( YPackageManager *pm, int last_upd
 
 int packages_get_count( YPackageManager *pm, char *key, char *keyword, int wildcards, int installed  )
 {
-    DB      db;
-    int     count;
+    int     count, repo_testing;
     char    *sql, *table;
+    DB      db;
 
     if( !pm )
         return -1;
 
-    table = installed ? "world" : "universe";
+    if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
+        repo_testing =1;
+    else
+        repo_testing =0;
+
+    table = installed ? "world" : repo_testing ? "universe_testing" : "universe";
 
     db_init( &db, pm->db_name, OPEN_READ );
     if( !key || !keyword )
@@ -1144,12 +1274,19 @@ int packages_has_installed( YPackageManager *pm, char *name, char *version )
 
 int packages_exists( YPackageManager *pm, char *name, char *version )
 {
-    int     count, ret;
-    char    *version_installed;
+    int     count, ret, repo_testing;
+    char    *table, *sql, *version_installed;
     DB      db;
 
     if( !pm || !name )
         return -1;
+
+    if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
+        repo_testing =1;
+    else
+        repo_testing =0;
+
+    table = repo_testing ? "universe_testing" : "universe";
 
     db_init( &db, pm->db_name, OPEN_READ );
 
@@ -1157,7 +1294,9 @@ int packages_exists( YPackageManager *pm, char *name, char *version )
     {
         version_installed = NULL;
 
-        db_query( &db, "select version from universe where name=?", name, NULL);
+        sql = util_strcat( "select version from ", table, " where name=?", NULL );
+        db_query( &db, sql, name, NULL);
+        free( sql );
 
         if( db_fetch_num( &db ) )
         {
@@ -1220,7 +1359,12 @@ int packages_exists( YPackageManager *pm, char *name, char *version )
     }
     else
     {
-        db_query( &db, "select count(*) from universe where name=?", name, NULL);
+        //db_query( &db, "select count(*) from universe where name=?", name, NULL);
+
+        sql = util_strcat( "select count(*) from ", table, " where name=?", NULL );
+        db_query( &db, sql, name, NULL);
+        free( sql );
+
         db_fetch_num( &db );
         count = atoi( db_get_value_by_index( &db, 0 ) );
         ret = count > 0;
@@ -1232,8 +1376,9 @@ int packages_exists( YPackageManager *pm, char *name, char *version )
     return ret;
 }
 
-YPackage *packages_get_package( YPackageManager *pm, char *name, int installed )
+YPackage *packages_get_repo_package( YPackageManager *pm, char *name, int installed, char *repo )
 {
+    int                     repo_testing;
     char                    *sql, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "homepage", "description", "uri", "sha", "size", "repo", "arch", "install", "data_count", "installed", "install_time", "can_update", "build_date", "packager", NULL  }; 
     DB                      db;
@@ -1244,8 +1389,13 @@ YPackage *packages_get_package( YPackageManager *pm, char *name, int installed )
         return NULL;
     }
 
+    if( repo && !strcmp( repo, "testing" ) )
+        repo_testing =1;
+    else
+        repo_testing =0;
+
     db_init( &db, pm->db_name, OPEN_READ );
-    sql = util_strcat( "select * from ", installed ? "world" : "universe"," where name=? limit 1", NULL );
+    sql = util_strcat( "select * from ", installed ? "world" : (repo_testing ? "universe_testing" : "universe")," where name=? limit 1", NULL );
     db_query( &db, sql, name, NULL);
     free( sql );
 
@@ -1265,6 +1415,23 @@ YPackage *packages_get_package( YPackageManager *pm, char *name, int installed )
     db_close( &db );
 
     return pkg;
+}
+
+YPackage *packages_get_package( YPackageManager *pm, char *name, int installed )
+{
+    char                    *repo;
+
+    if( !pm || !name )
+    {
+        return NULL;
+    }
+
+    if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
+        repo = "testing";
+    else
+        repo = "stable";
+
+    return packages_get_repo_package( pm, name, installed, repo );
 }
 
 /*
@@ -1479,7 +1646,7 @@ void packages_free_package( YPackage *pkg )
  */
 YPackageData *packages_get_package_data( YPackageManager *pm, char *name, int installed )
 {
-    int                     data_count, cur_data_index;
+    int                     data_count, cur_data_index, repo_testing;
     char                    *sql, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "data_name", "data_format", "data_size", "data_install_size", "data_depend", "data_bdepend", "data_recommended", "data_conflict", NULL  }; 
     DB                      db;
@@ -1490,9 +1657,14 @@ YPackageData *packages_get_package_data( YPackageManager *pm, char *name, int in
         return NULL;
     }
 
+    if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
+        repo_testing =1;
+    else
+        repo_testing =0;
+
     db_init( &db, pm->db_name, OPEN_READ );
     //get file count
-    sql = util_strcat( "select count(*) from ", installed ? "world_data" : "universe_data"," where name=?", NULL );
+    sql = util_strcat( "select count(*) from ", installed ? "world_data" : repo_testing ? "universe_testing_data" : "universe_data"," where name=?", NULL );
     db_query( &db, sql, name, NULL);
     free( sql );
     db_fetch_num( &db );
@@ -1500,7 +1672,7 @@ YPackageData *packages_get_package_data( YPackageManager *pm, char *name, int in
     db_cleanup( &db );
 
     //get data
-    sql = util_strcat( "select * from ", installed ? "world_data" : "universe_data"," where name=?", NULL );
+    sql = util_strcat( "select * from ", installed ? "world_data" : repo_testing ? "universe_testing_data" : "universe_data"," where name=?", NULL );
     db_query( &db, sql, name, NULL);
     free( sql );
 
@@ -1775,8 +1947,8 @@ void packages_free_package_file( YPackageFile *pkg_file )
  */
 YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int wildcards, int installed )
 {
-    int                     ret, cur_pkg_index;
-    char                    *table,*sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
+    int                     ret, cur_pkg_index, repo_testing;
+    char                    *table, *sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", "repo", "install_time", "installed", "can_update", "homepage", "build_date", "packager", NULL  }; 
     DB                      db;
     YPackageList            *pkg_list;
@@ -1788,10 +1960,15 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
     if( limit < 1 )
         limit = 5;
 
+    if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
+        repo_testing =1;
+    else
+        repo_testing =0;
+
     offset_str = util_int_to_str( offset );
     limit_str = util_int_to_str( limit );
 
-    table = installed ? "world" : "universe";
+    table = installed ? "world" : repo_testing ? "universe_testing" : "universe";
 
     ret = db_init( &db, pm->db_name, OPEN_READ );
     if( !key || !keyword )
@@ -1879,7 +2056,7 @@ YPackageList *packages_get_list2( YPackageManager *pm, int page_size, int page_n
  */
 YPackageList *packages_get_list_with_data( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int installed )
 {    
-    int                     ret, cur_pkg_index;
+    int                     ret, cur_pkg_index, repo_testing;
     char                    *table, *table_data, *sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", NULL  }; 
     DB                      db;
@@ -1894,12 +2071,16 @@ YPackageList *packages_get_list_with_data( YPackageManager *pm, int limit, int o
     if( limit < 1 )
         limit = 5;
 
+    if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
+        repo_testing =1;
+    else
+        repo_testing =0;
+
     offset_str = util_int_to_str( offset );
     limit_str = util_int_to_str( limit );
 
-    table = installed ? "world" : "universe";
-    table_data = installed ? "world_data" : "universe_data";
-
+    table = installed ? "world" : repo_testing ? "universe_testing" : "universe";
+    table_data = installed ? "world_data" : repo_testing ? "universe_testing_data" : "universe_data";
 
     ret = db_init( &db, pm->db_name, OPEN_READ );
     sql = util_strcat( "select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " = ? ", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like ?||',%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?||',%'", " limit ? offset ?", NULL );
@@ -2521,6 +2702,7 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
 
     list = NULL;
 
+
     if( pkg_data = packages_get_package_data( pm, package_name, 0 ) )
     {
         for( i = 0; i < pkg_data->cnt; i++ )
@@ -2580,6 +2762,20 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
 
         }
         packages_free_package_data( pkg_data );
+    }
+
+    //build-essential
+    if( !packages_has_installed( pm, "build-essential", NULL ) )
+    {
+        cur_pkg =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
+        len = 15;
+        cur_pkg->name = (char *)malloc( len + 1 );
+        strncpy( cur_pkg->name, "build-essential", len );
+        cur_pkg->name[len] = 0;
+        cur_pkg->version = NULL;
+        cur_pkg->type = 2;
+        cur_pkg->prev = list;
+        list = cur_pkg;
     }
 
     packages_clist_remove_duplicate_item( list );
@@ -2774,7 +2970,6 @@ YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package
         packages_free_list( pkg_list );
     }
 
-    //here
     if( list )
     {
         cur_pkg = list;
@@ -3283,7 +3478,7 @@ int packages_exec_script( char *script, char *package_name, char *version, char 
  */
 int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int force, ypk_progress_callback cb, void *cb_arg  )
 {
-    int                 i, j, ret, installed, upgrade, return_code;
+    int                 repo_testing, i, j, ret, installed, upgrade, return_code;
     size_t              pkginfo_len, filelist_len;
     void                *pkginfo, *filelist;
     char                *msg, *sql, *sql_data, *sql_filelist, *sql_filelist2, *install_file, *list_line;
@@ -3310,6 +3505,12 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( !ypk_path || access( ypk_path, R_OK ) )
         return -1;
 
+    /*
+    if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
+        repo_testing =1;
+    else
+        repo_testing =0;
+        */
 
     if( cb )
     {
@@ -3675,7 +3876,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     }
 
     //update universe
-    pkg2 = packages_get_package( pm, package_name, 0 );
+    pkg2 = packages_get_repo_package( pm, package_name, 0, "stable" );
     if( pkg2 )
     {
         version2 = packages_get_package_attr( pkg2, "version" );
@@ -3684,8 +3885,8 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             switch( packages_compare_version( version2, version ) )
             {
                 case 1:
-                    break;
                     can_update = "1";
+                    break;
                 case 0:
                     can_update = "0";
                     break;
@@ -3700,6 +3901,40 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         }
 
         db_exec( &db, "update universe set installed='1', can_update=? where name=?", can_update, package_name, NULL );  
+
+        packages_free_package( pkg2 );
+        pkg2 = NULL;
+    }
+
+    pkg2 = packages_get_repo_package( pm, package_name, 0, "testing" );
+    if( pkg2 )
+    {
+        version2 = packages_get_package_attr( pkg2, "version" );
+        if( version && (strlen( version ) > 0) && version2 && (strlen( version2 ) > 0) )
+        {
+            switch( packages_compare_version( version2, version ) )
+            {
+                case 1:
+                    can_update = "1";
+                    break;
+                case 0:
+                    can_update = "0";
+                    break;
+                case -1:
+                    can_update = "-1";
+                    break;
+            }
+        }
+        else
+        {
+            can_update = "0";
+        }
+
+
+        db_exec( &db, "update universe_testing set installed='1', can_update=? where name=?", can_update, package_name, NULL );  
+
+        packages_free_package( pkg2 );
+        pkg2 = NULL;
     }
 
     db_exec( &db, "commit", NULL );  
@@ -3726,9 +3961,7 @@ return_point:
         packages_free_package( pkg );
 
     if( pkg2 )
-    {
         packages_free_package( pkg2 );
-    }
 
     if( pkg_data )
         packages_free_package_data( pkg_data );
@@ -3739,13 +3972,20 @@ return_point:
 
 int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progress_callback cb, void *cb_arg  )
 {
-    int             ret, return_code = 0;
-    char            *install_file, *version, *install_file_path = NULL, *sql_file, *file_path;
+    int             ret, return_code, repo_testing;
+    char            *install_file, *version, *install_file_path = NULL, *table, *sql, *sql_file, *file_path;
     YPackage         *pkg;
     DB              db;
 
     if( !package_name )
         return -1;
+
+    return_code = 0;
+
+    if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
+        repo_testing =1;
+    else
+        repo_testing =0;
 
     if( cb )
     {
@@ -3878,7 +4118,13 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
     db_exec( &db, "delete from world where name=?", package_name, NULL );  
     db_exec( &db, "delete from world_data where name=?", package_name, NULL );  
     db_exec( &db, "delete from world_file where name=?", package_name, NULL );  
-    db_exec( &db, "update universe set can_update='0', installed='0' where name=?", package_name, NULL );  
+
+    //db_exec( &db, "update universe set can_update='0', installed='0' where name=?", package_name, NULL );  
+    table = repo_testing ? "universe_testing" : "universe";
+    sql = util_strcat( "update ", table, " set installed='0', can_update='0' where name=?", NULL );
+    db_exec( &db, sql, package_name, NULL );  
+    free( sql );
+
     db_exec( &db, "end", NULL );  
     db_close( &db );
 

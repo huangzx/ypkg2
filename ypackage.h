@@ -160,6 +160,7 @@ int packages_exists( YPackageManager *pm, char *name, char *version );
 
 int packages_get_package_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data );
 
+YPackage *packages_get_repo_package( YPackageManager *pm, char *name, int installed, char *repo );
 YPackage *packages_get_package( YPackageManager *pm, char *name, int installed );
 char *packages_get_package_attr( YPackage *pkg, char *key );
 char *packages_get_package_attr2( YPackage *pkg, char *key );

@@ -523,7 +523,6 @@ int main( int argc, char **argv )
                     {
                         printf( "\nDo you want to continue [y/N]?" );
                         confirm = getchar();
-                        getchar();
                     }
 
                     if( confirm == 'Y' || confirm == 'y' )
@@ -746,7 +745,7 @@ int main( int argc, char **argv )
 
                         if( confirm == 'Y' || confirm == 'y' )
                         {
-                            packages_install_list( pm, install_list, yget_progress_callback, pm );
+                            yget_install_list( pm, install_list, 0 );
                         }
 
                         packages_free_dev_list( install_list );
@@ -958,44 +957,46 @@ int main( int argc, char **argv )
                     size = tmp ? atoi( tmp ) : 0;
 
                     pkg_data = packages_get_package_data( pm, package_name, 0 );
-
-                    tmp = packages_get_package_data_attr( pkg_data, 0, "data_install_size");
-                    install_size = tmp ? atoi( tmp ) : 0;
-
-                    repo = packages_get_package_attr( pkg, "repo");
-                    if(repo == NULL)
+                    if( pkg_data )
                     {
-                        repo = "stable";
-                    }
+                        tmp = packages_get_package_data_attr( pkg_data, 0, "data_install_size");
+                        install_size = tmp ? atoi( tmp ) : 0;
 
-                    printf( 
-                            "Name: %s\nVersion: %s\nArch: %s\nRepo:%s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nDescription: %s\nHomepage: %s\n", 
-                            package_name,
-                            pkg2 ? packages_get_package_attr( pkg2, "version") : packages_get_package_attr( pkg, "version"), 
-                            packages_get_package_attr( pkg, "arch"), 
-                            repo,
-                            packages_get_package_attr( pkg, "category"), 
-                            packages_get_package_attr( pkg, "priority"), 
-                            installed,
-                            install_date ? install_date : "",  //install date
-                            packages_get_package_attr( pkg, "version"),  //available
-                            packages_get_package_attr( pkg, "license"), 
-                            packages_get_package_attr( pkg, "packager"), 
-                            packages_get_package_attr( pkg, "install"), 
-                            size > 1000000 ? size / 1000000 : (size > 1000 ? size / 1000 : size), 
-                            size > 1000000 ? 'M' : (size > 1000 ? 'K' : 'B'), 
-                            packages_get_package_attr( pkg, "sha"), 
-                            build_date ? build_date : "",
-                            packages_get_package_attr( pkg, "uri"), 
-                            install_size > 1000000 ? install_size / 1000000 : (install_size > 1000 ? install_size / 1000 : install_size), 
-                            install_size > 1000000 ? 'M' : (install_size > 1000 ? 'K' : 'B'), 
-                            util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_depend"), ',', ' ' ),  //depend
-                            util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_bdepend"), ',', ' ' ),  //bdepend
-                            util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_recommended"), ',', ' ' ),  //recommended
-                            packages_get_package_data_attr( pkg_data, 0, "data_conflict"),  //conflict
-                            packages_get_package_attr( pkg, "description"),
-                            packages_get_package_attr( pkg, "homepage")
-                            );
+                        repo = packages_get_package_attr( pkg, "repo");
+                        if(repo == NULL)
+                        {
+                            repo = "stable";
+                        }
+
+                        printf( 
+                                "Name: %s\nVersion: %s\nArch: %s\nRepo:%s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nDescription: %s\nHomepage: %s\n", 
+                                package_name,
+                                pkg2 ? packages_get_package_attr( pkg2, "version") : packages_get_package_attr( pkg, "version"), 
+                                packages_get_package_attr( pkg, "arch"), 
+                                repo,
+                                packages_get_package_attr( pkg, "category"), 
+                                packages_get_package_attr( pkg, "priority"), 
+                                installed,
+                                install_date ? install_date : "",  //install date
+                                packages_get_package_attr( pkg, "version"),  //available
+                                packages_get_package_attr( pkg, "license"), 
+                                packages_get_package_attr( pkg, "packager"), 
+                                packages_get_package_attr( pkg, "install"), 
+                                size > 1000000 ? size / 1000000 : (size > 1000 ? size / 1000 : size), 
+                                size > 1000000 ? 'M' : (size > 1000 ? 'K' : 'B'), 
+                                packages_get_package_attr( pkg, "sha"), 
+                                build_date ? build_date : "",
+                                packages_get_package_attr( pkg, "uri"), 
+                                install_size > 1000000 ? install_size / 1000000 : (install_size > 1000 ? install_size / 1000 : install_size), 
+                                install_size > 1000000 ? 'M' : (install_size > 1000 ? 'K' : 'B'), 
+                                util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_depend"), ',', ' ' ),  //depend
+                                util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_bdepend"), ',', ' ' ),  //bdepend
+                                util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_recommended"), ',', ' ' ),  //recommended
+                                packages_get_package_data_attr( pkg_data, 0, "data_conflict"),  //conflict
+                                packages_get_package_attr( pkg, "description"),
+                                packages_get_package_attr( pkg, "homepage")
+                                );
+                    }
 
                     if( build_date )
                         free( build_date );
