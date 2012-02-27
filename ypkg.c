@@ -272,6 +272,9 @@ int main( int argc, char **argv )
                         case -9:
                             printf( COLOR_RED "Error: An error occurred while executing the post_install script.\n" COLOR_RESET );
                             break;
+                        case -10:
+                            printf( COLOR_RED "Error: An error occurred while updating database.\n" COLOR_RESET );
+                            break;
                     }
                 }
             }

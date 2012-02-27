@@ -308,6 +308,8 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
                     break;
                 case -9:
                     printf( COLOR_RED "Error: An error occurred while executing the post_install script.\n" COLOR_RESET );
+                case -10:
+                    printf( COLOR_RED "Error: An error occurred while updating database.\n" COLOR_RESET );
                     break;
             }
 
@@ -365,7 +367,7 @@ int main( int argc, char **argv )
     YPackageData    *pkg_data;
     YPackageFile    *pkg_file;
     YPackageList    *pkg_list;
-    YPackageChangeList     *depend_list, *recommended_list, *sub_list, *install_list, *remove_list, *upgrade_list, *cur_package;       
+    YPackageChangeList     *depend_list, *recommended_list, *sub_list, *install_list, *remove_list, *upgrade_list, *cur_package, *cur_package2;       
 
     if( argc == 1 )
     {
@@ -1079,11 +1081,45 @@ int main( int argc, char **argv )
             }
             else
             {
-                    upgrade_list = packages_get_upgrade_list( pm );
+                    depend_list = NULL;
+                    recommended_list = NULL;
                     confirm = 'N';
+
+                    upgrade_list = packages_get_upgrade_list( pm );
 
                     if( upgrade_list )
                     {
+                        cur_package = upgrade_list;
+                        while( cur_package )
+                        {
+                            sub_list = packages_get_depend_list( pm, cur_package->name, cur_package->version );
+                            if( sub_list )
+                            {
+                                cur_package2 = sub_list;
+                                while( cur_package2->prev )
+                                    cur_package2 = cur_package2->prev;
+                                cur_package2->prev = depend_list;
+                                depend_list = sub_list;
+                            }
+
+                            /*
+                            sub_list = packages_get_recommended_list( pm, cur_package->name, cur_package->version );
+                            if( sub_list )
+                            {
+                                cur_package2 = sub_list;
+                                while( cur_package2->prev )
+                                    cur_package2 = cur_package2->prev;
+                                cur_package2->prev = recommended_list;
+                                recommended_list = sub_list;
+                            }
+                            */
+
+                            cur_package = cur_package->prev;
+                        }
+                        packages_clist_remove_duplicate_item( depend_list );
+                        //packages_clist_remove_duplicate_item( recommended_list );
+
+
                         printf( "Upgrade:" );
                         cur_package = upgrade_list;
                         while( cur_package )
@@ -1103,6 +1139,30 @@ int main( int argc, char **argv )
                         }
                         putchar( '\n' );
 
+
+                        if( depend_list )
+                        {
+                            printf( "\nAuto-install: %s", depend_list->name );
+                            cur_package = depend_list->prev;
+                            while( cur_package )
+                            {
+                                printf(" %s ", cur_package->name );
+                                cur_package = cur_package->prev;
+                            }
+                        }
+
+                        if( recommended_list )
+                        {
+                            printf( "\nRecommended-install: %s", recommended_list->name );
+                            cur_package = recommended_list->prev;
+                            while( cur_package )
+                            {
+                                printf(" %s ", cur_package->name );
+                                cur_package = cur_package->prev;
+                            }
+                        }
+                        putchar( '\n' );
+
                         if( yes )
                         {
                             confirm = 'Y';
@@ -1115,7 +1175,13 @@ int main( int argc, char **argv )
 
                         if( confirm == 'Y' || confirm == 'y' )
                         {
-                            packages_upgrade_list( pm, upgrade_list, yget_progress_callback, pm );
+                            if( !yget_install_list( pm, depend_list, download_only ) || force )
+                            {
+                                if( !yget_install_list( pm, upgrade_list, download_only ) )
+                                {
+                                    yget_install_list( pm, recommended_list, download_only );
+                                }
+                            }
                         }
 
                         packages_free_upgrade_list( upgrade_list );

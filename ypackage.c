@@ -1026,7 +1026,7 @@ static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char
     if( db_ret == SQLITE_BUSY )
     {
         db_ret = db_exec( &db, "rollback", NULL );  
-        printf( "db_exec rollback:%d\n", db_ret);
+        printf( "rollback, db_ret:%d\n", db_ret );
     }
     //clean up
     db_close( &db );
@@ -3762,8 +3762,25 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             packages_get_package_attr2( pkg, "data_count" ), //data_count
             NULL);
     
+
+    if( ret != SQLITE_DONE )
+    {
+        db_exec( &db, "rollback", NULL );  
+        printf( "rollback, db_ret:%d\n", ret );
+        return_code = -10; 
+        goto return_point;
+    }
+    
     //update world_data
-    db_exec( &db, "delete from world_data where name=?", package_name, NULL );  
+    ret = db_exec( &db, "delete from world_data where name=?", package_name, NULL );  
+    if( ret != SQLITE_DONE )
+    {
+        ret = db_exec( &db, "rollback", NULL );  
+        printf( "rollback, db_ret:%d\n", ret );
+        return_code = -10; 
+        goto return_point;
+    }
+
     sql_data = "insert into world_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     for( i = 0; i < pkg_data->cnt; i++ )
@@ -3780,12 +3797,22 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
                 packages_get_package_data_attr2( pkg_data, i, "data_recommended" ), //data_recommended
                 packages_get_package_data_attr2( pkg_data, i, "data_conflict" ), //data_conflict
                 NULL);
+
+        if( ret != SQLITE_DONE )
+        {
+            db_exec( &db, "rollback", NULL );  
+            printf( "rollback, db_ret:%d\n", ret );
+            return_code = -10; 
+            goto return_point;
+        }
     }
 
     //extract filelist
     ret = archive_extract_file4( pkginfo, pkginfo_len, "filelist", &filelist, &filelist_len );
     if( ret == -1 )
     {
+        db_exec( &db, "rollback", NULL );  
+        printf( "rollback, db_ret:%d\n", ret );
         return_code = -10; 
         goto return_point;
     }
@@ -3810,7 +3837,15 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
 
                 if( file_file )
                 {
-                    db_exec( &db, sql_filelist, package_name, file_file, NULL );
+                    ret = db_exec( &db, sql_filelist, package_name, file_file, NULL );
+                    if( ret != SQLITE_DONE )
+                    {
+                        db_exec( &db, "rollback", NULL );  
+                        printf( "rollback, db_ret:%d\n", ret );
+                        return_code = -10; 
+                        free( list_line );
+                        goto return_point;
+                    }
                 }
 
             }
@@ -3818,7 +3853,15 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             free( list_line );
             list_line = util_mem_gets( NULL );
         }
-        db_exec( &db, "commit", NULL );  
+
+        ret = db_exec( &db, "commit", NULL );  
+        if( ret != SQLITE_DONE )
+        {
+            db_exec( &db, "rollback", NULL );  
+            printf( "rollback, db_ret:%d\n", ret );
+            return_code = -10; 
+            goto return_point;
+        }
 
         pkg_file = packages_get_package_file( pm, package_name );
         if( pkg_file )
@@ -3834,12 +3877,25 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             packages_free_package_file( pkg_file );
         }
 
-        db_exec( &db, "begin", NULL );  
-
+        ret = db_exec( &db, "begin", NULL );  
+        if( ret != SQLITE_DONE )
+        {
+            db_exec( &db, "rollback", NULL );  
+            printf( "rollback, db_ret:%d\n", ret );
+            return_code = -10; 
+            goto return_point;
+        }
     }
 
     //update file list
-    db_exec( &db, "delete from world_file where name=?", package_name, NULL );  
+    ret = db_exec( &db, "delete from world_file where name=?", package_name, NULL );  
+    if( ret != SQLITE_DONE )
+    {
+        db_exec( &db, "rollback", NULL );  
+        printf( "rollback, db_ret:%d\n", ret );
+        return_code = -10; 
+        goto return_point;
+    }
     sql_filelist2 = "insert into world_file (name, version, type, file, size, perms, uid, gid, mtime, extra) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; 
 
     list_line = util_mem_gets( filelist );
@@ -3869,13 +3925,41 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
                     file_mtime ? file_mtime : "",
                     file_extra ? file_extra : "",
                     NULL );
+
+            if( ret != SQLITE_DONE )
+            {
+                db_exec( &db, "rollback", NULL );  
+                printf( "rollback, db_ret:%d\n", ret );
+                return_code = -10; 
+                free( list_line );
+                goto return_point;
+            }
         }
 
         free( list_line );
         list_line = util_mem_gets( NULL );
     }
 
+    ret = db_exec( &db, "commit", NULL );  
+    if( ret != SQLITE_DONE )
+    {
+        db_exec( &db, "rollback", NULL );  
+        printf( "rollback, db_ret:%d\n", ret );
+        return_code = -10; 
+        goto return_point;
+    }
+
     //update universe
+    db_cleanup( &db );
+    ret = db_exec( &db, "begin", NULL );  
+    if( ret != SQLITE_DONE )
+    {
+        db_exec( &db, "rollback", NULL );  
+        printf( "rollback, db_ret:%d\n", ret );
+        return_code = -10; 
+        goto return_point;
+    }
+
     pkg2 = packages_get_repo_package( pm, package_name, 0, "stable" );
     if( pkg2 )
     {
@@ -3900,12 +3984,21 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             can_update = "0";
         }
 
-        db_exec( &db, "update universe set installed='1', can_update=? where name=?", can_update, package_name, NULL );  
+        db_cleanup( &db );
+        ret = db_exec( &db, "update universe set installed='1', can_update=? where name=?", can_update, package_name, NULL );  
+        if( ret != SQLITE_DONE )
+        {
+            db_exec( &db, "rollback", NULL );  
+            printf( "rollback, db_ret:%d\n", ret );
+            return_code = -10; 
+            goto return_point;
+        }
 
         packages_free_package( pkg2 );
         pkg2 = NULL;
     }
 
+    db_cleanup( &db );
     pkg2 = packages_get_repo_package( pm, package_name, 0, "testing" );
     if( pkg2 )
     {
@@ -3931,13 +4024,28 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         }
 
 
-        db_exec( &db, "update universe_testing set installed='1', can_update=? where name=?", can_update, package_name, NULL );  
+        db_cleanup( &db );
+        ret = db_exec( &db, "update universe_testing set installed='1', can_update=? where name=?", can_update, package_name, NULL );  
+        if( ret != SQLITE_DONE )
+        {
+            db_exec( &db, "rollback", NULL );  
+            printf( "rollback, db_ret:%d\n", ret );
+            return_code = -10; 
+            goto return_point;
+        }
 
         packages_free_package( pkg2 );
         pkg2 = NULL;
     }
 
-    db_exec( &db, "commit", NULL );  
+    ret = db_exec( &db, "commit", NULL );  
+    if( ret != SQLITE_DONE )
+    {
+        db_exec( &db, "rollback", NULL );  
+        printf( "rollback, db_ret:%d\n", ret );
+        return_code = -10; 
+        goto return_point;
+    }
     db_close( &db );
 
     if( cb )
