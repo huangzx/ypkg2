@@ -1,3 +1,12 @@
+/* XML parser
+ *
+ * Copyright (c) 2011-2012 Ylmf OS
+ *
+ * Written by: 0o0<0o0zzyz@gmail.com>
+ * Version: 0.1
+ * Date: 2011.10.24
+ */
+
 #ifndef XML_H
 #define XML_H
 

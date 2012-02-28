@@ -1,9 +1,18 @@
+/* Libypk utility functions
+ *
+ * Copyright (c) 2011-2012 Ylmf OS
+ *
+ * Written by: 0o0<0o0zzyz@gmail.com>
+ * Version: 0.1
+ * Date: 2012.2.12
+ */
 #ifndef UTIL_H
 #define UTIL_H
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <libgen.h>
 #include <stdarg.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -29,7 +38,7 @@ char *util_get_config(char *config_file, char *keyword);
  */
 char    *util_rtrim( char *str, char c );
 char    *util_mem_gets( char *mem );
-char    *util_strcpy( char *src );
+char    *util_chr_replace( char *str, char chr_s, char chr_d );
 char    *util_strcat(char *first, ...);
 char    *util_strcat2( char *dest, int size, char *first, ...);
 char    *util_int_to_str( int i );
@@ -40,13 +49,19 @@ int     util_ends_with( char *str, char *suffix );
 /*
  * log
  */
-void util_log( char *log, char *msg );
+int util_log( char *log, char *msg );
 
 
 /*
  * file
  */
+int util_mkdir( char *dir );
 int util_remove_dir( char *dir_path );
 int util_remove_files( char *dir_path, char *suffix );
+
+/*
+ * hash
+ */
+char *util_sha1( char *file );
 
 #endif /* !UTIL_H */

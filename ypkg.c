@@ -1,3 +1,11 @@
+/* ypkg2
+ *
+ * Copyright (c) 2011-2012 Ylmf OS
+ *
+ * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
+ * Version: 0.1
+ * Date: 2012.2.15
+ */
 #include <stdio.h>
 #include <getopt.h>
 #include <time.h>
@@ -21,6 +29,7 @@ struct option longopts[] = {
     { "list-files", no_argument, NULL, 'l' },
     { "depend", no_argument, NULL, 'k' },
     { "unpack-binary", no_argument, NULL, 'x' },
+    { "unpack-info", no_argument, NULL, 'X' },
     { "pack-directory", no_argument, NULL, 'b' },
     { "list-installed", no_argument, NULL, 'L' },
     { "whatrequires", no_argument, NULL, 's' },
@@ -45,6 +54,7 @@ Commands:\n\
         -l|--list-files                         list all files of installed package\n\
         -k|--depend                             show dependency of package\n\
         -x|--unpack-binary [*.ypk]              unpack ypk package \n\
+        -X|--unpack-info [*.ypk]                unpack ypkinfo \n\
         -b|--pack-directory                     pack directory to package\n\
         -L|--list-installed                     list all installed packages\n\
         -s|--whatrequires                       show which package needs package\n\
@@ -63,9 +73,52 @@ Options:\n\
     printf( "%s\n", usage );
 }
 
+
+int ypkg_progress_callback( void *cb_arg, char *package_name, int action, double progress, char *msg )
+{
+    YPackageManager *pm;
+
+    pm = (YPackageManager *)cb_arg;
+
+    if( !action )
+    {
+        printf( "%s %s \n", msg, package_name );
+        packages_log( pm, package_name, msg );
+
+    }
+    else if( action == 9 )
+    {
+        packages_log( pm, package_name, "finish" );
+    }
+    else
+    {
+        if( progress == 0 || progress == -1 )
+        {
+            printf( "%s... ", msg );
+            packages_log( pm, package_name, msg );
+        }
+
+        if( progress == 1 )
+        {
+            if( action == 3)
+            {
+                printf( "\n%s\n", msg );
+                packages_log( pm, package_name, msg );
+            }
+            else 
+            {
+                printf( "%s\n", "done" );
+            }
+        }
+    }
+
+    fflush( stdout );
+    return 0;
+}
+
 int main( int argc, char **argv )
 {
-    int             c, force, i, j, action, ret, err, flag, len;
+    int             c, force, i, j, action, ret, err, flag, len, exit_code;
     char            *tmp, *package_name, *ypk_path, *unzip_path, *file_name, *install_time, *version, *version2, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type;
     YPackageManager *pm;
     YPackage        *pkg, *pkg2;
@@ -83,10 +136,11 @@ int main( int argc, char **argv )
     err = 0;
     flag = 0;
     force = 0;
+    exit_code = 0;
     infile = NULL;
     outfile = NULL;
 
-    while( ( c = getopt_long( argc, argv, ":hCIclkxbLsSmi:o:f", longopts, NULL ) ) != -1 )
+    while( ( c = getopt_long( argc, argv, ":hCIclkxXbLsSmi:o:f", longopts, NULL ) ) != -1 )
     {
         switch( c )
         {
@@ -100,6 +154,7 @@ int main( int argc, char **argv )
             case 's': //show which package needs package
             case 'S': //search which package provide this file
             case 'x': //unpack ypk package
+            case 'X': //unpack ypkinfo
             case 'b': //pack directory to package
             case 'm': //comprare two version strings
                 if( !action )
@@ -155,8 +210,8 @@ int main( int argc, char **argv )
             {
                 for( i = optind; i < argc; i++)
                 {
-                    printf("removing %s ... ", argv[i]);
-                    ret = packages_remove_package( pm, argv[i] );
+                    packages_log( pm, argv[i], "remove" );
+                    ret = packages_remove_package( pm, argv[i], ypkg_progress_callback, pm );
                     printf( "%s\n", ret < 0 ? "failed" : "successed" );
                 }
             }
@@ -179,8 +234,9 @@ int main( int argc, char **argv )
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
+                    packages_log( pm, package_name, "install" );
                     printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", package_name );
-                    ret = packages_install_local_package( pm, package_name, "/", force );
+                    ret = packages_install_local_package( pm, package_name, "/", force, ypkg_progress_callback, pm );
 
                     switch( ret )
                     {
@@ -216,6 +272,9 @@ int main( int argc, char **argv )
                         case -9:
                             printf( COLOR_RED "Error: An error occurred while executing the post_install script.\n" COLOR_RESET );
                             break;
+                        case -10:
+                            printf( COLOR_RED "Error: An error occurred while updating database.\n" COLOR_RESET );
+                            break;
                     }
                 }
             }
@@ -238,10 +297,11 @@ int main( int argc, char **argv )
                     ret = packages_check_package( pm, package_name, NULL, 0 );
                     switch( ret )
                     {
-                        case 2:
+                        case 3:
                             printf( COLOR_GREEN "Can be upgraded.\n" COLOR_RESET );
                             break;
                         case 1:
+                        case 2:
                             printf( COLOR_WHILE "The latest version has installed.\n" COLOR_RESET );
                             break;
                         case 0:
@@ -283,13 +343,34 @@ int main( int argc, char **argv )
                     package_name = argv[i];
                     len = strlen( package_name );
                     if( strncmp( package_name+len-4, ".ypk", 4 ) || access( package_name, R_OK ) )
+                    {
                         pkg_file = packages_get_package_file( pm, package_name );
+                        if( pkg = packages_get_package( pm, package_name, 1 ) )
+                        {
+                            version = packages_get_package_attr( pkg, "version" );
+                        }
+                        else
+                        {
+                            version = "Unknown";
+                        }
+                    }
                     else
+                    {
                         pkg_file =  packages_get_package_file_from_ypk( package_name );
+                        if( !packages_get_package_from_ypk( package_name, &pkg, NULL ) )
+                        {
+                            version = packages_get_package_attr( pkg, "version" );
+                        }
+                        else
+                        {
+                            version = "Unknown";
+                        }
+                    }
+
 
                     if( pkg_file )
                     {
-                        printf( COLOR_YELLO "* Contents of %s:\n" COLOR_RESET, package_name );
+                        printf( COLOR_YELLO "* Contents of %s v%s:\n" COLOR_RESET, package_name, version );
                         for( j = 0; j < pkg_file->cnt; j++ )
                         {
                             printf( "%s|%10s| %s\n",  packages_get_package_file_attr( pkg_file, j, "type"), packages_get_package_file_attr( pkg_file, j, "size"), packages_get_package_file_attr( pkg_file, j, "file") );
@@ -297,7 +378,7 @@ int main( int argc, char **argv )
                         packages_free_package_file( pkg_file );
 
                         printf( "\nFile: %d, Dir: %d, Link: %d, Size: %dK\n", pkg_file->cnt_file,  pkg_file->cnt_dir, pkg_file->cnt_link, pkg_file->size );
-                        printf( COLOR_YELLO "--- Contents of %s ---\n" COLOR_RESET, package_name );
+                        printf( COLOR_YELLO "--- Contents of %s v%s ---\n" COLOR_RESET, package_name, version );
                     }
                     else
                     {
@@ -338,19 +419,19 @@ int main( int argc, char **argv )
                         bdepend = packages_get_package_data_attr( pkg_data, i, "data_bdepend");
                         if( bdepend )
                         {
-                            printf( COLOR_GREEN "* Build_time"  COLOR_RESET  "\n%s\n",  bdepend );
+                            printf( COLOR_GREEN "* Build_time"  COLOR_RESET  "\n%s\n",  util_chr_replace( bdepend, ',', ' ' ) );
                         }
 
                         depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
                         if( depend )
                         {
-                            printf( COLOR_GREEN "* Run_time"  COLOR_RESET  "\n%s\n",  depend );
+                            printf( COLOR_GREEN "* Run_time"  COLOR_RESET  "\n%s\n",  util_chr_replace( depend, ',', ' ' ) );
                         }
 
                         recommended = packages_get_package_data_attr( pkg_data, i, "data_recommended");
                         if( recommended )
                         {
-                            printf( COLOR_GREEN "* Recommend"  COLOR_RESET  "\n%s\n",  recommended );
+                            printf( COLOR_GREEN "* Recommend"  COLOR_RESET  "\n%s\n",  util_chr_replace( recommended, ',', ' ' ) );
                         }
 
                         conflict = packages_get_package_data_attr( pkg_data, i, "data_conflict");
@@ -567,6 +648,58 @@ int main( int argc, char **argv )
             break;
 
         /*
+         * unpack ypkinfo
+         */
+        case 'X':
+            if( argc < 3 && argc > 4 )
+            {
+                err = 1;
+            }
+            else
+            {
+                ypk_path = argv[2];
+                tmp = argc == 4 ? argv[3] : NULL;
+                unzip_path = NULL;
+                pkg = NULL;
+
+                if( access( ypk_path, R_OK ) )
+                {
+                    printf( COLOR_RED "* %s not found\n" COLOR_RESET,  ypk_path );
+                    break;
+                }
+
+                if( packages_check_package( pm, ypk_path, NULL, 0 ) == -1 )
+                {
+                    printf( COLOR_RED "Error: Invalid format[%s]\n" COLOR_RESET, ypk_path );
+                    break;
+                }
+
+                if( !tmp )
+                {
+                    if( packages_get_package_from_ypk( ypk_path, &pkg, NULL ) )
+                    {
+                        printf( COLOR_RED "Error: Invalid format[%s]\n" COLOR_RESET, ypk_path );
+                        break;
+                    }
+                    else
+                    {
+                        package_name = packages_get_package_attr( pkg, "name" );
+                        version = packages_get_package_attr( pkg, "version" );
+                        unzip_path = util_strcat( package_name, "_", version, NULL );
+                    }
+                }
+
+                packages_unpack_package( pm, ypk_path, tmp ? tmp : unzip_path , 2 );
+
+                if( pkg )
+                    packages_free_package( pkg );
+
+                if( unzip_path )
+                    free( unzip_path );
+            }
+            break;
+
+        /*
          * pack directory to package
          */
         case 'b':
@@ -583,10 +716,33 @@ int main( int argc, char **argv )
             {
                 err = 1;
             }
+            else if( access( argv[optind], R_OK ) || access( argv[optind+1], R_OK ) )
+            {
+                version = argv[optind];
+                version2 = argv[optind+1];
+
+                ret = packages_compare_version( version, version2 );
+                if( ret > 0 )
+                {
+                    printf( "[version:%s] is grater than [version:%s]\n", version,  version2 );
+                    exit_code = 1;
+                }
+                else if( ret < 0 )
+                {
+                    printf( "[version:%s] is lesser than [version:%s]\n", version,  version2  );
+                    exit_code = 2;
+                }
+                else
+                {
+                    printf( "[version:%s] is equal to [version:%s]\n",  version, version2  );
+                    exit_code = 0;
+                }
+            }
             else
             {
                 version = NULL;
                 version2 = NULL;
+                
                 if( !packages_get_package_from_ypk( argv[optind], &pkg, NULL ) )
                 {
                     version = packages_get_package_attr( pkg, "version" );
@@ -597,11 +753,20 @@ int main( int argc, char **argv )
 
                         ret = packages_compare_version( version, version2 );
                         if( ret > 0 )
+                        {
                             printf( "%s[version:%s] is newer than %s[version:%s]\n", argv[optind], version, argv[optind+1], version2 );
+                            exit_code = 1;
+                        }
                         else if( ret < 0 )
+                        {
                             printf( "%s[version:%s] is older than %s[version:%s]\n", argv[optind], version, argv[optind+1], version2  );
+                            exit_code = 2;
+                        }
                         else
+                        {
                             printf( "%s[version:%s] and %s[version:%s] has the same version\n", argv[optind], version, argv[optind+1], version2  );
+                            exit_code = 0;
+                        }
 
                     }
                     else
@@ -631,5 +796,9 @@ int main( int argc, char **argv )
         usage();
     else if( err == 2 )
         fprintf( stderr, "Permission Denied!\n" );
-    return err;
+
+    if( err )
+        exit_code = err;
+
+    return exit_code;
 }

@@ -1,3 +1,11 @@
+/* Archive functions
+ *
+ * Copyright (c) 2011-2012 Ylmf OS
+ *
+ * Written by: 0o0<0o0zzyz@gmail.com>
+ * Version: 0.1
+ * Date: 2012.1.11
+ */
 #include "archive.h"
 
 /*
@@ -261,7 +269,7 @@ int archive_extract_all( char *arch_file, char *dest_dir )
 
     if( dest_dir )
     {
-        if( mkdir( dest_dir, 0755 ) == -1 )
+        if( util_mkdir( dest_dir, 0755 ) == -1 )
         {
             if( errno == EEXIST )
             {
@@ -280,7 +288,7 @@ int archive_extract_all( char *arch_file, char *dest_dir )
         chdir( dest_dir );
     }
 
-    flags = ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_PERM | ARCHIVE_EXTRACT_ACL | ARCHIVE_EXTRACT_FFLAGS;
+    flags = ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_PERM | ARCHIVE_EXTRACT_ACL | ARCHIVE_EXTRACT_FFLAGS | ARCHIVE_EXTRACT_OWNER;
     arch_w = archive_write_disk_new();
     archive_write_disk_set_options( arch_w, flags );
     archive_write_disk_set_standard_lookup( arch_w );

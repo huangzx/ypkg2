@@ -1,3 +1,11 @@
+/* Libypk download functions
+ *
+ * Copyright (c) 2011-2012 Ylmf OS
+ *
+ * Written by: 0o0<0o0zzyz@gmail.com>
+ * Version: 0.1
+ * Date: 2011.11.25
+ */
 #include "download.h"
 
 size_t memory_callback(void *data, size_t size, size_t nmemb, void *user)

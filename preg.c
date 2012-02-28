@@ -7,6 +7,11 @@ int preg_match(PREGInfo *piptr, char *pattern, char *subject, int options, int f
     int rc;
     int offset;
 
+    if( !piptr || !pattern || !subject )
+    {
+        return -1;
+    }
+
     if(first)
     {
         piptr->re = pcre_compile(

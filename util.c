@@ -1,4 +1,14 @@
+/* Libypk utility functions
+ *
+ * Copyright (c) 2011-2012 Ylmf OS
+ *
+ * Written by: 0o0<0o0zzyz@gmail.com>
+ * Version: 0.1
+ * Date: 2012.2.12
+ */
+
 #include "util.h"
+#include "sha1.h"
 
 char *util_get_config(char *config_file, char *keyword)
 {
@@ -103,6 +113,9 @@ char *util_mem_gets( char *mem )
         len = pos - cur_pos;
 
     str = malloc( len + 1 );
+    if( !str )
+        return NULL;
+
     strncpy( str, cur_pos, len );
     str[len] = '\0';
     cur_pos = pos + 1;
@@ -111,23 +124,18 @@ char *util_mem_gets( char *mem )
     return str;
 }
 
-char *util_strcpy( char *src )
+char *util_chr_replace( char *str, char chr_s, char chr_d )
 {
-    int     len;
-    char    *dest;
+    char *p;
 
-    if( !src )
-        return NULL;
-
-    len = strlen( src );
-    dest = malloc( len + 1 );
-    memset( dest, '\0', len + 1);
-    strncpy( dest, src, len + 1);
-    
-    return dest;
+    while( p = strchr( str, chr_s ) )
+    {
+        *p = chr_d;
+    }
+    return str;
 }
 
-char *util_strcat(char *first, ...)
+char *util_strcat( char *first, ... )
 {
     va_list ap;
     char    *arg, *result;
@@ -145,6 +153,8 @@ char *util_strcat(char *first, ...)
     va_end(ap);
 
     result = malloc( len + 1 );
+    if( !result )
+        return NULL;
     memset( result, '\0', len + 1);
     strncpy( result, first, strlen( first ) );
 
@@ -198,19 +208,65 @@ char *util_int_to_str( int i )
     char *result;
 
     result = malloc( 11 );
+    if( !result )
+        return NULL;
     snprintf( result, 11, "%ld", i );
     result[10] = '\0';
 
     return result;
 }
 
-void util_log( char *log, char *msg )
+int util_log( char *log, char *msg )
 {
     FILE *fp;
 
     fp = fopen( log, "a" );
+    if( !fp )
+        return -1;
     fprintf( fp, msg );
     fclose( fp );
+
+    return 0;
+}
+
+
+int util_mkdir( char *dir )
+{
+    char *tmp, *parent_dir;
+
+    if( !access( dir, F_OK ) )
+    {
+        return 0;
+    }
+
+    tmp = strdup( dir );
+    if( !tmp )
+        return -1;
+
+    parent_dir = dirname( tmp );
+
+    if( !access( parent_dir, F_OK ) )
+    {
+        if( !access( parent_dir, W_OK | X_OK ) )
+        {
+            mkdir( dir, 0755 );
+        }
+        else
+        {
+            free( tmp );
+            return -1;
+        }
+    }
+    else
+    {
+        if( !util_mkdir( parent_dir ) )
+        {
+            mkdir( dir, 0755 );
+        }
+    }
+
+    free( tmp );
+    return 0;
 }
 
 int util_remove_dir( char *dir_path )
@@ -315,11 +371,54 @@ char *util_time_to_str( time_t time )
         return NULL;
 
     result = malloc( 20 );
+    if( !result )
+        return NULL;
     memset( result, '\0', 20 );
     if( strftime( result, 20, "%Y-%m-%d %H:%M:%S", tmp) == 0 ) 
     {
         free( result );
         return NULL;
+    }
+
+    return result;
+}
+
+
+char *util_sha1( char *file )
+{
+    char            c;
+    char            *result;
+    FILE            *fp;
+    SHA1Context     sha;
+
+    if ( !( fp = fopen( file,"r" ) ) )
+    {
+        return NULL;
+    }
+
+
+    SHA1Reset( &sha );
+
+    c = fgetc( fp );
+    while( !feof( fp ) )
+    {
+        SHA1Input( &sha, &c, 1 );
+        c = fgetc( fp );
+    }
+
+    fclose(fp);
+
+    if( !SHA1Result( &sha ) )
+    {
+        return NULL;
+    }
+    else
+    {
+        result = malloc( 41 );
+        if( !result )
+            return NULL;
+
+        snprintf( result, 41, "%08x%08x%08x%08x%08x", sha.Message_Digest[0], sha.Message_Digest[1], sha.Message_Digest[2], sha.Message_Digest[3], sha.Message_Digest[4] );
     }
 
     return result;

@@ -4,7 +4,7 @@ YGET=yget2
 YPKGIMPORT=ypkg2-import
 LIBYPK= libypk.so
 YPACKAGEH=ypackage.h
-OBJS= download.o util.o db.o data.o archive.o xml.o preg.o ypackage.o 
+OBJS= download.o util.o db.o data.o archive.o xml.o preg.o ypackage.o sha1.o
 DEBUG= 
 DESTDIR=
 BINDIR= $(DESTDIR)/usr/bin
@@ -65,6 +65,9 @@ xml.o: xml.c
 
 preg.o: preg.c
 	cc -c $(DEBUG) preg.c -o preg.o
+
+sha1.o: sha1.c
+	cc -c $(DEBUG) sha1.c -o sha1.o
 
 ypackage.o: ypackage.c
 	cc -c $(DEBUG) ypackage.c -o ypackage.o
