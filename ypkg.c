@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
  * Version: 0.1
- * Date: 2012.2.15
+ * Date: 2012.3.6
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -65,8 +65,6 @@ Commands:\n\
                                                return 2 if old is lesser then new\n\
 \n\
 Options:\n\
-        -i|--in infile\n\
-        -o|--out outfile\n\
         -f|--force                              work with --install\n\
        ";
 
@@ -703,9 +701,41 @@ int main( int argc, char **argv )
          * pack directory to package
          */
         case 'b':
-            if( !outfile )
-                outfile = "./";
-            printf("pack to %s\n", outfile);
+            if( argc < 3 && argc > 4 )
+            {
+                err = 1;
+            }
+            else
+            {
+                tmp = argv[2];
+                ypk_path = argc == 4 ? argv[3] : NULL;
+
+                ret = packages_pack_package( pm, tmp, ypk_path );
+                if( !ret )
+                {
+                    printf( COLOR_GREEN "Package successful.\n" COLOR_RESET );
+                }
+                else if( ret == -1 )
+                {
+                    printf( COLOR_RED "Error: Cannot access control.xml in the %s directory.\n" COLOR_RESET, tmp );
+                    err = 3;
+                }
+                else if( ret == -2 )
+                {
+                    printf( COLOR_RED "Error: Missing some required configuration in control.xml.\n" COLOR_RESET );
+                    err = 3;
+                }
+                else if( ret == -3 )
+                {
+                    printf( COLOR_RED "Error: Cannot access filelist in the %s directory.\n" COLOR_RESET, tmp );
+                    err = 3;
+                }
+                else if( ret < 0 )
+                {
+                    printf( COLOR_RED "Error: An error is encountered when packaging.\n" COLOR_RESET );
+                    err = 3;
+                }
+            }
             break;
 
         /*
@@ -796,6 +826,8 @@ int main( int argc, char **argv )
         usage();
     else if( err == 2 )
         fprintf( stderr, "Permission Denied!\n" );
+    else if( err == 3 )
+        fprintf( stderr, "Failed!\n" );
 
     if( err )
         exit_code = err;

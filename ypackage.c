@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.2.20
+ * Date: 2012.3.3
  */
 #define LIBYPK 1
 #include "ypackage.h"
@@ -3257,6 +3257,194 @@ int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir
  */
 int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path )
 {
+    int                 ret, data_size, control_xml_size;
+    time_t              now;
+    char                *pkginfo, *pkgdata, *info_path, *control_xml, *control_xml_content, *filelist, *data_size_str, *time_str, *install_script, *install_script_dest, *package_name, *version, *tmp;
+    char                tmp_ypk_dir[] = "/tmp/ypkdir.XXXXXX";
+    char                *exclude[] = { "YLMFOS", NULL };
+    FILE                *fp_xml;
+    xmlDocPtr           xmldoc = NULL;
+    xmlXPathObjectPtr   xpath;
+
+
+    if( !source_dir )
+        return -1;
+
+    if( access( source_dir, R_OK | X_OK ) == -1 )
+        return -1;
+
+    if( !mkdtemp( tmp_ypk_dir ) )
+        return -1;
+
+    ret = 0;
+    pkginfo = NULL; 
+    pkgdata = NULL; 
+    info_path = NULL; 
+    control_xml = NULL;
+    filelist = NULL;
+    install_script = NULL; 
+    install_script_dest = NULL; 
+    package_name = NULL; 
+    version = NULL;
+
+    //check control.xml
+    control_xml = util_strcat( source_dir, "/YLMFOS/control.xml", NULL );
+    if( access( control_xml, R_OK | W_OK ) == -1 )
+    {
+        ret = -1;
+        goto cleanup;
+    }
+
+	if( ( xmldoc = xpath_open( control_xml ) ) == (xmlDocPtr)-1 )
+    {
+        ret = -2;
+        goto cleanup;
+    }
+
+    package_name =  xpath_get_node( xmldoc, "//Package/@name" );
+    if( !package_name )
+    {
+        ret = -2;
+        goto cleanup;
+    }
+
+    version =  xpath_get_node( xmldoc, "//version" );
+    if( !version )
+    {
+        ret = -2;
+        goto cleanup;
+    }
+
+    filelist = util_strcat( source_dir, "/YLMFOS/filelist", NULL );
+    if( access( filelist, R_OK ) == -1 )
+    {
+        ret = -3;
+        goto cleanup;
+    }
+
+    //copy install script
+    install_script = util_strcat( source_dir, "/YLMFOS/", package_name, ".install", NULL );
+    if( access( install_script, R_OK ) != -1 )
+    {
+        install_script_dest = util_strcat( source_dir, "/var/ypkg/db/", package_name, NULL );
+        if( !util_mkdir( install_script_dest ) )
+        {
+            free( install_script_dest );
+            install_script_dest = util_strcat( source_dir, "/var/ypkg/db/", package_name, "/", package_name, ".install", NULL );
+            util_copy_file( install_script, install_script_dest );
+        }
+        free( install_script_dest );
+    }
+    free( install_script );
+
+
+
+    //pack pkgdata
+    pkgdata = util_strcat( tmp_ypk_dir, "/", "pkgdata", NULL );
+    ret = archive_create( pkgdata, 'J', 'c',  source_dir, exclude );
+
+    if( ret == -1 )
+    {
+        free( pkgdata );
+        ret = -4;
+        goto cleanup;
+    }
+
+    //update control.xml
+    if( fp_xml = fopen( control_xml, "r+" ) )
+    {
+        control_xml_size = util_file_size( control_xml );
+        control_xml_content = malloc( control_xml_size + 1 );
+        if( control_xml_content )
+        {
+            if( fread( control_xml_content, 1, control_xml_size, fp_xml ) == control_xml_size )
+            {
+                now = time( NULL );
+                if( now )
+                {
+                    tmp = util_int_to_str( now );
+                    time_str = util_strcat( "<build_date>", tmp, "</build_date>", NULL );
+                    free( tmp );
+                }
+
+                data_size = util_file_size( pkgdata );
+                if( data_size )
+                {
+                    tmp = util_int_to_str( data_size );
+                    data_size_str = util_strcat( "<size>", tmp, "</size>", NULL );
+                    free( tmp );
+                }
+
+                tmp = preg_replace( "<build_date>.*?</build_date>", time_str, control_xml_content, PCRE_CASELESS, 1 );
+                free( control_xml_content );
+                free( time_str );
+                control_xml_content = tmp;
+
+                tmp = preg_replace( "<size>.*?</size>", data_size_str, control_xml_content, PCRE_CASELESS, 1 );
+                free( control_xml_content );
+                free( data_size_str );
+                control_xml_content = tmp;
+
+                rewind( fp_xml );
+                control_xml_size = strlen( control_xml_content );
+                fwrite( control_xml_content, control_xml_size, 1, fp_xml );
+            }
+            free( control_xml_content );
+        }
+        fclose( fp_xml );
+        truncate( control_xml, control_xml_size );
+    }
+
+    free( pkgdata );
+
+    //pack pkginfo
+    info_path = util_strcat( source_dir, "/YLMFOS", NULL );
+    pkginfo = util_strcat( tmp_ypk_dir, "/pkginfo", NULL );
+    ret = archive_create( pkginfo, 'j', 't',  info_path, NULL );
+    free( pkginfo );
+    free( info_path );
+
+    if( ret == -1 )
+    {
+        ret = -5;
+        goto cleanup;
+    }
+
+    //pack ypk
+    if( !ypk_path )
+    {
+        tmp = util_strcat( package_name, "_", version, ".ypk", NULL );
+        if( archive_create( tmp, 'j', 't', tmp_ypk_dir, NULL ) )
+            ret = -6;
+        free( tmp );
+    }
+    else
+    {
+        if( archive_create( ypk_path, 'j', 't', tmp_ypk_dir, NULL ) )
+            ret = -6;
+    }
+
+cleanup:
+    if( control_xml )
+        free( control_xml );
+
+    if( filelist )
+        free( filelist );
+
+    if( package_name )
+        free( package_name );
+
+    if( version )
+        free( version );
+
+    util_remove_dir( tmp_ypk_dir );
+
+    if( xmldoc )
+    {
+        xmlFreeDoc( xmldoc );
+        xmlCleanupParser();
+    }
+    return ret;
 }
 
 /*

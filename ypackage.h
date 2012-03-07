@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.2.15
+ * Date: 2012.3.6
  */
 #ifndef PACKAGE_H
 #define PACKAGE_H

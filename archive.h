@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2011.12.8
+ * Date: 2012.3.1
  */
 #ifndef ARCHIVE_H
 #define ARCHIVE_H
@@ -16,9 +16,11 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <fnmatch.h>
 #include <archive.h>
 #include <archive_entry.h>
+#include "util.h"
 
 
 /*
@@ -52,4 +54,7 @@ int archive_extract_all( char *filename, char *dest_dir );
  */
 int archive_extract_all( char *filename, char *dest_dir );
 
+
+int archive_create( char *arch_file, int compress, int format, char *src_dir, char **exclude );
+int archive_create2( char *arch_file, int compress, int format, char **files );
 #endif /* !ARCHIVE_H */

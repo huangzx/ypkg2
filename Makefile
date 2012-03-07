@@ -1,7 +1,8 @@
-VERSION=0.0.1
+VERSION=0.1.2
 YPKG=ypkg2
 YGET=yget2
 YPKGIMPORT=ypkg2-import
+YPKGGENCONTROL=ypkg2-gencontrol
 LIBYPK= libypk.so
 YPACKAGEH=ypackage.h
 OBJS= download.o util.o db.o data.o archive.o xml.o preg.o ypackage.o sha1.o
@@ -58,7 +59,7 @@ data.o: data.c
 	cc -c $(DEBUG) data.c -o data.o
 
 archive.o: archive.c
-	cc -c $(DEBUG) archive.c -o archive.o
+	cc -c $(DEBUG) -D_FILE_OFFSET_BITS=64 archive.c -o archive.o
 
 xml.o: xml.c
 	cc -c $(DEBUG) xml.c -o xml.o
@@ -79,11 +80,12 @@ install: all
 	cp $(YPKG) $(BINDIR)
 	cp $(YGET) $(BINDIR)
 	cp $(YPKGIMPORT) $(BINDIR) 
+	cp $(YPKGGENCONTROL) $(BINDIR) 
+	#cp po/zh_CN.mo $(LANGDIR)/ypkg.mo
 	cp data/db_create.sql $(DATADIR)
 	#sqlite3 $(DBDIR)/package.db ".read $(DATADIR)/db_create.sql"
-	#$(BINDIR)/$(YPKGIMPORT)
-	#cp po/zh_CN.mo $(LANGDIR)/ypkg.mo
 	cd  $(LIBDIR) && ln -s $(LIBYPK).$(VERSION) ./$(LIBYPK)
+	#$(BINDIR)/$(YPKGIMPORT)
 	
 
 clean:
@@ -93,6 +95,7 @@ remove:
 	rm -f $(BINDIR)/$(YPKG) 
 	rm -f $(BINDIR)/$(YGET) 
 	rm -f $(BINDIR)/$(YPKGIMPORT)
+	rm -f $(BINDIR)/$(YPKGGENCONTROL)
 	rm -f $(LIBDIR)/$(LIBYPK).$(VERSION) 
 	rm -f $(LIBDIR)/$(LIBYPK)
 	rm -f $(INCDIR)/$(YPACKAGEH) 

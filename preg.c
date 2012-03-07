@@ -1,3 +1,12 @@
+/* Libypk regular expression functions
+ *
+ * Copyright (c) 2011-2012 Ylmf OS
+ *
+ * Written by: 0o0<0o0zzyz@gmail.com>
+ * Version: 0.1
+ * Date: 2012.3.6
+ */
+
 #include "preg.h"
 
 int preg_match(PREGInfo *piptr, char *pattern, char *subject, int options, int first)
@@ -86,7 +95,7 @@ int preg_free(PREGInfo *piptr)
         pcre_free(piptr->re);
 }
 
-char *preg_replace(char *pattern, char *replace, char *subject, int options)
+char *preg_replace( char *pattern, char *replace, char *subject, int options, int once )
 {
 
     pcre *re;
@@ -113,7 +122,7 @@ char *preg_replace(char *pattern, char *replace, char *subject, int options)
 
     memcpy(tmp, subject, subject_len + 1);
 
-    while(pcre_exec( re, NULL, tmp, subject_len, 0, 0, ovector, OVECCOUNT) > 0)
+    while( pcre_exec( re, NULL, tmp, subject_len, 0, 0, ovector, OVECCOUNT) > 0 )
     {
         matched_len = ovector[1] - ovector[0];
         if( replace_len - matched_len + subject_len > alloc_len)
@@ -133,7 +142,8 @@ char *preg_replace(char *pattern, char *replace, char *subject, int options)
         subject_len += replace_len - matched_len; 
         memcpy(tmp, result, subject_len);
 
-
+        if( once )
+            break;
     }
     result[subject_len] = 0;
 
@@ -141,6 +151,7 @@ char *preg_replace(char *pattern, char *replace, char *subject, int options)
     return result;
 }
 
+/*
 int preg_demo(void)
 {
 
@@ -170,3 +181,4 @@ int preg_demo(void)
 
     return 0;
 }
+*/

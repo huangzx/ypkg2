@@ -68,7 +68,6 @@ void usage()
             -y                      assume Yes to all queries\n\
             -d		                download only - do NOT install\n\
             -f | --force            force\n\
-            -v | --verbose          display a detaileed text\n\
        ";
 
     printf( "%s\n", usage );
@@ -695,7 +694,11 @@ int main( int argc, char **argv )
                                     yget_install_list( pm, recommended_list, download_only );
                                 }
                             }
+                            else
+                                err = 3;
                         }
+                        else
+                            err = 3;
                     }
 
                     packages_free_install_list( install_list );
@@ -1229,5 +1232,8 @@ int main( int argc, char **argv )
         usage();
     else if( err == 2 )
         fprintf( stderr, "Permission Denied!\n" );
+    else if( err == 3 )
+        fprintf( stderr, "Failed!\n" );
+
     return err;
 }

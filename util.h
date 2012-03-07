@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.2.12
+ * Date: 2012.3.6
  */
 #ifndef UTIL_H
 #define UTIL_H
@@ -53,11 +53,12 @@ int util_log( char *log, char *msg );
 
 
 /*
- * file
+ * file & dir
  */
 int util_mkdir( char *dir );
 int util_remove_dir( char *dir_path );
 int util_remove_files( char *dir_path, char *suffix );
+int util_copy_file( char *src, char *dest );
 
 /*
  * hash
