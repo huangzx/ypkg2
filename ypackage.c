@@ -2696,7 +2696,7 @@ YPackageChangeList *packages_clist_append( YPackageChangeList *list_s, YPackageC
 YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name, char *version )
 {
     int                     i, len;
-    char                    *token, *saveptr, *depend, *dev, *bdepend, *tmp;
+    char                    *token, *version2, *saveptr, *depend, *dev, *bdepend, *tmp;
     YPackageData            *pkg_data;
     YPackageChangeList      *list, *cur_pkg;
 
@@ -2713,7 +2713,15 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
                 token = strtok_r( depend, " ,", &saveptr );
                 while( token )
                 {
-                    dev = util_strcat( token, "-dev", NULL );
+                    tmp = util_strcat( token, NULL );
+                    if( version2 = strchr( tmp, '(' ) )
+                    {
+                        *version2 = 0;
+                    }
+                    
+
+                    dev = util_strcat( tmp, "-dev", NULL );
+                    free( tmp );
                     if( !packages_exists( pm, dev, NULL ) )
                     {
                         free( dev );
