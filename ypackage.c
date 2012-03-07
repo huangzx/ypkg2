@@ -3267,7 +3267,7 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
 {
     int                 ret, data_size, control_xml_size;
     time_t              now;
-    char                *pkginfo, *pkgdata, *info_path, *control_xml, *control_xml_content, *filelist, *data_size_str, *time_str, *install_script, *install_script_dest, *package_name, *version, *tmp;
+    char                *pkginfo, *pkgdata, *info_path, *control_xml, *control_xml_content, *filelist, *data_size_str, *time_str, *install, *install_script, *install_script_dest, *package_name, *version, *tmp;
     char                tmp_ypk_dir[] = "/tmp/ypkdir.XXXXXX";
     char                *exclude[] = { "YLMFOS", NULL };
     FILE                *fp_xml;
@@ -3323,6 +3323,8 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
         goto cleanup;
     }
 
+    install = xpath_get_node( xmldoc, "//install" );
+
     filelist = util_strcat( source_dir, "/YLMFOS/filelist", NULL );
     if( access( filelist, R_OK ) == -1 )
     {
@@ -3331,21 +3333,22 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
     }
 
     //copy install script
-    install_script = util_strcat( source_dir, "/YLMFOS/", package_name, ".install", NULL );
-    if( access( install_script, R_OK ) != -1 )
+    if( install )
     {
-        install_script_dest = util_strcat( source_dir, "/var/ypkg/db/", package_name, NULL );
-        if( !util_mkdir( install_script_dest ) )
+        install_script = util_strcat( source_dir, "/YLMFOS/", install, NULL );
+        if( access( install_script, R_OK ) != -1 )
         {
+            install_script_dest = util_strcat( source_dir, "/var/ypkg/db/", package_name, NULL );
+            if( !util_mkdir( install_script_dest ) )
+            {
+                free( install_script_dest );
+                install_script_dest = util_strcat( source_dir, "/var/ypkg/db/", package_name, "/", install, NULL );
+                util_copy_file( install_script, install_script_dest );
+            }
             free( install_script_dest );
-            install_script_dest = util_strcat( source_dir, "/var/ypkg/db/", package_name, "/", package_name, ".install", NULL );
-            util_copy_file( install_script, install_script_dest );
         }
-        free( install_script_dest );
+        free( install_script );
     }
-    free( install_script );
-
-
 
     //pack pkgdata
     pkgdata = util_strcat( tmp_ypk_dir, "/", "pkgdata", NULL );

@@ -394,7 +394,7 @@ int main( int argc, char **argv )
             case 'h': //show usage
             case 'I': //install
             case 'i': //install-dev
-            case 'r': //install-dev
+            case 'r': //reinstall
             case 'R': //remove
             case 'A': //autoremove
             case 'S': //search

@@ -9,7 +9,8 @@
 # Date: 2012.3.3
 #
 # Usage:
-#       ypkg2-gencontrol [--desktop] DIR ...
+#       ypkg2-gencontrol [--desktop] [DIR] ...
+#       ypkg2-gencontrol --help
 #
 
 use strict;
@@ -17,13 +18,14 @@ use warnings;
 
 use File::Find;
 use File::Copy;
+use POSIX qw/uname/;
 use Digest::MD5 qw/md5_hex/;
 
-my ( $total_size, $disk_usage, $dir_count, $file_count, $link_count ) = ( 0, 0, 0, 0, 0 );
+my ( $desktop, $total_size, $disk_usage, $dir_count, $file_count, $link_count ) = ( 0, 0, 0, 0, 0, 0 );
 
 sub usage
 {
-    print "Usage:  ypkg2-gencontrol [--desktop]  DIR ...\n";
+    print "Usage:\n  ypkg2-gencontrol [--desktop]  [DIR] ...\n  ypkg2-gencontrol --help\n";
 }
 
 sub xml_content
@@ -35,7 +37,7 @@ sub xml_content
             <keyword lang="en"></keyword>
         </genericname>
         <category></category>          
-        <arch></arch>                                        
+        <arch>%s</arch>                                        
         <version></version>                            
         <yversion></yversion>                            
         <priority></priority>                    
@@ -73,6 +75,10 @@ sub get_info
 
     if( $File::Find::name =~ m[^\./YLMFOS] )
     {
+        if( /.*\.desktop/ )
+        {
+            $desktop = 1;
+        }
         return;
     }
 
@@ -115,15 +121,15 @@ sub get_info
 
 sub generate_control
 {
-    if( ! -d -r -w -x $_[1] )
+    if( ! -d -r -w -x $_[0] )
     {
-        print "Permission denied for $_[1]!\n";
+        print "Permission denied for $_[0]!\n";
         return -1;
     }
 
     my $pwd = $ENV{'PWD'};
 
-    chdir $_[1];
+    chdir $_[0];
 
     if( ! -e 'YLMFOS' )
     {
@@ -162,9 +168,10 @@ sub generate_control
                 return -1;
         }
 
-        my $desktop_str = $_[0] == 1 ? ' type="desktop"' : '';
+        my $desktop_str = $desktop == 1 ? ' type="desktop"' : '';
+        my @uname = uname;
 
-        printf CONTROL &xml_content, $desktop_str, $desktop_str, $total_size;
+        printf CONTROL &xml_content, $desktop_str, $uname[4], $desktop_str, $total_size;
 
         close CONTROL;
     }
@@ -201,10 +208,9 @@ sub generate_control
 
 if( @ARGV == 0 )
 {
-    &usage;
+    exit &generate_control( '.' );
 }
 
-my $desktop = 0;
 for( @ARGV )
 {
     if( $_ eq "--desktop" )
@@ -212,13 +218,23 @@ for( @ARGV )
         $desktop = 1;
         last;
     }
+    elsif( $_ eq "--help" )
+    {
+        &usage;
+        exit 0;
+    }
+    elsif( /^-/ )
+    {
+        &usage;
+        exit 0;
+    }
 }
 
 for( @ARGV )
 {
-    if( $_ =~ /^-/ )
+    if( /^-/ )
     {
         next;
     }
-    &generate_control( $desktop, $_ );
+    &generate_control( $_ );
 }
