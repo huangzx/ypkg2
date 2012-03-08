@@ -1056,7 +1056,6 @@ int main( int argc, char **argv )
                                 depend_list = sub_list;
                             }
 
-                            /*
                             sub_list = packages_get_recommended_list( pm, cur_package->name, cur_package->version );
                             if( sub_list )
                             {
@@ -1066,12 +1065,11 @@ int main( int argc, char **argv )
                                 cur_package2->prev = recommended_list;
                                 recommended_list = sub_list;
                             }
-                            */
 
                             cur_package = cur_package->prev;
                         }
                         packages_clist_remove_duplicate_item( depend_list );
-                        //packages_clist_remove_duplicate_item( recommended_list );
+                        packages_clist_remove_duplicate_item( recommended_list );
 
 
                         printf( "Upgrade:" );
