@@ -3366,6 +3366,7 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
     {
         control_xml_size = util_file_size( control_xml );
         control_xml_content = malloc( control_xml_size + 1 );
+        memset( control_xml_content, 0, control_xml_size + 1 );
         if( control_xml_content )
         {
             if( fread( control_xml_content, 1, control_xml_size, fp_xml ) == control_xml_size )
@@ -3395,6 +3396,7 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
                 free( control_xml_content );
                 free( data_size_str );
                 control_xml_content = tmp;
+                tmp = NULL;
 
                 rewind( fp_xml );
                 control_xml_size = strlen( control_xml_content );
