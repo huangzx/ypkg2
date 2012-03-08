@@ -59,6 +59,7 @@ int util_mkdir( char *dir );
 int util_remove_dir( char *dir_path );
 int util_remove_files( char *dir_path, char *suffix );
 int util_copy_file( char *src, char *dest );
+int util_file_size( char *file );
 
 /*
  * hash

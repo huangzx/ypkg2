@@ -128,7 +128,7 @@ char *util_chr_replace( char *str, char chr_s, char chr_d )
 {
     char *p;
 
-    while( p = strchr( str, chr_s ) )
+    while( ( p = strchr( str, chr_s ) ) )
     {
         *p = chr_d;
     }
@@ -210,7 +210,7 @@ char *util_int_to_str( int i )
     result = malloc( 11 );
     if( !result )
         return NULL;
-    snprintf( result, 11, "%ld", i );
+    snprintf( result, 11, "%d", i );
     result[10] = '\0';
 
     return result;
@@ -295,7 +295,7 @@ int util_remove_dir( char *dir_path )
     if( !dir )
         return -1;
 
-    while( entry = readdir( dir ) )
+    while( ( entry = readdir( dir ) ) )
     {
         if( !strcmp( entry->d_name, "." ) || !strcmp( entry->d_name, ".." ) )
         {
@@ -340,7 +340,7 @@ int util_remove_files( char *dir_path, char *suffix )
     if( !dir )
         return -1;
 
-    while( entry = readdir( dir ) )
+    while( (entry = readdir( dir )) )
     {
         if( !strcmp( entry->d_name, "." ) || !strcmp( entry->d_name, ".." ) )
         {
@@ -391,7 +391,7 @@ int util_copy_file( char *src, char *dest )
         return -1;
     }
 
-    while( cnt_r = fread( buf, 1, 4096, fp_r ) )
+    while( (cnt_r = fread( buf, 1, 4096, fp_r )) )
     {
         if( cnt_r < 4096 )
         {
@@ -457,7 +457,7 @@ char *util_time_to_str( time_t time )
 
 char *util_sha1( char *file )
 {
-    char            c;
+    unsigned char   c;
     char            *result;
     FILE            *fp;
     SHA1Context     sha;
@@ -470,7 +470,7 @@ char *util_sha1( char *file )
 
     SHA1Reset( &sha );
 
-    c = fgetc( fp );
+    c = (unsigned char)fgetc( fp );
     while( !feof( fp ) )
     {
         SHA1Input( &sha, &c, 1 );

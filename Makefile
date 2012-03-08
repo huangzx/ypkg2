@@ -7,6 +7,8 @@ LIBYPK= libypk.so
 YPACKAGEH=ypackage.h
 OBJS= download.o util.o db.o data.o archive.o xml.o preg.o ypackage.o sha1.o
 DEBUG= 
+W= -Wall
+O= -O2
 DESTDIR=
 BINDIR= $(DESTDIR)/usr/bin
 LIBDIR= $(DESTDIR)/usr/lib
@@ -21,57 +23,57 @@ LIBS= -lcurl -lsqlite3 -larchive -lxml2 -lpthread -lpcre
 all: $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT) $(STATIC_LIB)
 
 $(YPKG): ypkg.o 
-	cc  $(DEBUG) -g -o $(YPKG)  ypkg.o  -L. -lypk
+	cc $(W) $(DEBUG) -o $(YPKG)  ypkg.o  -L. -lypk
 
 ypkg.o: ypkg.c
-	cc  $(DEBUG) -c ypkg.c -o ypkg.o
+	cc $(W) $(DEBUG) $(O) -c ypkg.c -o ypkg.o
 
 $(YGET): yget.o 
-	cc  $(DEBUG) -o $(YGET) yget.o  -L. -lypk
+	cc $(W) $(DEBUG) -o $(YGET) yget.o  -L. -lypk
 
 yget.o: yget.c
-	cc  $(DEBUG) -c yget.c -o yget.o
+	cc $(W) $(DEBUG)  $(O) -c yget.c -o yget.o
 
 $(YPKGIMPORT): ypkg-import.o 
-	cc  $(DEBUG) -o $(YPKGIMPORT)  ypkg-import.o -L. -lypk
+	cc $(W) $(DEBUG) -o $(YPKGIMPORT)  ypkg-import.o -L. -lypk
 
 ypkg-import.o: ypkg-import.c
-	cc  $(DEBUG) -c ypkg-import.c -o ypkg-import.o
+	cc $(W) $(DEBUG)  $(O) -c ypkg-import.c -o ypkg-import.o
 
 
 $(LIBYPK): $(OBJS)
-	cc  $(DEBUG) -shared -fPIC -o libypk.so $(OBJS) $(LIBS)
+	cc $(W) $(DEBUG) -shared -fPIC -o libypk.so $(OBJS) $(LIBS)
 
 $(STATIC_LIB):$(OBJS)
 	ar -r $(STATIC_LIB) $(OBJS)
 	ranlib $(STATIC_LIB)
 
 download.o: download.c
-	cc -c $(DEBUG) download.c -o download.o
+	cc -c $(W)$(DEBUG)  $(O) download.c -o download.o
 
 util.o: util.c
-	cc -c $(DEBUG) util.c -o util.o
+	cc -c $(W)$(DEBUG)  $(O) util.c -o util.o
 
 db.o: db.c
-	cc -c $(DEBUG) db.c -o db.o
+	cc -c $(W)$(DEBUG)  $(O) db.c -o db.o
 
 data.o: data.c
-	cc -c $(DEBUG) data.c -o data.o
+	cc -c $(W)$(DEBUG)  $(O) data.c -o data.o
 
 archive.o: archive.c
-	cc -c $(DEBUG) -D_FILE_OFFSET_BITS=64 archive.c -o archive.o
+	cc -c $(W)$(DEBUG)  $(O) -D_FILE_OFFSET_BITS=64 archive.c -o archive.o
 
 xml.o: xml.c
-	cc -c $(DEBUG) xml.c -o xml.o
+	cc -c $(W)$(DEBUG)  $(O) xml.c -o xml.o
 
 preg.o: preg.c
-	cc -c $(DEBUG) preg.c -o preg.o
+	cc -c $(W)$(DEBUG)  $(O) preg.c -o preg.o
 
 sha1.o: sha1.c
-	cc -c $(DEBUG) sha1.c -o sha1.o
+	cc -c $(W)$(DEBUG)  $(O) sha1.c -o sha1.o
 
 ypackage.o: ypackage.c
-	cc -c $(DEBUG) ypackage.c -o ypackage.o
+	cc -c $(W)$(DEBUG)  $(O) ypackage.c -o ypackage.o
 
 install: all
 	mkdir -p $(BINDIR) $(LIBDIR) $(INCDIR) $(LANGDIR) $(DBDIR) $(DATADIR) 

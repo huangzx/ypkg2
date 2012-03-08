@@ -42,11 +42,11 @@ int reader_open( char *docname,  XMLReaderHandle *handle);
 
 int reader_fetch_a_row( XMLReaderHandle *handle, int target_depth, char **attr_list );
 
-static int reader_fetch_fields( XMLReaderHandle *handle, int node_depth, char *prefix, char **attr_list );
+int reader_fetch_fields( XMLReaderHandle *handle, int node_depth, char *prefix, char **attr_list );
 
-static void hash_data_cleanup( void *data, xmlChar *key );
+void hash_data_cleanup( void *data, xmlChar *key );
 
-static void reader_hash_cleanup( XMLReaderHandle *handle );
+void reader_hash_cleanup( XMLReaderHandle *handle );
 
 void reader_cleanup( XMLReaderHandle *handle );
 

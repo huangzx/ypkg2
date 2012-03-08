@@ -51,8 +51,8 @@ int db_fetch_row( DB *db, int result_type );
 char *db_get_value_by_key( DB *db, char *key );
 char *db_get_value_by_index( DB *db, int index );
 
-static int db_create_hash_table( DB *db );
-static void db_destory_hash_table( DB *db );
+int db_create_hash_table( DB *db );
+void db_destory_hash_table( DB *db );
 
 sqlite3_int64 db_last_insert_rowid( DB *db );
 

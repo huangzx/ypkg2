@@ -48,6 +48,6 @@ char *hash_table_list_get_data( HashTableList *htl, int index, char *key );
 void hash_table_list_cleanup( HashTableList *htl );
 
 
-static HashData *hash_table_malloc_data( HashData *cur_data, int new_size );
+HashData *hash_table_malloc_data( HashData *cur_data, int new_size );
 
 #endif /* !DATA_H */

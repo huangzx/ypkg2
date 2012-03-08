@@ -141,7 +141,7 @@ int SHA1Result(SHA1Context *context)
  *
  */
 void SHA1Input(     SHA1Context         *context,
-                    const unsigned char *message_array,
+                    unsigned char *message_array,
                     unsigned            length)
 {
     if (!length)

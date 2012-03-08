@@ -343,7 +343,7 @@ int main( int argc, char **argv )
                     if( strncmp( package_name+len-4, ".ypk", 4 ) || access( package_name, R_OK ) )
                     {
                         pkg_file = packages_get_package_file( pm, package_name );
-                        if( pkg = packages_get_package( pm, package_name, 1 ) )
+                        if( (pkg = packages_get_package( pm, package_name, 1 )) )
                         {
                             version = packages_get_package_attr( pkg, "version" );
                         }
@@ -398,7 +398,7 @@ int main( int argc, char **argv )
             else
             {
                 package_name = argv[optind];
-                if( pkg = packages_get_package( pm, package_name, 1 ) )
+                if( (pkg = packages_get_package( pm, package_name, 1 )) )
                 {
                     version = packages_get_package_attr( pkg, "version");
                 }
@@ -408,7 +408,7 @@ int main( int argc, char **argv )
                     break;
                 }
 
-                if( pkg_data = packages_get_package_data( pm, package_name, 1 ) )
+                if( (pkg_data = packages_get_package_data( pm, package_name, 1 )) )
                 {
 
                     for( i = 0; i < pkg_data->cnt; i++ )

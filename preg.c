@@ -13,7 +13,6 @@ int preg_match(PREGInfo *piptr, char *pattern, char *subject, int options, int f
 {
     const char *error;
     int erroffset;
-    int rc;
     int offset;
 
     if( !piptr || !pattern || !subject )
@@ -89,7 +88,7 @@ int preg_result2(PREGInfo *piptr, char *name, char *buf, int buf_size)
     return ret;
 }
 
-int preg_free(PREGInfo *piptr)
+void preg_free(PREGInfo *piptr)
 {
     if( piptr && piptr->re )
         pcre_free(piptr->re);
@@ -99,7 +98,6 @@ char *preg_replace( char *pattern, char *replace, char *subject, int options, in
 {
 
     pcre *re;
-    int offset;
     int ovector[OVECCOUNT];
     const char *error;
     int erroffset;

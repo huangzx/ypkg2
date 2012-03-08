@@ -102,14 +102,14 @@ int db_query(DB *db, char *sql, ...)
     return 0;
 }
 
-static int db_create_hash_table( DB *db )
+int db_create_hash_table( DB *db )
 {
     db->ht = malloc( sizeof( struct hsearch_data ) );
     memset(db->ht, '\0',  sizeof( struct hsearch_data ) );
     return hcreate_r( DB_HashTable_SIZE, db->ht );
 }
 
-static void db_destory_hash_table( DB *db )
+void db_destory_hash_table( DB *db )
 {
     if(db->ht)
     {

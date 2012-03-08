@@ -31,7 +31,7 @@ int preg_result(PREGInfo *piptr, int number, char *buf, int buf_size);
 
 int preg_result2(PREGInfo *piptr, char *name, char *buf, int buf_size);
 
-int preg_free(PREGInfo *piptr);
+void preg_free(PREGInfo *piptr);
 
 char *preg_replace(char *pattern, char *replace, char *subject, int options, int once);
 

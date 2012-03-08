@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <time.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -144,7 +145,7 @@ int packages_check_update( YPackageManager *pm );
 
 int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg );
 
-static int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum,  ypk_progress_callback cb, void *cb_arg  );
+int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum,  ypk_progress_callback cb, void *cb_arg  );
 
 int packages_import_local_data( YPackageManager *pm );
 
@@ -289,23 +290,23 @@ int packages_get_list_async2( YPackageManager *pm, int page_size, int page_no, c
 /**********************************/
 /* internal functions             */
 /**********************************/
-static int packages_compare_main_version( char *version1, char *version2 );
-static int packages_compare_sub_version( char *version1, char *version2 );
+int packages_compare_main_version( char *version1, char *version2 );
+int packages_compare_sub_version( char *version1, char *version2 );
 
-static YPackageManager *packages_manager_clone(  YPackageManager *pm );
-
-
-static int packages_get_last_check_timestamp( YPackageManager *pm );
-static int packages_set_last_check_timestamp( YPackageManager *pm, int last_check );
-
-static int packages_get_last_update_timestamp( YPackageManager *pm );
-static int packages_set_last_update_timestamp( YPackageManager *pm, int last_update );
+YPackageManager *packages_manager_clone(  YPackageManager *pm );
 
 
-static void packages_free_change_list( YPackageChangeList *list );
+int packages_get_last_check_timestamp( YPackageManager *pm );
+int packages_set_last_check_timestamp( YPackageManager *pm, int last_check );
 
-static void *packages_check_update_backend_thread( void *data );
-static void *packages_update_backend_thread( void *data );
-static void *packages_get_list_backend_thread(void *data);
-static int packages_download_progress_callback( void *cb_arg,double dltotal, double dlnow, double ultotal, double ulnow );
+int packages_get_last_update_timestamp( YPackageManager *pm );
+int packages_set_last_update_timestamp( YPackageManager *pm, int last_update );
+
+
+void packages_free_change_list( YPackageChangeList *list );
+
+void *packages_check_update_backend_thread( void *data );
+void *packages_update_backend_thread( void *data );
+void *packages_get_list_backend_thread(void *data);
+int packages_download_progress_callback( void *cb_arg,double dltotal, double dlnow, double ultotal, double ulnow );
 #endif /* !PACKAGE_H */

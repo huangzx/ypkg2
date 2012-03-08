@@ -13,7 +13,7 @@
  */
 int archive_extract_file( char *arch_file, const char *src, char *dest )
 {
-    int                     ret, flags;     
+    int                     flags;     
     const char              *filename;
     struct archive          *arch_r = NULL, *arch_w = NULL;
     struct archive_entry    *entry;
@@ -76,7 +76,6 @@ errout:
  */
 int archive_extract_file2( char *arch_file, const char *src, void **dest_buff, size_t *dest_len )
 {
-    int                     ret, flags;     
     const char              *filename;
     struct archive          *arch_r = NULL;
     struct archive_entry    *entry;
@@ -133,7 +132,7 @@ errout:
  */
 int archive_extract_file3( void *arch_buff, size_t arch_size, const char *src, char *dest )
 {
-    int                     ret, flags;     
+    int                     flags;     
     const char              *filename;
     struct archive          *arch_r = NULL, *arch_w = NULL;
     struct archive_entry    *entry;
@@ -196,7 +195,6 @@ errout:
  */
 int archive_extract_file4( void *arch_buff, size_t arch_size, const char *src,  void **dest_buff, size_t *dest_len )
 {    
-    int                     ret, flags;     
     const char              *filename;
     struct archive          *arch_r = NULL;
     struct archive_entry    *entry;
@@ -252,9 +250,12 @@ errout:
 int archive_extract_all( char *arch_file, char *dest_dir )
 {
     int                     ret, flags;     
-    char                    *filename, *pwd = NULL;
+    char                    *pwd = NULL;
+#ifdef DEBUG
+    char                    *filename;
+#endif
     struct archive          *arch_r = NULL, *arch_w = NULL;
-    struct archive_entry    *entry = NULL, *sparse = NULL;
+    struct archive_entry    *entry = NULL;
 
     if( !arch_file )
         return -1;
@@ -343,7 +344,6 @@ int archive_create( char *arch_file, int compress, int format, char *src_dir, ch
     char                    *pwd, **files;
     DIR                     *dir;
     struct dirent           *dir_entry;
-    struct stat             st;
     struct archive          *arch_w = NULL, *arch_r = NULL;
     struct archive_entry    *arch_entry = NULL;
     char                    buf[8192];
@@ -404,7 +404,7 @@ int archive_create( char *arch_file, int compress, int format, char *src_dir, ch
     pwd = getcwd( NULL, 0 );
     chdir( src_dir );
 
-    while( dir_entry = readdir( dir ) )
+    while( (dir_entry = readdir( dir )) )
     {
         if( !strcmp( dir_entry->d_name, "." ) || !strcmp( dir_entry->d_name, ".." ) )
         {
@@ -519,7 +519,6 @@ int archive_create( char *arch_file, int compress, int format, char *src_dir, ch
 int archive_create2( char *arch_file, int compress, int format, char **files )
 {
     int                     fd, len, ret;
-    struct stat             st;
     struct archive          *arch_w = NULL, *arch_r;
     struct archive_entry    *arch_entry = NULL;
     char                    buf[8192];
@@ -562,7 +561,7 @@ int archive_create2( char *arch_file, int compress, int format, char **files )
             break;
     }
 
-    archive_write_open_filename( arch_w, arch_file );
+    ret = archive_write_open_filename( arch_w, arch_file );
     if( ret != ARCHIVE_OK )
     {
         archive_write_finish( arch_w );

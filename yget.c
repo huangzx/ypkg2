@@ -132,6 +132,7 @@ int yget_download_progress_callback( void *cb_arg, char *package_name, double dl
         return 0;
 
 
+    speed = 0;
     statp->progress = progress;
     if( !gettimeofday( &now, NULL ) )
     {
@@ -180,7 +181,7 @@ int yget_download_progress_callback( void *cb_arg, char *package_name, double dl
 int yget_install_package( YPackageManager *pm, char *package_name, char *version, int download_only )
 {
     int                 ret, return_code;
-    char                *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_version = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
+    char                *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
     YPackage            *pkg;
     //YPackageDCB         dcb;
     DownloadStat        dl_stat;
@@ -272,7 +273,7 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
     if( !download_only )
     {
         printf( "Installing %s\n", package_path );
-        if( ret = packages_install_local_package( pm, package_path, "/", 1, yget_progress_callback, pm ) )
+        if( (ret = packages_install_local_package( pm, package_path, "/", 1, yget_progress_callback, pm )) )
         {
             switch( ret )
             {
@@ -360,11 +361,10 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
 int main( int argc, char **argv )
 {
     int             c, force, download_only, simulation, reinstall, yes, unknown_arg, verbose, i, j, action, ret, err, flag, len, size, install_size, pkg_count;
-    char            confirm, *tmp, *package_name, *file_name, *install_date, *build_date, *version, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type, *installed, *can_update, *repo, *homepage;
+    char            confirm, *tmp, *package_name, *install_date, *build_date, *version,  *installed, *can_update, *repo;
     YPackageManager *pm;
     YPackage        *pkg, *pkg2;
     YPackageData    *pkg_data;
-    YPackageFile    *pkg_file;
     YPackageList    *pkg_list;
     YPackageChangeList     *depend_list, *recommended_list, *sub_list, *install_list, *remove_list, *upgrade_list, *cur_package, *cur_package2;       
 
@@ -586,7 +586,7 @@ int main( int argc, char **argv )
                         continue;
                     }
 
-                    if( pkg = packages_get_package( pm, package_name, 0 ) )
+                    if( (pkg = packages_get_package( pm, package_name, 0 )) )
                     {
                         version = packages_get_package_attr( pkg, "version" );
                         if( !force && !reinstall )
@@ -826,63 +826,14 @@ int main( int argc, char **argv )
 
                                 repo = packages_get_list_attr( pkg_list, j, "repo" );
 
-                                /*
-                                if( !verbose )
-                                {
-                                */
-                                    printf( 
-                                            COLOR_GREEN "%-s "  COLOR_RESET  "\t%-s \t%-10s \t%-8s \t%-s\n",
-                                            installed, 
-                                            packages_get_list_attr( pkg_list, j, "name"), 
-                                            packages_get_list_attr( pkg_list, j, "version"), 
-                                            repo, 
-                                            packages_get_list_attr( pkg_list, j, "description") 
-                                            );
-                                    /*
-                                }
-                                else
-                                {
-                                    printf( COLOR_GREEN "%s "  COLOR_RESET  "%s\n", installed, package_name );
-                                            
-                                    if( installed[1] != '*' && (pkg = packages_get_package( pm, package_name, 1 ) ) )
-                                    {
-                                        tmp = packages_get_package_attr( pkg, "build_date" );
-                                        if( tmp )
-                                            build_date = util_time_to_str( atoi( tmp ) );
-                                        else
-                                            build_date = NULL;
-
-                                        printf( 
-                                                "\tInstalled: %s[%s]\t%s\n", 
-                                                packages_get_package_attr( pkg, "version"),
-                                                packages_get_package_attr( pkg, "repo"),
-                                                build_date
-                                                );
-
-                                        if( build_date )
-                                            free( build_date );
-
-                                    }
-
-                                    homepage = packages_get_list_attr( pkg_list, j, "homepage" );
-                                    tmp = packages_get_list_attr( pkg_list, j, "build_date" );
-                                    if( tmp )
-                                        build_date = util_time_to_str( atoi( tmp ) );
-                                    else
-                                        build_date = NULL;
-
-                                    printf( 
-                                            "\tAvailable: %s[%s]\t%s\n\tDescription: %s\n", 
-                                            packages_get_list_attr( pkg_list, j, "version"), 
-                                            repo, 
-                                            build_date,
-                                            packages_get_list_attr( pkg_list, j, "description") 
-                                            );
-
-                                    if( build_date )
-                                        free( build_date );
-                                }
-                                */
+                                printf( 
+                                        COLOR_GREEN "%-s "  COLOR_RESET  "\t%-s \t%-10s \t%-8s \t%-s\n",
+                                        installed, 
+                                        packages_get_list_attr( pkg_list, j, "name"), 
+                                        packages_get_list_attr( pkg_list, j, "version"), 
+                                        repo, 
+                                        packages_get_list_attr( pkg_list, j, "description") 
+                                        );
 
                             }
                             packages_free_list( pkg_list );
@@ -917,7 +868,7 @@ int main( int argc, char **argv )
                 pkg_data = NULL;
                 install_date = NULL;
                 build_date = NULL;
-                if( pkg = packages_get_package( pm, package_name, 0 ) )
+                if( (pkg = packages_get_package( pm, package_name, 0 )) )
                 {
                     installed = packages_get_package_attr( pkg, "installed" );
                     can_update = packages_get_package_attr( pkg, "can_update" );
@@ -1033,7 +984,7 @@ int main( int argc, char **argv )
             else
             {
                 package_name = argv[optind];
-                if( pkg = packages_get_package( pm, package_name, 0 ) )
+                if( (pkg = packages_get_package( pm, package_name, 0 )) )
                 {
                     installed = packages_get_package_attr( pkg, "installed" );
                     can_update = packages_get_package_attr( pkg, "can_update" );

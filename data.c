@@ -37,7 +37,6 @@ int hash_table_add_data( HashTable *ht, char *key, char *value )
 {
     int             len, buf_size, ret;
     ENTRY           item, *itemp;
-    HashIndex      *cur_index;
     HashData       *new_data;
 
     if( !ht || !key )
@@ -300,7 +299,7 @@ void hash_table_list_cleanup( HashTableList *htl )
 }
 
 
-static HashData *hash_table_malloc_data( HashData *cur_data, int new_size )
+HashData *hash_table_malloc_data( HashData *cur_data, int new_size )
 {
     HashData *new_data;
 
