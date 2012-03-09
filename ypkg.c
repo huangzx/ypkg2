@@ -35,8 +35,6 @@ struct option longopts[] = {
     { "whatrequires", no_argument, NULL, 's' },
     { "whatprovides", no_argument, NULL, 'S' },
     { "compare-version", no_argument, NULL, 'm' },
-    { "in", no_argument, NULL, 'i' },
-    { "out", no_argument, NULL, 'o' },
     { "force", no_argument, NULL, 'f' },
     { 0, 0, 0, 0}
 };
@@ -71,6 +69,11 @@ Options:\n\
     printf( "%s\n", usage );
 }
 
+int ypkg_pack_callback( void *cb_arg, char *package_name, int action, double progress, char *msg )
+{
+    printf( "ypkg: %s\n", msg );
+    return 0;
+}
 
 int ypkg_progress_callback( void *cb_arg, char *package_name, int action, double progress, char *msg )
 {
@@ -117,7 +120,7 @@ int ypkg_progress_callback( void *cb_arg, char *package_name, int action, double
 int main( int argc, char **argv )
 {
     int             c, force, i, j, action, ret, err, flag, len, exit_code;
-    char            *tmp, *package_name, *ypk_path, *unzip_path, *file_name, *install_time, *version, *version2, *depend, *bdepend, *recommended, *conflict, *infile, *outfile, *file_type;
+    char            *tmp, *package_name, *ypk_path, *pack_path, *unpack_path, *file_name, *install_time, *version, *version2, *depend, *bdepend, *recommended, *conflict, *file_type;
     YPackageManager *pm;
     YPackage        *pkg, *pkg2;
     YPackageData    *pkg_data;
@@ -135,8 +138,6 @@ int main( int argc, char **argv )
     flag = 0;
     force = 0;
     exit_code = 0;
-    infile = NULL;
-    outfile = NULL;
 
     while( ( c = getopt_long( argc, argv, ":hCIclkxXbLsSmi:o:f", longopts, NULL ) ) != -1 )
     {
@@ -157,14 +158,6 @@ int main( int argc, char **argv )
             case 'm': //comprare two version strings
                 if( !action )
                     action = c;
-                break;
-
-            case 'i':
-                infile = optarg;
-                break;
-
-            case 'o':
-                outfile = optarg;
                 break;
 
             case 'f':
@@ -605,7 +598,7 @@ int main( int argc, char **argv )
             {
                 ypk_path = argv[2];
                 tmp = argc == 4 ? argv[3] : NULL;
-                unzip_path = NULL;
+                unpack_path = NULL;
                 pkg = NULL;
 
                 if( access( ypk_path, R_OK ) )
@@ -631,17 +624,17 @@ int main( int argc, char **argv )
                     {
                         package_name = packages_get_package_attr( pkg, "name" );
                         version = packages_get_package_attr( pkg, "version" );
-                        unzip_path = util_strcat( package_name, "_", version, NULL );
+                        unpack_path = util_strcat( package_name, "_", version, NULL );
                     }
                 }
 
-                packages_unpack_package( pm, ypk_path, tmp ? tmp : unzip_path , 1 );
+                packages_unpack_package( pm, ypk_path, tmp ? tmp : unpack_path , 1 );
 
                 if( pkg )
                     packages_free_package( pkg );
 
-                if( unzip_path )
-                    free( unzip_path );
+                if( unpack_path )
+                    free( unpack_path );
             }
             break;
 
@@ -657,7 +650,7 @@ int main( int argc, char **argv )
             {
                 ypk_path = argv[2];
                 tmp = argc == 4 ? argv[3] : NULL;
-                unzip_path = NULL;
+                unpack_path = NULL;
                 pkg = NULL;
 
                 if( access( ypk_path, R_OK ) )
@@ -683,17 +676,17 @@ int main( int argc, char **argv )
                     {
                         package_name = packages_get_package_attr( pkg, "name" );
                         version = packages_get_package_attr( pkg, "version" );
-                        unzip_path = util_strcat( package_name, "_", version, NULL );
+                        unpack_path = util_strcat( package_name, "_", version, NULL );
                     }
                 }
 
-                packages_unpack_package( pm, ypk_path, tmp ? tmp : unzip_path , 2 );
+                packages_unpack_package( pm, ypk_path, tmp ? tmp : unpack_path , 2 );
 
                 if( pkg )
                     packages_free_package( pkg );
 
-                if( unzip_path )
-                    free( unzip_path );
+                if( unpack_path )
+                    free( unpack_path );
             }
             break;
 
@@ -707,17 +700,17 @@ int main( int argc, char **argv )
             }
             else
             {
-                tmp = argv[2];
+                pack_path = argv[2];
                 ypk_path = argc == 4 ? argv[3] : NULL;
 
-                ret = packages_pack_package( pm, tmp, ypk_path );
+                ret = packages_pack_package( pm, pack_path, ypk_path, ypkg_pack_callback, NULL );
                 if( !ret )
                 {
                     printf( COLOR_GREEN "Package successful.\n" COLOR_RESET );
                 }
                 else if( ret == -1 )
                 {
-                    printf( COLOR_RED "Error: Cannot access control.xml in the %s directory.\n" COLOR_RESET, tmp );
+                    printf( COLOR_RED "Error: Cannot access control.xml in the %s directory.\n" COLOR_RESET, pack_path );
                     err = 3;
                 }
                 else if( ret == -2 )
@@ -727,7 +720,7 @@ int main( int argc, char **argv )
                 }
                 else if( ret == -3 )
                 {
-                    printf( COLOR_RED "Error: Cannot access filelist in the %s directory.\n" COLOR_RESET, tmp );
+                    printf( COLOR_RED "Error: Cannot access filelist in the %s directory.\n" COLOR_RESET, pack_path );
                     err = 3;
                 }
                 else if( ret < 0 )

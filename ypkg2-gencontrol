@@ -21,7 +21,7 @@ use File::Copy;
 use POSIX qw/uname/;
 use Digest::MD5 qw/md5_hex/;
 
-my ( $desktop, $total_size, $disk_usage, $dir_count, $file_count, $link_count ) = ( 0, 0, 0, 0, 0, 0 );
+my ( $desktop, $install, $total_size, $disk_usage, $dir_count, $file_count, $link_count ) = ( 0, 0, 0, 0, 0, 0, 0 );
 
 sub usage
 {
@@ -45,7 +45,7 @@ sub xml_content
         <packager></packager>
         <homepage></homepage>
         <repo></repo>
-        <install></install>
+        <install>%s</install>
         <build_date></build_date>    
         <uri></uri>
         <description%s>
@@ -78,6 +78,10 @@ sub get_info
         if( /.*\.desktop/ )
         {
             $desktop = 1;
+        }
+        elsif( /.*\.install/ )
+        {
+            $install = $_;
         }
         return;
     }
@@ -160,6 +164,7 @@ sub generate_control
 
 
     #create control.xml
+    my @uname = uname;
     if( ! -e 'YLMFOS/control.xml' )
     {
         if( ! open CONTROL, '>YLMFOS/control.xml' )
@@ -169,9 +174,8 @@ sub generate_control
         }
 
         my $desktop_str = $desktop == 1 ? ' type="desktop"' : '';
-        my @uname = uname;
 
-        printf CONTROL &xml_content, $desktop_str, $uname[4], $desktop_str, $total_size;
+        printf CONTROL &xml_content, $desktop_str, $uname[4], $install, $desktop_str, $total_size;
 
         close CONTROL;
     }
@@ -193,8 +197,51 @@ sub generate_control
 
         while( <CONTROLBAK> )
         {
-            s#(<install_size>).*?(</install_size>)#$1$total_size$2#;
-            print CONTROL $_;
+            if( /<install_size>/ )
+            {
+                s#(<install_size>).*?(</install_size>)#$1$total_size$2#;
+            }
+            elsif( /<genericname/ )
+            {
+                if( $desktop )
+                {
+                    $_ = "        <genericname type=\"desktop\">\n";
+                }
+                else
+                {
+                    $_ = "        <genericname>\n";
+
+                }
+            }
+            elsif( /<arch/ )
+            {
+                s#(<arch>).*?(</arch>)#$1$uname[4]$2#;
+            }
+            elsif( /<install/ )
+            {
+                if( $install )
+                {
+                    s#(<install>).*?(</install>)#$1$install$2#;
+                }
+                else
+                {
+                    $_ = "        <install></install>\n";
+                }
+            }
+            elsif( /<description/ )
+            {
+                if( $desktop )
+                {
+                    $_ = "        <description type=\"desktop\">\n";
+                }
+                else
+                {
+                    $_ = "        <description>\n";
+
+                }
+            }
+
+            print CONTROL;
         }
 
         close CONTROL;

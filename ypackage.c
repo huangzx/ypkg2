@@ -3264,11 +3264,11 @@ int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir
 /*
  * packages_pack_package
  */
-int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path )
+int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path, ypk_progress_callback cb, void *cb_arg )
 {
     int                 ret, data_size, control_xml_size;
     time_t              now;
-    char                *pkginfo, *pkgdata, *info_path, *control_xml, *control_xml_content, *filelist, *data_size_str, *time_str, *install, *install_script, *install_script_dest, *package_name, *version, *tmp;
+    char                *pkginfo, *pkgdata, *info_path, *control_xml, *control_xml_content, *filelist, *data_size_str, *time_str, *install, *install_script, *install_script_dest, *package_name, *version, *arch, *msg, *tmp;
     char                tmp_ypk_dir[] = "/tmp/ypkdir.XXXXXX";
     char                *exclude[] = { "YLMFOS", NULL };
     FILE                *fp_xml;
@@ -3294,8 +3294,10 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
     install_script_dest = NULL; 
     package_name = NULL; 
     version = NULL;
+    arch = NULL;
     time_str = NULL;
     data_size_str = NULL;
+    msg = NULL;
 
     //check control.xml
     control_xml = util_strcat( source_dir, "/YLMFOS/control.xml", NULL );
@@ -3325,7 +3327,19 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
         goto cleanup;
     }
 
+    arch =  xpath_get_node( xmldoc, (xmlChar *)"//arch" );
+    if( !arch )
+    {
+        arch = strdup( "i686" );
+    }
+
     install = xpath_get_node( xmldoc, (xmlChar *)"//install" );
+
+    if( cb )
+    {
+        msg = util_strcat( "building package  `", package_name, ":", version, ":", arch, "`  in `", package_name, "_", version, "-", arch, ".ypk'", NULL );
+        cb( cb_arg, "*", 0, 1, msg );
+    }
 
     filelist = util_strcat( source_dir, "/YLMFOS/filelist", NULL );
     if( access( filelist, R_OK ) == -1 )
@@ -3428,7 +3442,7 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
     //pack ypk
     if( !ypk_path )
     {
-        tmp = util_strcat( package_name, "_", version, ".ypk", NULL );
+        tmp = util_strcat( package_name, "_", version, "-", arch, ".ypk", NULL );
         if( archive_create( tmp, 'j', 't', tmp_ypk_dir, NULL ) )
             ret = -6;
         free( tmp );
@@ -3451,6 +3465,9 @@ cleanup:
 
     if( version )
         free( version );
+
+    if( arch )
+        free( arch );
 
     util_remove_dir( tmp_ypk_dir );
 

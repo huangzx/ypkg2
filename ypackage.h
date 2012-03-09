@@ -216,7 +216,7 @@ int packages_compare_version( char *version1, char *version2 );
 int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, int extra_max_len );
 
 int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int unzip_info );
-int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path );
+int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path, ypk_progress_callback cb, void *cb_arg );
 
 
 //int packages_download_package( YPackageManager *pm, char *package_name, char *url, char *dest, int force, ypk_progress_callback cb, void *cb_arg );
