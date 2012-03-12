@@ -2081,8 +2081,8 @@ YPackageList *packages_get_list_with_data( YPackageManager *pm, int limit, int o
     table_data = installed ? "world_data" : repo_testing ? "universe_testing_data" : "universe_data";
 
     ret = db_init( &db, pm->db_name, OPEN_READ );
-    sql = util_strcat( "select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " = ? ", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like ?||',%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?||',%'", " limit ? offset ?", NULL );
-    db_query( &db, sql, keyword, keyword, keyword, keyword, limit_str, offset_str, NULL);
+    sql = util_strcat( "select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " = ? ", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like ?||',%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?||',%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like ?||'(%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?||'(%'", " limit ? offset ?", NULL );
+    db_query( &db, sql, keyword, keyword, keyword, keyword, keyword, keyword, limit_str, offset_str, NULL);
     free( sql );
     free( limit_str );
     free( offset_str );
