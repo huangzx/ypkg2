@@ -6,7 +6,7 @@
 #
 # Written by: 0o0<0o0zzyz@gmail.com>
 # Version: 0.1
-# Date: 2012.3.3
+# Date: 2012.3.13
 #
 # Usage:
 #       ypkg2-gencontrol [--desktop] [DIR] ...
@@ -21,7 +21,7 @@ use File::Copy;
 use POSIX qw/uname/;
 use Digest::MD5 qw/md5_hex/;
 
-my ( $desktop, $install, $total_size, $disk_usage, $dir_count, $file_count, $link_count ) = ( 0, 0, 0, 0, 0, 0, 0 );
+my ( $desktop, $install, $exec, $total_size, $disk_usage, $dir_count, $file_count, $link_count ) = ( 0, '', '', 0, 0, 0, 0, 0 );
 
 sub usage
 {
@@ -39,13 +39,13 @@ sub xml_content
         <category></category>          
         <arch>%s</arch>                                        
         <version></version>                            
-        <yversion></yversion>                            
         <priority></priority>                    
         <license></license>
         <packager></packager>
         <homepage></homepage>
         <repo></repo>
         <install>%s</install>
+        <exec>%s</exec>
         <build_date></build_date>    
         <uri></uri>
         <description%s>
@@ -78,6 +78,20 @@ sub get_info
         if( /.*\.desktop/ )
         {
             $desktop = 1;
+
+            if( open DESKTOP, $_ )
+            {
+                while( <DESKTOP> )
+                {
+                    if( /^Exec=(.*)/i )
+                    {
+                        $exec = $1;
+                        last;
+                    }
+                }
+                close DESKTOP;
+            }
+
         }
         elsif( /.*\.install/ )
         {
@@ -86,7 +100,7 @@ sub get_info
         return;
     }
 
-    if( $File::Find::name =~ m[^\./var/ypkg/db/.*?/.*?\.install$] )
+    if( $File::Find::name =~ m[^\./var/ypkg] )
     {
         return;
     }
@@ -148,7 +162,6 @@ sub generate_control
         }
     }
 
-
     #create filelist
     if( ! open FILELIST, '>YLMFOS/filelist' )
     {
@@ -175,7 +188,7 @@ sub generate_control
 
         my $desktop_str = $desktop == 1 ? ' type="desktop"' : '';
 
-        printf CONTROL &xml_content, $desktop_str, $uname[4], $install, $desktop_str, $total_size;
+        printf CONTROL &xml_content, $desktop_str, $uname[4], $install, $exec, $desktop_str, $total_size;
 
         close CONTROL;
     }
@@ -199,7 +212,11 @@ sub generate_control
         {
             if( /<install_size>/ )
             {
-                s#(<install_size>).*?(</install_size>)#$1$total_size$2#;
+                $_ = "        <install_size>$total_size</install_size>\n";
+            }
+            elsif( /<exec>/ )
+            {
+                $_ = "        <exec>$exec</exec>\n";
             }
             elsif( /<genericname/ )
             {
@@ -213,20 +230,13 @@ sub generate_control
 
                 }
             }
-            elsif( /<arch/ )
+            elsif( /<arch>/ )
             {
-                s#(<arch>).*?(</arch>)#$1$uname[4]$2#;
+                $_ = "        <arch>" . $uname[4] . "</arch>\n";
             }
-            elsif( /<install/ )
+            elsif( /<install>/ )
             {
-                if( $install )
-                {
-                    s#(<install>).*?(</install>)#$1$install$2#;
-                }
-                else
-                {
-                    $_ = "        <install></install>\n";
-                }
+                $_ = "        <install>$install</install>\n";
             }
             elsif( /<description/ )
             {

@@ -130,11 +130,11 @@ int packages_import_local_data( YPackageManager *pm )
     printf( "Import universe  ...\n" );
     //import universe
     reader_open( LOCAL_UNIVERSE,  &xml_handle );
-    sql = "replace into universe (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    sql = "replace into universe (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-    sql_testing = "replace into universe_testing (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    sql_testing = "replace into universe_testing (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-    sql_history = "replace into universe_history (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    sql_history = "replace into universe_history (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
     while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
     {
         is_desktop = (int)reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
@@ -147,7 +147,6 @@ int packages_import_local_data( YPackageManager *pm )
         {
             db_ret = db_exec( &db, sql,  
                     package_name, //name
-                    reader_get_value2( &xml_handle, "yversion" ), //yversion
                     is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
                     is_desktop ? "1" : "0", //desktop
                     reader_get_value2( &xml_handle, "category" ), //category
@@ -170,7 +169,6 @@ int packages_import_local_data( YPackageManager *pm )
 
         db_ret = db_exec( &db, sql_testing,  
                 package_name, //name
-                reader_get_value2( &xml_handle, "yversion" ), //yversion
                 is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
                 is_desktop ? "1" : "0", //desktop
                 reader_get_value2( &xml_handle, "category" ), //category
@@ -193,7 +191,6 @@ int packages_import_local_data( YPackageManager *pm )
         //universe_history
         db_ret = db_exec( &db, sql_history,  
                 package_name, //name
-                reader_get_value2( &xml_handle, "yversion" ), //yversion
                 is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
                 is_desktop ? "1" : "0", //desktop
                 reader_get_value2( &xml_handle, "category" ), //category
@@ -287,10 +284,10 @@ int packages_import_local_data( YPackageManager *pm )
     //world
     printf( "Import world  ...\n" );
     reader_open( LOCAL_WORLD,  &xml_handle );
-    sql = "replace into world (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    sql = "replace into world (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     //char * sql_test;
-    //sql_test = "replace into world (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');";
+    //sql_test = "replace into world (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');";
 
     while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
     {
@@ -301,7 +298,6 @@ int packages_import_local_data( YPackageManager *pm )
         //world
         db_ret = db_exec( &db, sql,  
                 package_name, //name
-                reader_get_value2( &xml_handle, "yversion" ), //yversion
                 is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
                 is_desktop ? "1" : "0", //desktop
                 reader_get_value2( &xml_handle, "category" ), //category
@@ -323,7 +319,6 @@ int packages_import_local_data( YPackageManager *pm )
         /*
         printf( sql_test,
                 package_name, //name
-                reader_get_value2( &xml_handle, "yversion" ), //yversion
                 is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
                 is_desktop ? "1" : "0", //desktop
                 reader_get_value2( &xml_handle, "category" ), //category
@@ -773,12 +768,12 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
     db_init( &db, pm->db_name, OPEN_WRITE );
     db_exec( &db, "begin", NULL );  
 
-    sql = "replace into universe (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count, can_update, installed ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    sql = "replace into universe (name, exec, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count, can_update, installed ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
-    sql_testing = "replace into universe_testing (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count, can_update, installed ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    sql_testing = "replace into universe_testing (name, exec, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count, can_update, installed ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
 
-    sql_history = "replace into universe_history (name, yversion, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    sql_history = "replace into universe_history (name, exec, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     sql_data = "insert into universe_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
@@ -876,7 +871,7 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
                 {
                     db_ret = db_exec( &db, sql,  
                             package_name, //name
-                            reader_get_value2( &xml_handle, "yversion" ), //yversion
+                            reader_get_value2( &xml_handle, "exec" ), //exec
                             is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
                             is_desktop ? "1" : "0", //desktop
                             reader_get_value2( &xml_handle, "category" ), //category
@@ -901,7 +896,7 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
 
                 db_ret = db_exec( &db, sql_testing,  
                         package_name, //name
-                        reader_get_value2( &xml_handle, "yversion" ), //yversion
+                        reader_get_value2( &xml_handle, "exec" ), //exec
                         is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
                         is_desktop ? "1" : "0", //desktop
                         reader_get_value2( &xml_handle, "category" ), //category
@@ -925,7 +920,7 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
 
                 db_ret = db_exec( &db, sql_history,  
                         package_name, //name
-                        reader_get_value2( &xml_handle, "yversion" ), //yversion
+                        reader_get_value2( &xml_handle, "exec" ), //exec
                         is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
                         is_desktop ? "1" : "0", //desktop
                         reader_get_value2( &xml_handle, "category" ), //category
@@ -1382,7 +1377,7 @@ YPackage *packages_get_repo_package( YPackageManager *pm, char *name, int instal
 {
     int                     repo_testing;
     char                    *sql, *cur_key, *cur_value, **attr_keys_offset;
-    char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "homepage", "description", "uri", "sha", "size", "repo", "arch", "install", "data_count", "installed", "install_time", "can_update", "build_date", "packager", NULL  }; 
+    char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "homepage", "description", "uri", "sha", "size", "repo", "arch", "install", "exec", "data_count", "installed", "install_time", "can_update", "build_date", "packager", NULL  }; 
     DB                      db;
     YPackage                 *pkg = NULL;
 
@@ -1446,8 +1441,8 @@ int packages_get_package_from_ypk( char *ypk_path, YPackage **package, YPackageD
     size_t              pkginfo_len = 0, control_len = 0;
     char                *cur_key, *cur_value, *cur_xpath, **attr_keys_offset, **attr_xpath_offset, *idx, *data_key, *package_name;
     char                *desktop_file; //for ypki2
-    char                *attr_keys[] = { "name", "yversion", "generic_name", "category", "arch", "priority", "version", "install", "license", "homepage", "repo", "description", "sha", "size", "build_date", "packager", "uri", "data_count", "is_desktop", NULL  }; 
-    char                *attr_xpath[] = { "//Package/@name", "//yversion", "//genericname/keyword", "//category", "//arch", "//priority", "//version", "//install", "//license", "//homepage", "//repo", "//description/keyword", "//sha", "//size", "//build_date", "//packager", "//uri", "//data_count", "//genericname[@type='desktop']", NULL  }; 
+    char                *attr_keys[] = { "name", "exec", "generic_name", "category", "arch", "priority", "version", "install", "license", "homepage", "repo", "description", "sha", "size", "build_date", "packager", "uri", "data_count", "is_desktop", NULL  }; 
+    char                *attr_xpath[] = { "//Package/@name", "//exec", "//genericname/keyword", "//category", "//arch", "//priority", "//version", "//install", "//license", "//homepage", "//repo", "//description/keyword", "//sha", "//size", "//build_date", "//packager", "//uri", "//data_count", "//genericname[@type='desktop']", NULL  }; 
     char                *data_attr_keys[] = { "data_name", "data_format", "data_size", "data_install_size", "data_depend", "data_bdepend", "data_recommended", "data_conflict", NULL  }; 
     char                *data_attr_xpath[] = { "name", "format", "size", "install_size", "depend", "bdepend", "recommended", "conflict", NULL  }; 
     char                tmp_ypk_desktop[] = "/tmp/ypkdesktop.XXXXXX"; //for ypki2
@@ -1947,7 +1942,7 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
 {
     int                     ret, cur_pkg_index, repo_testing;
     char                    *table, *sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
-    char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", "repo", "install_time", "installed", "can_update", "homepage", "build_date", "packager", NULL  }; 
+    char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", "repo", "exec", "install_time", "installed", "can_update", "homepage", "build_date", "packager", NULL  }; 
     DB                      db;
     YPackageList            *pkg_list;
 
@@ -3266,7 +3261,7 @@ int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir
  */
 int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path, ypk_progress_callback cb, void *cb_arg )
 {
-    int                 ret, data_size, control_xml_size;
+    int                 ret, data_size, control_xml_size, del_var;
     time_t              now;
     char                *pkginfo, *pkgdata, *info_path, *control_xml, *control_xml_content, *filelist, *data_size_str, *time_str, *install, *install_script, *install_script_dest, *package_name, *version, *arch, *msg, *tmp;
     char                tmp_ypk_dir[] = "/tmp/ypkdir.XXXXXX";
@@ -3285,6 +3280,7 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
         return -1;
 
     ret = 0;
+    del_var = 0;
     pkginfo = NULL; 
     pkgdata = NULL; 
     info_path = NULL; 
@@ -3354,6 +3350,13 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
         install_script = util_strcat( source_dir, "/YLMFOS/", install, NULL );
         if( access( install_script, R_OK ) != -1 )
         {
+            install_script_dest = util_strcat( source_dir, "/var", NULL );
+            if( access( install_script_dest, F_OK ) ) //not exists
+            {
+                del_var = 1;
+            }
+            free( install_script_dest );
+
             install_script_dest = util_strcat( source_dir, "/var/ypkg/db/", package_name, NULL );
             if( !util_mkdir( install_script_dest ) )
             {
@@ -3361,6 +3364,17 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
                 install_script_dest = util_strcat( source_dir, "/var/ypkg/db/", package_name, "/", install, NULL );
                 util_copy_file( install_script, install_script_dest );
             }
+            free( install_script_dest );
+
+            if( del_var )
+            {
+                install_script_dest = util_strcat( source_dir, "/var", NULL );
+            }
+            else
+            {
+                install_script_dest = util_strcat( source_dir, "/var/ypkg", NULL );
+            }
+            util_remove_dir( install_script_dest );
             free( install_script_dest );
         }
         free( install_script );
@@ -3932,7 +3946,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     db_exec( &db, "begin", NULL );  
 
     //update world
-    sql = "replace into world (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count, install_time) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'));";
+    sql = "replace into world (name, generic_name, is_desktop, category, arch, version, priority, install, exec, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count, install_time) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s','now'));";
 
 
     ret = db_exec( &db, sql,  
@@ -3944,6 +3958,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             version, //version
             packages_get_package_attr2( pkg, "priority" ), //priority
             packages_get_package_attr2( pkg, "install" ), //install
+            packages_get_package_attr2( pkg, "exec" ), //exec
             packages_get_package_attr2( pkg, "license" ), //license
             packages_get_package_attr2( pkg, "homepage" ), //homepage
             packages_get_package_attr2( pkg, "repo" ), //repo
