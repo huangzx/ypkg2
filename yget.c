@@ -8,8 +8,11 @@
  */
 #include <stdio.h>
 #include <getopt.h>
+#include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "ypackage.h"
 #include "util.h"
 
@@ -177,8 +180,73 @@ int yget_download_progress_callback( void *cb_arg, char *package_name, double dl
     return 0;
 }
 
+int yget_upgrade_self( char *package_path )
+{
+    pid_t           pid;
+    struct stat     sb;
+    char            lib_path[32];
 
-int yget_install_package( YPackageManager *pm, char *package_name, char *version, int download_only )
+    if( !package_path )
+        return -1;
+
+    if( util_mkdir( "/tmp/ypkg2_backup" ) != 0 )
+        return -1;
+
+    lstat( "/usr/lib/libypk.so", &sb );
+    if( sb.st_mode & S_IFLNK )
+    {
+        memset( lib_path, 0, 32 );
+        strncpy( lib_path, "/usr/lib/", 9 );
+        if( readlink( "/usr/lib/libypk.so", lib_path+9, 23 ) == -1 )
+            goto failed;
+
+        if( util_copy_file( lib_path, "/tmp/ypkg2_backup/libypk.so" ) != 0 )
+            goto failed;
+        else
+            chmod( "/tmp/ypkg2_backup/libypk.so", 0755 );
+    }
+    else
+    {
+        if( util_copy_file( "/usr/lib/libypk.so", "/tmp/ypkg2_backup/libypk.so" ) != 0 )
+            goto failed;
+        else
+            chmod( "/tmp/ypkg2_backup/libypk.so", 0755 );
+    }
+
+    if( util_copy_file( "/usr/bin/ypkg2", "/tmp/ypkg2_backup/ypkg2" ) != 0 )
+        goto failed;
+    else
+        chmod( "/tmp/ypkg2_backup/ypkg2", 0755 );
+
+    if( util_copy_file( "/usr/bin/yget2", "/tmp/ypkg2_backup/yget2" ) != 0 )
+        goto failed;
+    else
+        chmod( "/tmp/ypkg2_backup/yget2", 0755 );
+
+    if( util_copy_file( "/usr/bin/ypkg2-upgrade", "/tmp/ypkg2_backup/ypkg2-upgrade" ) != 0 )
+        goto failed;
+    else
+        chmod( "/tmp/ypkg2_backup/ypkg2-upgrade", 0755 );
+
+    if( (pid = fork()) < 0 )
+    {
+        goto failed;
+    }
+    else if( pid == 0 )
+    {
+        if( execl( "/tmp/ypkg2_backup/ypkg2-upgrade", "ypkg2-upgrade", "/tmp/ypkg2_backup", package_path, NULL ) < 0 )
+            goto failed;
+    }
+
+    return 0;
+
+failed:
+    util_remove_dir( "/tmp/ypkg2_backup" );
+    return -1;
+}
+
+
+int yget_install_package( YPackageManager *pm, char *package_name, char *version, int download_only, int upgrade_self )
 {
     int                 ret, return_code;
     char                *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
@@ -273,47 +341,54 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
     if( !download_only )
     {
         printf( "Installing %s\n", package_path );
-        if( (ret = packages_install_local_package( pm, package_path, "/", 1, yget_progress_callback, pm )) )
+        if( upgrade_self )
         {
-            switch( ret )
+            yget_upgrade_self( package_path );
+        }
+        else
+        {
+            if( (ret = packages_install_local_package( pm, package_path, "/", 1, yget_progress_callback, pm )) )
             {
-                case 1:
-                case 2:
-                    printf( COLOR_YELLO "The latest version has installed.\n" COLOR_RESET );
-                    break;
-                case 0:
-                    printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
-                    break;
-                case -1:
-                    printf( COLOR_RED "Error: Invalid format or File not found.\n" COLOR_RESET );
-                    break;
-                case -2:
-                    printf( COLOR_RED "Error: Architecture does not match.\n" COLOR_RESET );
-                    break;
-                case -3:
-                    printf( COLOR_RED "Error: missing runtime deps.\n" COLOR_RESET );
-                    break;
-                case -4:
-                    printf( COLOR_RED "Error: conflicting deps.\n" COLOR_RESET );
-                    break;
-                case -5:
-                case -6:
-                    printf( COLOR_RED "Error: Can not get package's infomation.\n" COLOR_RESET );
-                    break;
-                case -7:
-                    printf( COLOR_RED "Error: An error occurred while executing the pre_install script.\n" COLOR_RESET );
-                    break;
-                case -8:
-                    printf( COLOR_RED "Error: An error occurred while copy files.\n" COLOR_RESET );
-                    break;
-                case -9:
-                    printf( COLOR_RED "Error: An error occurred while executing the post_install script.\n" COLOR_RESET );
-                case -10:
-                    printf( COLOR_RED "Error: An error occurred while updating database.\n" COLOR_RESET );
-                    break;
-            }
+                switch( ret )
+                {
+                    case 1:
+                    case 2:
+                        printf( COLOR_YELLO "The latest version has installed.\n" COLOR_RESET );
+                        break;
+                    case 0:
+                        printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+                        break;
+                    case -1:
+                        printf( COLOR_RED "Error: Invalid format or File not found.\n" COLOR_RESET );
+                        break;
+                    case -2:
+                        printf( COLOR_RED "Error: Architecture does not match.\n" COLOR_RESET );
+                        break;
+                    case -3:
+                        printf( COLOR_RED "Error: missing runtime deps.\n" COLOR_RESET );
+                        break;
+                    case -4:
+                        printf( COLOR_RED "Error: conflicting deps.\n" COLOR_RESET );
+                        break;
+                    case -5:
+                    case -6:
+                        printf( COLOR_RED "Error: Can not get package's infomation.\n" COLOR_RESET );
+                        break;
+                    case -7:
+                        printf( COLOR_RED "Error: An error occurred while executing the pre_install script.\n" COLOR_RESET );
+                        break;
+                    case -8:
+                        printf( COLOR_RED "Error: An error occurred while copy files.\n" COLOR_RESET );
+                        break;
+                    case -9:
+                        printf( COLOR_RED "Error: An error occurred while executing the post_install script.\n" COLOR_RESET );
+                    case -10:
+                        printf( COLOR_RED "Error: An error occurred while updating database.\n" COLOR_RESET );
+                        break;
+                }
 
-            return_code = -5;
+                return_code = -5;
+            }
         }
     }
 
@@ -342,7 +417,7 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
         cur_pkg = list;
         
         printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
-        ret = yget_install_package( pm, cur_pkg->name, cur_pkg->version, download_only );
+        ret = yget_install_package( pm, cur_pkg->name, cur_pkg->version, download_only, 0 );
         if( !ret )
         {
             printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
@@ -358,10 +433,12 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
     return 0;
 }
 
+
 int main( int argc, char **argv )
 {
-    int             c, force, download_only, simulation, reinstall, yes, unknown_arg, verbose, i, j, action, ret, err, flag, len, size, install_size, pkg_count;
+    int             c, force, download_only, simulation, reinstall, yes, unknown_arg, verbose, i, j, action, ret, err, flag, len, size, install_size, pkg_count, upgrade_ypkg;
     char            confirm, *tmp, *package_name, *install_date, *build_date, *version,  *installed, *can_update, *repo;
+
     YPackageManager *pm;
     YPackage        *pkg, *pkg2;
     YPackageData    *pkg_data;
@@ -385,6 +462,7 @@ int main( int argc, char **argv )
     yes = 0;
     unknown_arg = 0;
     verbose = 0;
+    upgrade_ypkg = 0;
 
 
     while( ( c = getopt_long( argc, argv, ":hIiRASstCuUpydfrv", longopts, NULL ) ) != -1 )
@@ -1046,6 +1124,11 @@ int main( int argc, char **argv )
                         cur_package = upgrade_list;
                         while( cur_package )
                         {
+                            if( !strcmp( cur_package->name, "ypkg2" ) )
+                            {
+                                upgrade_ypkg = 1;
+                            }
+
                             sub_list = packages_get_depend_list( pm, cur_package->name, cur_package->version );
                             if( sub_list )
                             {
@@ -1127,11 +1210,21 @@ int main( int argc, char **argv )
 
                         if( confirm == 'Y' || confirm == 'y' )
                         {
-                            if( !yget_install_list( pm, depend_list, download_only ) || force )
+                            if( upgrade_ypkg ) //upgrade self
                             {
-                                if( !yget_install_list( pm, upgrade_list, download_only ) )
+                                if( yget_install_package( pm, "ypkg2", NULL, 0, 1 ) != 0 )
                                 {
-                                    yget_install_list( pm, recommended_list, download_only );
+                                    err = 3;
+                                }
+                            }
+                            else //normal upgrade
+                            {
+                                if( !yget_install_list( pm, depend_list, download_only ) || force )
+                                {
+                                    if( !yget_install_list( pm, upgrade_list, download_only ) )
+                                    {
+                                        yget_install_list( pm, recommended_list, download_only );
+                                    }
                                 }
                             }
                         }

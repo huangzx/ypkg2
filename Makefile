@@ -1,6 +1,7 @@
 VERSION=0.1.2
 YPKG=ypkg2
 YGET=yget2
+YPKGUPGRADE=ypkg2-upgrade
 YPKGIMPORT=ypkg2-import
 YPKGGENCONTROL=ypkg2-gencontrol
 LIBYPK= libypk.so
@@ -20,7 +21,7 @@ STATIC_LIB=libypk.a
 
 LIBS= -lcurl -lsqlite3 -larchive -lxml2 -lpthread -lpcre
 
-all: $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT) $(STATIC_LIB)
+all: $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT) $(YPKGUPGRADE) $(STATIC_LIB)
 
 $(YPKG): ypkg.o 
 	cc $(W) $(DEBUG) -o $(YPKG)  ypkg.o  -L. -lypk
@@ -39,6 +40,12 @@ $(YPKGIMPORT): ypkg-import.o
 
 ypkg-import.o: ypkg-import.c
 	cc $(W) $(DEBUG)  $(O) -c ypkg-import.c -o ypkg-import.o
+
+$(YPKGUPGRADE): ypkg-upgrade.o 
+	cc $(W) $(DEBUG) --rdynamic -o $(YPKGUPGRADE)  ypkg-upgrade.o -ldl
+
+ypkg-upgrade.o: ypkg-upgrade.c
+	cc $(W) $(DEBUG)  $(O) -c ypkg-upgrade.c -o ypkg-upgrade.o
 
 
 $(LIBYPK): $(OBJS)
@@ -82,6 +89,7 @@ install: all
 	cp $(YPKG) $(BINDIR)
 	cp $(YGET) $(BINDIR)
 	cp $(YPKGIMPORT) $(BINDIR) 
+	cp $(YPKGUPGRADE) $(BINDIR) 
 	cp $(YPKGGENCONTROL) $(BINDIR) 
 	#cp po/zh_CN.mo $(LANGDIR)/ypkg.mo
 	cp data/db_create.sql $(DATADIR)
@@ -91,12 +99,13 @@ install: all
 	
 
 clean:
-	rm -f $(OBJS) ypkg.o yget.o ypkg-import.o $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT) $(STATIC_LIB)
+	rm -f $(OBJS) ypkg.o yget.o ypkg-import.o ypkg-upgrade.o $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT) $(YPKGUPGRADE) $(STATIC_LIB)
 
 remove:
 	rm -f $(BINDIR)/$(YPKG) 
 	rm -f $(BINDIR)/$(YGET) 
 	rm -f $(BINDIR)/$(YPKGIMPORT)
+	rm -f $(BINDIR)/$(YPKGUPGRADE)
 	rm -f $(BINDIR)/$(YPKGGENCONTROL)
 	rm -f $(LIBDIR)/$(LIBYPK).$(VERSION) 
 	rm -f $(LIBDIR)/$(LIBYPK)
