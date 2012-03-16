@@ -70,7 +70,7 @@ int main( int argc, char **argv )
 
     sleep( 1 );
 
-    ret = packages_install_local_package( pm, package_path, "/tmp", 1, NULL, NULL );
+    ret = packages_install_local_package( pm, package_path, "/", 1, NULL, NULL );
     if( ret != 0 )
     {
         fprintf( stderr, "Error: Upgrade failed.\n" );
