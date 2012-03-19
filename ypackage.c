@@ -3366,16 +3366,6 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
             }
             free( install_script_dest );
 
-            if( del_var )
-            {
-                install_script_dest = util_strcat( source_dir, "/var", NULL );
-            }
-            else
-            {
-                install_script_dest = util_strcat( source_dir, "/var/ypkg", NULL );
-            }
-            util_remove_dir( install_script_dest );
-            free( install_script_dest );
         }
         free( install_script );
     }
@@ -3383,6 +3373,17 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
     //pack pkgdata
     pkgdata = util_strcat( tmp_ypk_dir, "/", "pkgdata", NULL );
     ret = archive_create( pkgdata, 'J', 'c',  source_dir, exclude );
+
+    if( del_var )
+    {
+        install_script_dest = util_strcat( source_dir, "/var", NULL );
+    }
+    else
+    {
+        install_script_dest = util_strcat( source_dir, "/var/ypkg", NULL );
+    }
+    util_remove_dir( install_script_dest );
+    free( install_script_dest );
 
     if( ret == -1 )
     {
