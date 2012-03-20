@@ -878,7 +878,11 @@ int main( int argc, char **argv )
                     pkg_count = packages_get_count( pm, "name", package_name, 1, 0 );
                     if( pkg_count > 0 )
                     {
-                        pkg_list = packages_get_list( pm, pkg_count, 0, "name", package_name, 1, 0 );
+                        char *keys[] = { "name", NULL }; 
+                        char *keywords[] = { package_name, NULL }; 
+                        int wildcards[] = { 2, 0 }; 
+
+                        pkg_list = packages_get_list( pm, pkg_count, 0, keys, keywords, wildcards, 0 );
                         if( pkg_list )
                         {
                             for( j = 0; j < pkg_list->cnt; j++ )
@@ -1003,7 +1007,7 @@ int main( int argc, char **argv )
                         }
 
                         printf( 
-                                "Name: %s\nVersion: %s\nArch: %s\nRepo:%s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nDescription: %s\nHomepage: %s\n", 
+                                "Name: %s\nVersion: %s\nArch: %s\nRepo:%s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nExec: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nDescription: %s\nHomepage: %s\n", 
                                 package_name,
                                 pkg2 ? packages_get_package_attr( pkg2, "version") : packages_get_package_attr( pkg, "version"), 
                                 packages_get_package_attr( pkg, "arch"), 
@@ -1016,6 +1020,7 @@ int main( int argc, char **argv )
                                 packages_get_package_attr( pkg, "license"), 
                                 packages_get_package_attr( pkg, "packager"), 
                                 packages_get_package_attr( pkg, "install"), 
+                                packages_get_package_attr2( pkg, "exec"), 
                                 size > 1000000 ? size / 1000000 : (size > 1000 ? size / 1000 : size), 
                                 size > 1000000 ? 'M' : (size > 1000 ? 'K' : 'B'), 
                                 packages_get_package_attr( pkg, "sha"), 

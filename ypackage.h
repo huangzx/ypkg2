@@ -182,9 +182,9 @@ char *packages_get_package_file_attr2( YPackageFile *pkg_file, int index, char *
 void packages_free_package_file( YPackageFile *pkg_file );
 
 /* get package list */
-YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int wildcards, int installed );
+YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, char *keys[], char *keywords[], int wildcards[], int installed );
 
-YPackageList *packages_get_list2( YPackageManager *pm, int page_size, int page_no, char *key, char *keyword, int wildcards, int installed );
+YPackageList *packages_get_list2( YPackageManager *pm, int page_size, int page_no, char *keys[], char *keywords[], int wildcards[], int installed );
 
 //YPackageList *packages_get_history_list( YPackageManager *pm, char *name );
 
@@ -262,30 +262,6 @@ int packages_cleanup_package( YPackageManager *pm );
  * log
  */
 int packages_log( YPackageManager *pm, char *package_name, char *msg );
-
-/******************************/
-/* async interface            */
-/******************************/
-typedef void YPackageCB( void *data );
-typedef struct {
-    int                 limit;
-    int                 offset; 
-    int                 wildcards; 
-    int                 installed; 
-    char                *key; 
-    char                *keyword; 
-    YPackageManager     *pm; 
-    YPackageCB          *cb;
-}AsyncQueryParams;
-
-int packages_check_update_async( YPackageManager *pm,  YPackageCB *cb );
-
-int packages_update_async( YPackageManager *pm,  YPackageCB *cb );
-
-int packages_get_list_async( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int wildcards, int installed, YPackageCB *cb );
-
-int packages_get_list_async2( YPackageManager *pm, int page_size, int page_no, char *key, char *keyword, int wildcards, YPackageCB *cb );
-
 
 /**********************************/
 /* internal functions             */

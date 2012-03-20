@@ -566,14 +566,15 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
  */
 YPackageChangeList *packages_get_upgrade_list( YPackageManager *pm )
 {    
-    int             len, i;
+    int             len, i, wildcards[] = { 2, 0 };
     char            *package_name, *version, *can_upgrade;
+    char            *keys[] = { "can_update", NULL }, *keywords[] = { "%1", NULL };
     YPackageList    *pkg_list;
     YPackageChangeList     *list, *cur_pkg;
 
     list = NULL;
 
-    pkg_list = packages_get_list( pm, 100, 0, "can_update", "%1", 1, 0 );
+    pkg_list = packages_get_list( pm, 100, 0, keys, keywords, wildcards, 0 );
     if( pkg_list )
     {
         for( i = 0; i < pkg_list->cnt; i++ )
@@ -1022,7 +1023,7 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
     if( db_ret == SQLITE_BUSY )
     {
         db_ret = db_exec( &db, "rollback", NULL );  
-        printf( "rollback, db_ret:%d\n", db_ret );
+        //printf( "rollback, db_ret:%d\n", db_ret );
     }
     //clean up
     db_close( &db );
@@ -1938,10 +1939,10 @@ void packages_free_package_file( YPackageFile *pkg_file )
 /*
  * packages_get_list
  */
-YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int wildcards, int installed )
+YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, char *keys[], char *keywords[], int wildcards[], int installed )
 {
     int                     ret, cur_pkg_index, repo_testing;
-    char                    *table, *sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
+    char                    *table, *sql, *where_str, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset, *tmp;
     char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", "repo", "exec", "install_time", "installed", "can_update", "homepage", "build_date", "packager", NULL  }; 
     DB                      db;
     YPackageList            *pkg_list;
@@ -1958,35 +1959,87 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
     else
         repo_testing =0;
 
+    where_str = NULL;
+
     offset_str = util_int_to_str( offset );
     limit_str = util_int_to_str( limit );
 
     table = installed ? "world" : repo_testing ? "universe_testing" : "universe";
 
     ret = db_init( &db, pm->db_name, OPEN_READ );
-    if( !key || !keyword )
+    if( !keys || !keywords || !wildcards || !(*keys) || !(*keywords) || !(*wildcards) )
     {
         sql = util_strcat( "select * from ", table, " limit ? offset ?", NULL );
         db_query( &db, sql, limit_str, offset_str, NULL);
         free( sql );
     }
-    else if( key[0] == '*' && wildcards )
-    {
-        sql = util_strcat( "select * from ", table, " where name like '%'||?||'%' or generic_name like  '%'||?||'%'  or description like '%'||?||'%' limit ? offset ?", NULL );
-        db_query( &db, sql, keyword, keyword, keyword, limit_str, offset_str, NULL);
-        free( sql );
-    }
-    else if( key[0] == '*' )
-    {
-        sql = util_strcat( "select * from ", table, " where name = ? or generic_name = ? or description = ? limit ? offset ?", NULL );
-        db_query( &db, sql, keyword, keyword, keyword, limit_str, offset_str, NULL);
-        free( sql );
-    }
     else
     {
-        sql = util_strcat( "select * from ", table, " where ", key, wildcards ? " like '%'||?||'%' limit ? offset ?" : " = ? limit ? offset ?", NULL );
-        db_query( &db, sql, keyword, limit_str, offset_str, NULL );
-        free( sql );
+        while( *keys && *keywords && *wildcards )
+        {
+            tmp = NULL;
+
+            if( (*keywords) && ((*keys)[0] == '*') && (*wildcards == 2) )
+            {
+                //sql = util_strcat( "select * from ", table, " where name like '%'||?||'%' or generic_name like  '%'||?||'%'  or description like '%'||?||'%' limit ? offset ?", NULL );
+
+                if( where_str )
+                    tmp = where_str;
+
+                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(name like '%", *keywords, "%' or generic_name like  '%", *keywords, "%' or description like '%", *keywords, "%')", NULL );
+                if( tmp )
+                    free( tmp );
+
+
+                //db_query( &db, sql, keyword, keyword, keyword, limit_str, offset_str, NULL);
+                //free( sql );
+            }
+            else if( (*keywords) && ((*keys)[0] == '*') && (*wildcards == 1) )
+            {
+                //sql = util_strcat( "select * from ", table, " where name = ? or generic_name = ? or description = ? limit ? offset ?", NULL );
+
+                if( where_str )
+                    tmp = where_str;
+
+                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(name = '", *keywords, "' or generic_name = '", *keywords, "' or description = '", *keywords, "')", NULL );
+                if( tmp )
+                    free( tmp );
+
+                //db_query( &db, sql, keyword, keyword, keyword, limit_str, offset_str, NULL);
+                //free( sql );
+            }
+            else if( *keywords && *keys && *wildcards )
+            {
+                //sql = util_strcat( "select * from ", table, " where ", key, wildcards ? " like '%'||?||'%' limit ? offset ?" : " = ? limit ? offset ?", NULL );
+
+                if( where_str )
+                    tmp = where_str;
+
+                where_str = util_strcat( tmp ? tmp : "", tmp ? " and (" : "(", *keys, *wildcards == 2 ? " like '%" : " = '", *keywords, *wildcards == 2 ? "%')" : "')", NULL );
+                if( tmp )
+                    free( tmp );
+
+                //db_query( &db, sql, keyword, limit_str, offset_str, NULL );
+                //free( sql );
+            }
+            else
+            {
+                break;
+            }
+
+            keys++;
+            keywords++;
+            wildcards++;
+        }
+
+        if( where_str )
+        {
+            sql = util_strcat( "select * from ", table, " where ", where_str, " limit ? offset ?", NULL );
+            db_query( &db, sql, limit_str, offset_str, NULL );
+
+            free( where_str );
+            free( sql );
+        }
     }
     free( limit_str );
     free( offset_str );
@@ -2025,7 +2078,7 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
 /*
  * packages_get_list2
  */
-YPackageList *packages_get_list2( YPackageManager *pm, int page_size, int page_no, char *key, char *keyword, int wildcards, int installed )
+YPackageList *packages_get_list2( YPackageManager *pm, int page_size, int page_no, char *keys[], char *keywords[], int wildcards[], int installed )
 {
     int                     offset;
     YPackageList            *pkg_list;
@@ -2039,7 +2092,7 @@ YPackageList *packages_get_list2( YPackageManager *pm, int page_size, int page_n
 
     offset = ( page_no - 1 ) * page_size;
 
-    pkg_list = packages_get_list( pm, page_size, offset, key, keyword, wildcards, installed );
+    pkg_list = packages_get_list( pm, page_size, offset, keys, keywords, wildcards, installed );
 
     return pkg_list;
 }
@@ -3263,7 +3316,7 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
 {
     int                 ret, data_size, control_xml_size, del_var;
     time_t              now;
-    char                *pkginfo, *pkgdata, *info_path, *control_xml, *control_xml_content, *filelist, *data_size_str, *time_str, *install, *install_script, *install_script_dest, *package_name, *version, *arch, *msg, *tmp;
+    char                *pkginfo, *pkgdata, *info_path, *control_xml, *control_xml_content, *filelist, *data_size_str, *time_str, *uri_str, *install, *install_script, *install_script_dest, *package_name, *version, *arch, *msg, *tmp;
     char                tmp_ypk_dir[] = "/tmp/ypkdir.XXXXXX";
     char                *exclude[] = { "YLMFOS", NULL };
     FILE                *fp_xml;
@@ -3427,6 +3480,20 @@ int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path
                 free( control_xml_content );
                 free( data_size_str );
                 control_xml_content = tmp;
+
+                uri_str =  xpath_get_node( xmldoc, (xmlChar *)"//uri" );
+                if( !uri_str )
+                {
+                    tmp = strdup( package_name );
+                    tmp[1] = 0;
+                    uri_str = util_strcat( "<uri>", tmp, "/", package_name, "_", version, "-", arch, ".ypk</uri>", NULL );
+                    free( tmp );
+                    tmp = preg_replace( "<uri>.*?</uri>", uri_str, control_xml_content, PCRE_CASELESS, 1 );
+                    free( control_xml_content );
+                    free( uri_str );
+                    control_xml_content = tmp;
+                }
+
                 tmp = NULL;
 
                 rewind( fp_xml );
@@ -3976,7 +4043,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( ret != SQLITE_DONE )
     {
         db_exec( &db, "rollback", NULL );  
-        printf( "rollback, db_ret:%d\n", ret );
+        //printf( "rollback, db_ret:%d\n", ret );
         return_code = -10; 
         goto return_point;
     }
@@ -3986,7 +4053,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( ret != SQLITE_DONE )
     {
         ret = db_exec( &db, "rollback", NULL );  
-        printf( "rollback, db_ret:%d\n", ret );
+        //printf( "rollback, db_ret:%d\n", ret );
         return_code = -10; 
         goto return_point;
     }
@@ -4011,7 +4078,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         if( ret != SQLITE_DONE )
         {
             db_exec( &db, "rollback", NULL );  
-            printf( "rollback, db_ret:%d\n", ret );
+            //printf( "rollback, db_ret:%d\n", ret );
             return_code = -10; 
             goto return_point;
         }
@@ -4022,7 +4089,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( ret == -1 )
     {
         db_exec( &db, "rollback", NULL );  
-        printf( "rollback, db_ret:%d\n", ret );
+        //printf( "rollback, db_ret:%d\n", ret );
         return_code = -10; 
         goto return_point;
     }
@@ -4051,7 +4118,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
                     if( ret != SQLITE_DONE )
                     {
                         db_exec( &db, "rollback", NULL );  
-                        printf( "rollback, db_ret:%d\n", ret );
+                        //printf( "rollback, db_ret:%d\n", ret );
                         return_code = -10; 
                         free( list_line );
                         goto return_point;
@@ -4068,7 +4135,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         if( ret != SQLITE_DONE )
         {
             db_exec( &db, "rollback", NULL );  
-            printf( "rollback, db_ret:%d\n", ret );
+            //printf( "rollback, db_ret:%d\n", ret );
             return_code = -10; 
             goto return_point;
         }
@@ -4091,7 +4158,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         if( ret != SQLITE_DONE )
         {
             db_exec( &db, "rollback", NULL );  
-            printf( "rollback, db_ret:%d\n", ret );
+            //printf( "rollback, db_ret:%d\n", ret );
             return_code = -10; 
             goto return_point;
         }
@@ -4102,7 +4169,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( ret != SQLITE_DONE )
     {
         db_exec( &db, "rollback", NULL );  
-        printf( "rollback, db_ret:%d\n", ret );
+        //printf( "rollback, db_ret:%d\n", ret );
         return_code = -10; 
         goto return_point;
     }
@@ -4139,7 +4206,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             if( ret != SQLITE_DONE )
             {
                 db_exec( &db, "rollback", NULL );  
-                printf( "rollback, db_ret:%d\n", ret );
+                //printf( "rollback, db_ret:%d\n", ret );
                 return_code = -10; 
                 free( list_line );
                 goto return_point;
@@ -4154,7 +4221,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( ret != SQLITE_DONE )
     {
         db_exec( &db, "rollback", NULL );  
-        printf( "rollback, db_ret:%d\n", ret );
+        //printf( "rollback, db_ret:%d\n", ret );
         return_code = -10; 
         goto return_point;
     }
@@ -4165,7 +4232,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( ret != SQLITE_DONE )
     {
         db_exec( &db, "rollback", NULL );  
-        printf( "rollback, db_ret:%d\n", ret );
+        //printf( "rollback, db_ret:%d\n", ret );
         return_code = -10; 
         goto return_point;
     }
@@ -4200,7 +4267,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         if( ret != SQLITE_DONE )
         {
             db_exec( &db, "rollback", NULL );  
-            printf( "rollback, db_ret:%d\n", ret );
+            //printf( "rollback, db_ret:%d\n", ret );
             return_code = -10; 
             goto return_point;
         }
@@ -4240,7 +4307,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         if( ret != SQLITE_DONE )
         {
             db_exec( &db, "rollback", NULL );  
-            printf( "rollback, db_ret:%d\n", ret );
+            //printf( "rollback, db_ret:%d\n", ret );
             return_code = -10; 
             goto return_point;
         }
@@ -4253,7 +4320,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( ret != SQLITE_DONE )
     {
         db_exec( &db, "rollback", NULL );  
-        printf( "rollback, db_ret:%d\n", ret );
+        //printf( "rollback, db_ret:%d\n", ret );
         return_code = -10; 
         goto return_point;
     }
@@ -4507,188 +4574,6 @@ int packages_log( YPackageManager *pm, char *package_name, char *msg )
         fclose( log_file );
         return 0;
     }
-
-    return -1;
-}
-
-
-/**
- * async interface
- */
-
-YPackageManager *packages_manager_clone(  YPackageManager *pm )
-{
-    YPackageManager *pm_copy;
-
-    if( !pm )
-        return NULL;
-
-    pm_copy = malloc( sizeof( YPackageManager ) );
-
-    if( !pm_copy )
-        return NULL;
-
-    if( pm->source_uri )
-        pm_copy->source_uri = strdup( pm->source_uri );
-
-    if( pm->accept_repo )
-        pm_copy->accept_repo = strdup( pm->accept_repo );
-
-    if( pm->package_dest )
-        pm_copy->package_dest = strdup( pm->package_dest );
-
-    if( pm->db_name )
-        pm_copy->db_name = strdup( pm->db_name );
-
-    return pm_copy;
-}
-
-void *packages_check_update_backend_thread( void *data )
-{
-    int                 ret;
-    AsyncQueryParams  *params;
-
-    params = (AsyncQueryParams  *)data;
-
-    ret = packages_check_update( params->pm );
-
-    if( params->cb )
-        params->cb( (void *)ret );
-
-    packages_manager_cleanup( params->pm );
-    free( params );
-    return (void *)ret;
-}
-
-int packages_check_update_async( YPackageManager *pm, YPackageCB *cb  )
-{
-    int                 tret;
-    pthread_t           tid;
-    AsyncQueryParams  *params;
-
-    params = malloc( sizeof( AsyncQueryParams ) );
-
-    params->pm = packages_manager_clone( pm );
-    params->cb = cb;
-
-    tret = pthread_create( &tid, NULL, packages_check_update_backend_thread, (void *)params );
-
-    pthread_detach(tid);
-
-    if( !tret )
-        return 0;
-
-    return -1;
-}
-
-void *packages_update_backend_thread( void *data )
-{
-    int                 ret;
-    AsyncQueryParams  *params;
-
-    params = (AsyncQueryParams  *)data;
-
-    ret = packages_update( params->pm, NULL, NULL );
-
-    if( params->cb )
-        params->cb( (void *)ret );
-
-    packages_manager_cleanup( params->pm );
-    free( params );
-    return (void *)ret;
-}
-
-int packages_update_async( YPackageManager *pm,  YPackageCB *cb )
-{
-    int                 tret;
-    pthread_t           tid;
-    AsyncQueryParams  *params;
-
-    params = malloc( sizeof( AsyncQueryParams ) );
-
-    params->pm = packages_manager_clone( pm );
-    params->cb = cb;
-
-    tret = pthread_create(&tid, NULL, packages_update_backend_thread, (void *)params );
-
-    //pthread_join(tid, NULL);
-    pthread_detach(tid);
-
-    if( !tret )
-        return 0;
-
-    return -1;
-}
-
-void *packages_get_list_backend_thread( void *data )
-{
-    AsyncQueryParams  *params;
-    YPackageList        *pkg_list;
-
-    params = (AsyncQueryParams  *)data;
-
-    pkg_list = packages_get_list( params->pm, params->limit, params->offset, params->key, params->keyword, params->wildcards, params->installed );
-
-    if( params->cb )
-        params->cb( (void *)pkg_list );
-
-    packages_manager_cleanup( params->pm );
-    free( params );
-    return (void *)0;
-}
-
-int packages_get_list_async( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int wildcards, int installed, YPackageCB *cb )
-{
-    int                 tret;
-    pthread_t           tid;
-    AsyncQueryParams  *params;
-
-    params = malloc( sizeof( AsyncQueryParams ) );
-
-    params->pm = packages_manager_clone( pm );
-    params->limit = limit;
-    params->offset = offset;
-    params->key = strdup(key);
-    params->keyword = strdup(keyword);
-    params->wildcards = wildcards;
-    params->wildcards = installed;
-    params->cb = cb;
-
-    tret = pthread_create(&tid, NULL, packages_get_list_backend_thread, (void *)params );
-
-    //pthread_join(tid, NULL);
-    pthread_detach(tid);
-
-    if( !tret )
-        return 0;
-
-    return -1;
-}
-
-int packages_get_list_async2( YPackageManager *pm, int page_size, int page_no, char *key, char *keyword, int wildcards, YPackageCB *cb )
-{
-    int                 tret, offset;
-    pthread_t           tid;
-    AsyncQueryParams  *params;
-
-    params = malloc( sizeof( AsyncQueryParams ) );
-
-    params->pm = packages_manager_clone( pm );
-    params->limit = page_size;
-    offset = ( page_no - 1 ) * page_size;
-    params->offset = offset;
-    params->key = strdup(key);
-    params->keyword = strdup(keyword);
-    params->wildcards = wildcards;
-    params->cb = cb;
-
-    tret = pthread_create(&tid, NULL, packages_get_list_backend_thread, (void *)params );
-
-    //pthread_join(tid, NULL);
-    pthread_detach(tid);
-
-    if( !tret )
-        return 0;
 
     return -1;
 }
