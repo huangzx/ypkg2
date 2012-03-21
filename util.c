@@ -188,7 +188,7 @@ char *util_strcat2( char *dest, int size, char *first, ...)
         return NULL;
 
     result = dest;
-    memset( result, '\0', len + 1);
+    memset( result, '\0', size );
     strncpy( result, first, strlen( first ) );
 
     va_start( ap, first );

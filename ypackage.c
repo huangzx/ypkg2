@@ -110,7 +110,7 @@ int packages_import_local_data( YPackageManager *pm )
 {
     int                 xml_ret, db_ret, is_desktop, i;
     size_t              list_len;
-    char                *sql, *sql_testing, *sql_history, *sql_data, *sql_testing_data, *sql_history_data, *sql_filelist, *idx, *data_key, *file_path, *file_path_sub, *list_line;
+    char                *sql, *sql_testing, *sql_history, *sql_data, *sql_testing_data, *sql_history_data, *sql_filelist, *idx, *data_key,*data_name, *data_format, *data_size, *data_install_size, *data_depend, *data_bdepend, *data_recommended, *data_conflict, *file_path, *file_path_sub, *list_line;
     char                 *saveptr, *package_name, *version, *repo, *install_time, *install_size, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *last_update;
     char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
     struct stat         statbuf;
@@ -234,46 +234,56 @@ int packages_import_local_data( YPackageManager *pm )
                 free( idx );
                 break;
             }
+
+            data_name = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) );  
+            data_format  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) );   
+            data_size = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) );   
+            data_install_size  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) );
+            data_depend = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) );    
+            data_bdepend = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) );    
+            data_recommended = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) );    
+            data_conflict  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict", NULL ) );   
+
             if( repo && !strcmp( repo, "stable" ) )
             {
                 db_exec( &db, sql_data,  
                         package_name, //name
                         version, //version
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
-                        reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                        data_name, //data_name
+                        data_format, //data_format
+                        data_size, //data_size
+                        data_install_size, //data_install_size
+                        data_depend, //data_depend
+                        data_bdepend, //data_bdepend
+                        data_recommended, //data_recommended
+                        data_conflict, //data_conflict
                         NULL);
             }
 
             db_exec( &db, sql_testing_data,  
                     package_name, //name
                     version, //version
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                    data_name, //data_name
+                    data_format, //data_format
+                    data_size, //data_size
+                    data_install_size, //data_install_size
+                    data_depend, //data_depend
+                    data_bdepend, //data_bdepend
+                    data_recommended, //data_recommended
+                    data_conflict, //data_conflict
                     NULL);
 
             db_exec( &db, sql_history_data,  
                     package_name, //name
                     version, //version
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                    data_name, //data_name
+                    data_format, //data_format
+                    data_size, //data_size
+                    data_install_size, //data_install_size
+                    data_depend, //data_depend
+                    data_bdepend, //data_bdepend
+                    data_recommended, //data_recommended
+                    data_conflict, //data_conflict
                     NULL);
             free( idx );
         }
@@ -352,17 +362,27 @@ int packages_import_local_data( YPackageManager *pm )
                 free( idx );
                 break;
             }
+
+            data_name = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) );  
+            data_format  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) );   
+            data_size = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) );   
+            data_install_size  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) );
+            data_depend = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) );    
+            data_bdepend = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) );    
+            data_recommended = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) );    
+            data_conflict  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict", NULL ) );   
+
             db_exec( &db, sql_data,  
                     package_name, //name
                     version, //version
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
-                    reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                    data_name, //data_name
+                    data_format, //data_format
+                    data_size, //data_size
+                    data_install_size, //data_install_size
+                    data_depend, //data_depend
+                    data_bdepend, //data_bdepend
+                    data_recommended, //data_recommended
+                    data_conflict, //data_conflict
                     NULL);
             free( idx );
         }
@@ -660,7 +680,7 @@ void packages_free_upgrade_list( YPackageChangeList *list )
 int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, ypk_progress_callback cb, void *cb_arg )
 {
     int                 i, xml_ret, db_ret, cmp_ret, is_desktop, do_replace;
-    char                *xml_sha, *target_url, *msg, *sql, *sql_data, *sql_testing, *sql_testing_data, *sql_history, *sql_history_data, *package_name, *version, *repo, *delete, *idx, *data_key, *installed, *old_version, *can_update;
+    char                *xml_sha, *target_url, *msg, *sql, *sql_data, *sql_testing, *sql_testing_data, *sql_history, *sql_history_data, *package_name, *version, *repo, *delete, *idx, *data_key,*data_name, *data_format, *data_size, *data_install_size, *data_depend, *data_bdepend, *data_recommended, *data_conflict, *installed, *old_version, *can_update;
     char                tmp_bz2[] = "/tmp/tmp_bz2.XXXXXX";
     char                tmp_xml[] = "/tmp/tmp_xml.XXXXXX";
     char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
@@ -668,6 +688,7 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
     XMLReaderHandle     xml_handle;
     DB                  db;
 
+                    
     if( !pm || !xml_file || !sum )
         return -1;
 
@@ -961,47 +982,55 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
                         break;
                     }
 
+                    data_name = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) );  
+                    data_format  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) );   
+                    data_size = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) );   
+                    data_install_size  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) );
+                    data_depend = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) );    
+                    data_bdepend = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) );    
+                    data_recommended = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) );    
+                    data_conflict  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict", NULL ) );   
+
                     if( repo && !strcmp( repo, "stable" ) )
                     {
                         db_exec( &db, sql_data,  
                                 package_name, //name
                                 version, //version
-                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
-                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
-                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
-                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
-                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
-                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
-                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
-                                reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                                data_name, //data_name
+                                data_format, //data_format
+                                data_size, //data_size
+                                data_install_size, //data_install_size
+                                data_depend, //data_depend
+                                data_bdepend, //data_bdepend
+                                data_recommended, //data_recommended
+                                data_conflict, //data_conflict
                                 NULL);
                     }
-
 
                     db_exec( &db, sql_testing_data,  
                             package_name, //name
                             version, //version
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                            data_name, //data_name
+                            data_format, //data_format
+                            data_size, //data_size
+                            data_install_size, //data_install_size
+                            data_depend, //data_depend
+                            data_bdepend, //data_bdepend
+                            data_recommended, //data_recommended
+                            data_conflict, //data_conflict
                             NULL);
 
                     db_exec( &db, sql_history_data,  
                             package_name, //name
                             version, //version
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ), //data_name
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) ), //data_format
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) ), //data_size
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) ), //data_install_size
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) ), //data_depend
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) ), //data_bdepend
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) ), //data_recommended
-                            reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict" ) ), //data_conflict
+                            data_name, //data_name
+                            data_format, //data_format
+                            data_size, //data_size
+                            data_install_size, //data_install_size
+                            data_depend, //data_depend
+                            data_bdepend, //data_bdepend
+                            data_recommended, //data_recommended
+                            data_conflict, //data_conflict
                             NULL);
 
                     free( idx );
