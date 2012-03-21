@@ -155,7 +155,7 @@ int packages_import_local_data( YPackageManager *pm );
  */
 
 /* get a single package infomations */
-int packages_get_count( YPackageManager *pm, char *key, char *keyword, int wildcards, int installed );
+int packages_get_count( YPackageManager *pm, char *keys[], char *keywords[], int wildcards[], int installed  );
 int packages_has_installed( YPackageManager *pm, char *name, char *version );
 int packages_exists( YPackageManager *pm, char *name, char *version );
 

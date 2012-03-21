@@ -875,12 +875,13 @@ int main( int argc, char **argv )
                 {
                     package_name = argv[i];
 
-                    pkg_count = packages_get_count( pm, "name", package_name, 1, 0 );
+                    char *keys[] = { "name", NULL }; 
+                    char *keywords[] = { package_name, NULL }; 
+                    int wildcards[] = { 2, 0 }; 
+
+                    pkg_count = packages_get_count( pm,  keys, keywords, wildcards, 0 );
                     if( pkg_count > 0 )
                     {
-                        char *keys[] = { "name", NULL }; 
-                        char *keywords[] = { package_name, NULL }; 
-                        int wildcards[] = { 2, 0 }; 
 
                         pkg_list = packages_get_list( pm, pkg_count, 0, keys, keywords, wildcards, 0 );
                         if( pkg_list )

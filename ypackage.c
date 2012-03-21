@@ -1131,10 +1131,10 @@ int packages_set_last_update_timestamp( YPackageManager *pm, int last_update )
     return -1;
 }
 
-int packages_get_count( YPackageManager *pm, char *key, char *keyword, int wildcards, int installed  )
+int packages_get_count( YPackageManager *pm, char *keys[], char *keywords[], int wildcards[], int installed  )
 {
     int     count, repo_testing;
-    char    *sql, *table;
+    char    *sql, *where_str, *table, *tmp;
     DB      db;
 
     if( !pm )
@@ -1148,29 +1148,63 @@ int packages_get_count( YPackageManager *pm, char *key, char *keyword, int wildc
     table = installed ? "world" : repo_testing ? "universe_testing" : "universe";
 
     db_init( &db, pm->db_name, OPEN_READ );
-    if( !key || !keyword )
+    if( !keys || !keywords || !wildcards || !(*keys) || !(*keywords) || !(*wildcards) )
     {
         sql = util_strcat( "select count(*) from ", table, NULL );
         db_query( &db, sql, NULL);
         free( sql );
     }
-    else if( key[0] == '*' && wildcards )
-    {
-        sql = util_strcat( "select count(*) from ", table, " where name like '%'||?||'%' or generic_name like  '%'||?||'%'  or description like '%'||?||'%'", NULL );
-        db_query( &db, sql, keyword, keyword, keyword, NULL);
-        free( sql );
-    }
-    else if( key[0] == '*' )
-    {
-        sql = util_strcat( "select count(*) from ", table, " where name = ? or generic_name = ? or description = ?", NULL );
-        db_query( &db, sql, keyword, keyword, keyword, NULL);
-        free( sql );
-    }
     else
     {
-        sql = util_strcat( "select count(*) from ", table, " where ", key, wildcards ? " like '%'||?||'%'" : " = ?", NULL );
-        db_query( &db, sql, keyword, NULL );
-        free( sql );
+        where_str = NULL;
+
+        while( *keys && *keywords && *wildcards )
+        {
+            tmp = NULL;
+            if( (*keywords) && ((*keys)[0] == '*') && (*wildcards == 2) )
+            {
+                if( where_str )
+                    tmp = where_str;
+
+                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(name like '%", *keywords, "%' or generic_name like  '%", *keywords, "%' or description like '%", *keywords, "%')", NULL );
+                if( tmp )
+                    free( tmp );
+            }
+            else if( (*keywords) && ((*keys)[0] == '*') && (*wildcards == 1) )
+            {
+                if( where_str )
+                    tmp = where_str;
+
+                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(name = '", *keywords, "' or generic_name = '", *keywords, "' or description = '", *keywords, "')", NULL );
+                if( tmp )
+                    free( tmp );
+            }
+            else if( *keywords && *keys && *wildcards )
+            {
+                if( where_str )
+                    tmp = where_str;
+
+                where_str = util_strcat( tmp ? tmp : "", tmp ? " and (" : "(", *keys, *wildcards == 2 ? " like '%" : " = '", *keywords, *wildcards == 2 ? "%')" : "')", NULL );
+                if( tmp )
+                    free( tmp );
+            }
+            else
+            {
+                break;
+            }
+            keys++;
+            keywords++;
+            wildcards++;
+        }
+
+        if( where_str )
+        {
+            sql = util_strcat( "select count(*) from ", table, " where ", where_str, NULL );
+            db_query( &db, sql, NULL );
+
+            free( where_str );
+            free( sql );
+        }
     }
 
     db_fetch_num( &db );
