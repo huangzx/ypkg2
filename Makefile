@@ -42,7 +42,7 @@ ypkg-import.o: ypkg-import.c
 	cc $(W) $(DEBUG)  $(O) -c ypkg-import.c -o ypkg-import.o
 
 $(YPKGUPGRADE): ypkg-upgrade.o 
-	cc $(W) $(DEBUG) --rdynamic -o $(YPKGUPGRADE)  ypkg-upgrade.o -ldl
+	cc $(W) $(DEBUG) -o $(YPKGUPGRADE)  ypkg-upgrade.o -ldl
 
 ypkg-upgrade.o: ypkg-upgrade.c
 	cc $(W) $(DEBUG)  $(O) -c ypkg-upgrade.c -o ypkg-upgrade.o
