@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
  * Version: 0.1
- * Date: 2012.3.6
+ * Date: 2012.3.30
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -138,24 +138,28 @@ int main( int argc, char **argv )
     flag = 0;
     force = 0;
     exit_code = 0;
+    version = NULL;
+    pm = NULL;
 
     while( ( c = getopt_long( argc, argv, ":hCIclkxXbLsSmi:o:f", longopts, NULL ) ) != -1 )
     {
         switch( c )
         {
-            case 'h': //show usage
             case 'C': //remove package
             case 'I': //install package
+
             case 'c': //check dependencies, conlicts and so on of package
             case 'l': //list all files of installed package
             case 'k': //show dependency of package
             case 'L': //list all installed packages  
             case 's': //show which package needs package
             case 'S': //search which package provide this file
+
             case 'x': //unpack ypk package
             case 'X': //unpack ypkinfo
             case 'b': //pack directory to package
             case 'm': //comprare two version strings
+            case 'h': //show usage
                 if( !action )
                     action = c;
                 break;
@@ -169,12 +173,6 @@ int main( int argc, char **argv )
         }
     }
 
-    pm = packages_manager_init();
-    if( !pm )
-    {
-        fprintf( stderr, "Error: Can not open database.\n" );
-        return 1;
-    }
 
     switch( action )
     {
@@ -199,11 +197,32 @@ int main( int argc, char **argv )
             }
             else
             {
-                for( i = optind; i < argc; i++)
+                pm = packages_manager_init2( 2 );
+                if( !pm )
                 {
-                    packages_log( pm, argv[i], "remove" );
-                    ret = packages_remove_package( pm, argv[i], ypkg_progress_callback, pm );
-                    printf( "%s\n", ret < 0 ? "failed" : "successed" );
+                    switch( libypk_errno )
+                    {
+                        case MISSING_DB:
+                            err = 4;
+                        break;
+
+                        case LOCK_ERROR:
+                            err = 5;
+                        break;
+
+                        default:
+                            err = 3;
+                    }
+                }
+                else
+                {
+                    for( i = optind; i < argc; i++)
+                    {
+                        packages_log( pm, argv[i], "remove" );
+                        ret = packages_remove_package( pm, argv[i], ypkg_progress_callback, pm );
+                        printf( "%s\n", ret < 0 ? "failed" : "successed" );
+                    }
+                    packages_manager_cleanup2( pm );
                 }
             }
             break;
@@ -222,51 +241,72 @@ int main( int argc, char **argv )
             }
             else
             {
-                for( i = optind; i < argc; i++)
+                pm = packages_manager_init2( 2 );
+                if( !pm )
                 {
-                    package_name = argv[i];
-                    packages_log( pm, package_name, "install" );
-                    printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", package_name );
-                    ret = packages_install_local_package( pm, package_name, "/", force, ypkg_progress_callback, pm );
-
-                    switch( ret )
+                    switch( libypk_errno )
                     {
-                        case 1:
-                        case 2:
-                            printf( COLOR_YELLO "The latest version has installed.\n" COLOR_RESET );
-                            break;
-                        case 0:
-                            printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
-                            break;
-                        case -1:
-                            printf( COLOR_RED "Error: Invalid format or File not found.\n" COLOR_RESET );
-                            break;
-                        case -2:
-                            printf( COLOR_RED "Error: Architecture does not match.\n" COLOR_RESET );
-                            break;
-                        case -3:
-                            printf( COLOR_RED "Error: missing runtime deps.\n" COLOR_RESET );
-                            break;
-                        case -4:
-                            printf( COLOR_RED "Error: conflicting deps.\n" COLOR_RESET );
-                            break;
-                        case -5:
-                        case -6:
-                            printf( COLOR_RED "Error: Can not get package's infomation.\n" COLOR_RESET );
-                            break;
-                        case -7:
-                            printf( COLOR_RED "Error: An error occurred while executing the pre_install script.\n" COLOR_RESET );
-                            break;
-                        case -8:
-                            printf( COLOR_RED "Error: An error occurred while copy files.\n" COLOR_RESET );
-                            break;
-                        case -9:
-                            printf( COLOR_RED "Error: An error occurred while executing the post_install script.\n" COLOR_RESET );
-                            break;
-                        case -10:
-                            printf( COLOR_RED "Error: An error occurred while updating database.\n" COLOR_RESET );
-                            break;
+                        case MISSING_DB:
+                            err = 4;
+                        break;
+
+                        case LOCK_ERROR:
+                            err = 5;
+                        break;
+
+                        default:
+                            err = 3;
                     }
+                }
+                else
+                {
+                    for( i = optind; i < argc; i++)
+                    {
+                        package_name = argv[i];
+                        packages_log( pm, package_name, "install" );
+                        printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", package_name );
+                        ret = packages_install_local_package( pm, package_name, "/", force, ypkg_progress_callback, pm );
+
+                        switch( ret )
+                        {
+                            case 1:
+                            case 2:
+                                printf( COLOR_YELLO "The latest version has installed.\n" COLOR_RESET );
+                                break;
+                            case 0:
+                                printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+                                break;
+                            case -1:
+                                printf( COLOR_RED "Error: Invalid format or File not found.\n" COLOR_RESET );
+                                break;
+                            case -2:
+                                printf( COLOR_RED "Error: Architecture does not match.\n" COLOR_RESET );
+                                break;
+                            case -3:
+                                printf( COLOR_RED "Error: missing runtime deps.\n" COLOR_RESET );
+                                break;
+                            case -4:
+                                printf( COLOR_RED "Error: conflicting deps.\n" COLOR_RESET );
+                                break;
+                            case -5:
+                            case -6:
+                                printf( COLOR_RED "Error: Can not get package's infomation.\n" COLOR_RESET );
+                                break;
+                            case -7:
+                                printf( COLOR_RED "Error: An error occurred while executing the pre_install script.\n" COLOR_RESET );
+                                break;
+                            case -8:
+                                printf( COLOR_RED "Error: An error occurred while copy files.\n" COLOR_RESET );
+                                break;
+                            case -9:
+                                printf( COLOR_RED "Error: An error occurred while executing the post_install script.\n" COLOR_RESET );
+                                break;
+                            case -10:
+                                printf( COLOR_RED "Error: An error occurred while updating database.\n" COLOR_RESET );
+                                break;
+                        }
+                    }
+                        packages_manager_cleanup2( pm );
                 }
             }
             break;
@@ -281,40 +321,60 @@ int main( int argc, char **argv )
             }
             else
             {
-                for( i = optind; i < argc; i++)
+                pm = packages_manager_init2( 1 );
+                if( !pm )
                 {
-                    package_name = argv[i];
-                    printf( "Checking for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  package_name );
-                    ret = packages_check_package( pm, package_name, NULL, 0 );
-                    switch( ret )
+                    switch( libypk_errno )
                     {
-                        case 3:
-                            printf( COLOR_GREEN "Can be upgraded.\n" COLOR_RESET );
-                            break;
-                        case 1:
-                        case 2:
-                            printf( COLOR_WHILE "The latest version has installed.\n" COLOR_RESET );
-                            break;
-                        case 0:
-                            printf( COLOR_GREEN "Ready.\n" COLOR_RESET );
-                            break;
-                        case -1:
-                            printf( COLOR_RED "Error: Invalid format or File not found.\n" COLOR_RESET );
-                            break;
-                        case -2:
-                            printf( COLOR_RED "Error: Architecture does not match.\n" COLOR_RESET );
-                            break;
-                        case -3:
-                            printf( COLOR_RED "Error: missing runtime deps.\n" COLOR_RESET );
-                            break;
-                        case -4:
-                            printf( COLOR_RED "Error: conflicting deps.\n" COLOR_RESET );
-                            break;
+                        case MISSING_DB:
+                            err = 4;
+                        break;
+
+                        case LOCK_ERROR:
+                            err = 5;
+                        break;
+
                         default:
-                            printf( COLOR_RED "Error: unknown error.\n" COLOR_RESET );
+                            err = 3;
                     }
+                }
+                else
+                {
+                    for( i = optind; i < argc; i++)
+                    {
+                        package_name = argv[i];
+                        printf( "Checking for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  package_name );
+                        ret = packages_check_package( pm, package_name, NULL, 0 );
+                        switch( ret )
+                        {
+                            case 3:
+                                printf( COLOR_GREEN "Can be upgraded.\n" COLOR_RESET );
+                                break;
+                            case 1:
+                            case 2:
+                                printf( COLOR_WHILE "The latest version has installed.\n" COLOR_RESET );
+                                break;
+                            case 0:
+                                printf( COLOR_GREEN "Ready.\n" COLOR_RESET );
+                                break;
+                            case -1:
+                                printf( COLOR_RED "Error: Invalid format or File not found.\n" COLOR_RESET );
+                                break;
+                            case -2:
+                                printf( COLOR_RED "Error: Architecture does not match.\n" COLOR_RESET );
+                                break;
+                            case -3:
+                                printf( COLOR_RED "Error: missing runtime deps.\n" COLOR_RESET );
+                                break;
+                            case -4:
+                                printf( COLOR_RED "Error: conflicting deps.\n" COLOR_RESET );
+                                break;
+                            default:
+                                printf( COLOR_RED "Error: unknown error.\n" COLOR_RESET );
+                        }
 
 
+                    }
                 }
             }
 
@@ -331,18 +391,41 @@ int main( int argc, char **argv )
             {
                 for( i = optind; i < argc; i++)
                 {
+                    pkg_file = NULL;
                     package_name = argv[i];
                     len = strlen( package_name );
                     if( strncmp( package_name+len-4, ".ypk", 4 ) || access( package_name, R_OK ) )
                     {
-                        pkg_file = packages_get_package_file( pm, package_name );
-                        if( (pkg = packages_get_package( pm, package_name, 1 )) )
+                        if( !pm )
+                            pm = packages_manager_init2( 1 );
+
+                        if( !pm )
                         {
-                            version = packages_get_package_attr( pkg, "version" );
+                            switch( libypk_errno )
+                            {
+                                case MISSING_DB:
+                                    err = 4;
+                                break;
+
+                                case LOCK_ERROR:
+                                    err = 5;
+                                break;
+
+                                default:
+                                    err = 3;
+                            }
                         }
                         else
                         {
-                            version = "Unknown";
+                            pkg_file = packages_get_package_file( pm, package_name );
+                            if( (pkg = packages_get_package( pm, package_name, 1 )) )
+                            {
+                                version = packages_get_package_attr( pkg, "version" );
+                            }
+                            else
+                            {
+                                version = "Unknown";
+                            }
                         }
                     }
                     else
@@ -361,21 +444,26 @@ int main( int argc, char **argv )
 
                     if( pkg_file )
                     {
-                        printf( COLOR_YELLO "* Contents of %s v%s:\n" COLOR_RESET, package_name, version );
+                        printf( COLOR_YELLO "* Contents of %s %s:\n" COLOR_RESET, package_name, version );
                         for( j = 0; j < pkg_file->cnt; j++ )
                         {
-                            printf( "%s|%10s| %s\n",  packages_get_package_file_attr( pkg_file, j, "type"), packages_get_package_file_attr( pkg_file, j, "size"), packages_get_package_file_attr( pkg_file, j, "file") );
+                            file_type = packages_get_package_file_attr( pkg_file, j, "type");
+                            if( file_type[0] == 'F' ||  file_type[0] == 'D' || file_type[0] == 'S' )
+                                printf( "%s|%10s| %s\n",  file_type, packages_get_package_file_attr( pkg_file, j, "size"), packages_get_package_file_attr( pkg_file, j, "file") );
                         }
                         packages_free_package_file( pkg_file );
 
                         printf( "\nFile: %d, Dir: %d, Link: %d, Size: %dK\n", pkg_file->cnt_file,  pkg_file->cnt_dir, pkg_file->cnt_link, pkg_file->size );
-                        printf( COLOR_YELLO "--- Contents of %s v%s ---\n" COLOR_RESET, package_name, version );
+                        printf( COLOR_YELLO "--- Contents of %s %s ---\n" COLOR_RESET, package_name, version );
                     }
-                    else
+                    else if( !err )
                     {
                         printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
                     }
                 }
+
+                if( pm )
+                    packages_manager_cleanup2( pm );
             }
 
             break;
@@ -391,49 +479,73 @@ int main( int argc, char **argv )
             else
             {
                 package_name = argv[optind];
-                if( (pkg = packages_get_package( pm, package_name, 1 )) )
+
+                pm = packages_manager_init2( 1 );
+                if( !pm )
                 {
-                    version = packages_get_package_attr( pkg, "version");
+                    switch( libypk_errno )
+                    {
+                        case MISSING_DB:
+                            err = 4;
+                        break;
+
+                        case LOCK_ERROR:
+                            err = 5;
+                        break;
+
+                        default:
+                            err = 3;
+                    }
                 }
                 else
                 {
-                    printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
-                    break;
-                }
 
-                if( (pkg_data = packages_get_package_data( pm, package_name, 1 )) )
-                {
-
-                    for( i = 0; i < pkg_data->cnt; i++ )
+                    if( (pkg = packages_get_package( pm, package_name, 1 )) )
                     {
-                        printf( ">> Dependencies of " COLOR_WHILE "%s_%s" COLOR_RESET " data %d:\n",  package_name, version, i );
-                        bdepend = packages_get_package_data_attr( pkg_data, i, "data_bdepend");
-                        if( bdepend )
-                        {
-                            printf( COLOR_GREEN "* Build_time"  COLOR_RESET  "\n%s\n",  util_chr_replace( bdepend, ',', ' ' ) );
-                        }
-
-                        depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
-                        if( depend )
-                        {
-                            printf( COLOR_GREEN "* Run_time"  COLOR_RESET  "\n%s\n",  util_chr_replace( depend, ',', ' ' ) );
-                        }
-
-                        recommended = packages_get_package_data_attr( pkg_data, i, "data_recommended");
-                        if( recommended )
-                        {
-                            printf( COLOR_GREEN "* Recommend"  COLOR_RESET  "\n%s\n",  util_chr_replace( recommended, ',', ' ' ) );
-                        }
-
-                        conflict = packages_get_package_data_attr( pkg_data, i, "data_conflict");
-                        if( conflict )
-                        {
-                            printf( COLOR_GREEN "* Conflict"  COLOR_RESET  "\n%s\n",  conflict );
-                        }
+                        version = packages_get_package_attr( pkg, "version");
                     }
-                    packages_free_package_data( pkg_data );
+                    else
+                    {
+                        printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                        break;
+                    }
+
+                    if( (pkg_data = packages_get_package_data( pm, package_name, 1 )) )
+                    {
+
+                        for( i = 0; i < pkg_data->cnt; i++ )
+                        {
+                            printf( ">> Dependencies of " COLOR_WHILE "%s_%s" COLOR_RESET " data %d:\n",  package_name, version, i );
+                            bdepend = packages_get_package_data_attr( pkg_data, i, "data_bdepend");
+                            if( bdepend )
+                            {
+                                printf( COLOR_GREEN "* Build_time"  COLOR_RESET  "\n%s\n",  util_chr_replace( bdepend, ',', ' ' ) );
+                            }
+
+                            depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
+                            if( depend )
+                            {
+                                printf( COLOR_GREEN "* Run_time"  COLOR_RESET  "\n%s\n",  util_chr_replace( depend, ',', ' ' ) );
+                            }
+
+                            recommended = packages_get_package_data_attr( pkg_data, i, "data_recommended");
+                            if( recommended )
+                            {
+                                printf( COLOR_GREEN "* Recommend"  COLOR_RESET  "\n%s\n",  util_chr_replace( recommended, ',', ' ' ) );
+                            }
+
+                            conflict = packages_get_package_data_attr( pkg_data, i, "data_conflict");
+                            if( conflict )
+                            {
+                                printf( COLOR_GREEN "* Conflict"  COLOR_RESET  "\n%s\n",  conflict );
+                            }
+                        }
+                        packages_free_package_data( pkg_data );
+                    }
+                    packages_free_package( pkg );
+
+                    packages_manager_cleanup2( pm );
                 }
-                packages_free_package( pkg );
             }
 
             break;
@@ -442,23 +554,44 @@ int main( int argc, char **argv )
          * list all installed packages  
          */
         case 'L':
-            pkg_list = packages_get_list( pm, 50000, 0, NULL, NULL, 0, 1 );
-            if( pkg_list )
+            pm = packages_manager_init2( 1 );
+            if( !pm )
             {
-                for( i = 0; i < pkg_list->cnt; i++ )
+                switch( libypk_errno )
                 {
-                    tmp = packages_get_list_attr( pkg_list, i, "install_time" );
-                    if( tmp )
-                        install_time = util_time_to_str( atoi( tmp ) );
-                    else
-                        install_time = NULL;
+                    case MISSING_DB:
+                        err = 4;
+                    break;
 
-                    printf( COLOR_GREEN "[I] "  COLOR_RESET  "%s_%s\t%s\t%s\nDescription: %s\n", packages_get_list_attr( pkg_list, i, "name"), packages_get_list_attr( pkg_list, i, "version"), install_time ? install_time : "0", packages_get_list_attr( pkg_list, i, "size"), packages_get_list_attr( pkg_list, i, "description") );
+                    case LOCK_ERROR:
+                        err = 5;
+                    break;
 
-                    if( install_time )
-                        free( install_time );
+                    default:
+                        err = 3;
                 }
-                packages_free_list( pkg_list );
+            }
+            else
+            {
+                pkg_list = packages_get_list( pm, 50000, 0, NULL, NULL, 0, 1 );
+                if( pkg_list )
+                {
+                    for( i = 0; i < pkg_list->cnt; i++ )
+                    {
+                        tmp = packages_get_list_attr( pkg_list, i, "install_time" );
+                        if( tmp )
+                            install_time = util_time_to_str( atoi( tmp ) );
+                        else
+                            install_time = NULL;
+
+                        printf( COLOR_GREEN "[I] "  COLOR_RESET  "%s_%s\t%s\t%s\nDescription: %s\n", packages_get_list_attr( pkg_list, i, "name"), packages_get_list_attr( pkg_list, i, "version"), install_time ? install_time : "0", packages_get_list_attr( pkg_list, i, "size"), packages_get_list_attr( pkg_list, i, "description") );
+
+                        if( install_time )
+                            free( install_time );
+                    }
+                    packages_free_list( pkg_list );
+                    packages_manager_cleanup2( pm );
+                }
             }
             break;
 
@@ -472,75 +605,97 @@ int main( int argc, char **argv )
             }
             else
             {
-                package_name = argv[optind];
-                //depend
-                printf( "* [R] stand for runtime depend, [B] for build, [A] for recommoneded, [C] for conflict.\n" );
-                pkg_list = packages_get_list_by_depend( pm, 2000, 0, package_name, 1 );
-                if( pkg_list )
+                pm = packages_manager_init2( 1 );
+                if( !pm )
                 {
+                    switch( libypk_errno )
+                    {
+                        case MISSING_DB:
+                            err = 4;
+                        break;
+
+                        case LOCK_ERROR:
+                            err = 5;
+                        break;
+
+                        default:
+                            err = 3;
+                    }
+                }
+                else
+                {
+                    package_name = argv[optind];
+                    //depend
+                    printf( "* [R] stand for runtime depend, [B] for build, [A] for recommoneded, [C] for conflict.\n" );
+                    pkg_list = packages_get_list_by_depend( pm, 2000, 0, package_name, 1 );
+                    if( pkg_list )
+                    {
+                        if( !flag )
+                        {
+                            flag = 1;
+                            printf( COLOR_YELLO "* %s is related with:\n" COLOR_RESET,  package_name );
+                        }
+                        for( i = 0; i < pkg_list->cnt; i++ )
+                        {
+                            printf( COLOR_BLUE "[R]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                        }
+                        packages_free_list( pkg_list );
+                    }
+
+                    //bdepend
+                    pkg_list = packages_get_list_by_bdepend( pm, 2000, 0, package_name, 1 );
+                    if( pkg_list )
+                    {
+                        if( !flag )
+                        {
+                            flag = 1;
+                            printf( COLOR_YELLO "* %s is related with:\n" COLOR_RESET,  package_name );
+                        }
+                        for( i = 0; i < pkg_list->cnt; i++ )
+                        {
+                            printf( COLOR_BLUE "[B]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                        }
+                        packages_free_list( pkg_list );
+                    }
+
+                    //recommoneded
+                    pkg_list = packages_get_list_by_recommended( pm, 2000, 0, package_name, 1 );
+                    if( pkg_list )
+                    {
+                        if( !flag )
+                        {
+                            flag = 1;
+                            printf( COLOR_YELLO "* %s is related with:\n" COLOR_RESET,  package_name );
+                        }
+                        for( i = 0; i < pkg_list->cnt; i++ )
+                        {
+                            printf( COLOR_BLUE "[A]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                        }
+                        packages_free_list( pkg_list );
+                    }
+
+                    //conflict
+                    pkg_list = packages_get_list_by_conflict( pm, 2000, 0, package_name, 1 );
+                    if( pkg_list )
+                    {
+                        if( !flag )
+                        {
+                            flag = 1;
+                            printf( COLOR_YELLO "* %s is related with:\n" COLOR_RESET,  package_name );
+                        }
+                        for( i = 0; i < pkg_list->cnt; i++ )
+                        {
+                            printf( COLOR_BLUE "[C]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                        }
+                        packages_free_list( pkg_list );
+                    }
+
                     if( !flag )
                     {
-                        flag = 1;
-                        printf( COLOR_YELLO "* %s is related with:\n" COLOR_RESET,  package_name );
+                        printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
                     }
-                    for( i = 0; i < pkg_list->cnt; i++ )
-                    {
-                        printf( COLOR_BLUE "[R]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                    }
-                    packages_free_list( pkg_list );
-                }
 
-                //bdepend
-                pkg_list = packages_get_list_by_bdepend( pm, 2000, 0, package_name, 1 );
-                if( pkg_list )
-                {
-                    if( !flag )
-                    {
-                        flag = 1;
-                        printf( COLOR_YELLO "* %s is related with:\n" COLOR_RESET,  package_name );
-                    }
-                    for( i = 0; i < pkg_list->cnt; i++ )
-                    {
-                        printf( COLOR_BLUE "[B]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                    }
-                    packages_free_list( pkg_list );
-                }
-
-                //recommoneded
-                pkg_list = packages_get_list_by_recommended( pm, 2000, 0, package_name, 1 );
-                if( pkg_list )
-                {
-                    if( !flag )
-                    {
-                        flag = 1;
-                        printf( COLOR_YELLO "* %s is related with:\n" COLOR_RESET,  package_name );
-                    }
-                    for( i = 0; i < pkg_list->cnt; i++ )
-                    {
-                        printf( COLOR_BLUE "[A]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                    }
-                    packages_free_list( pkg_list );
-                }
-
-                //conflict
-                pkg_list = packages_get_list_by_conflict( pm, 2000, 0, package_name, 1 );
-                if( pkg_list )
-                {
-                    if( !flag )
-                    {
-                        flag = 1;
-                        printf( COLOR_YELLO "* %s is related with:\n" COLOR_RESET,  package_name );
-                    }
-                    for( i = 0; i < pkg_list->cnt; i++ )
-                    {
-                        printf( COLOR_BLUE "[C]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                    }
-                    packages_free_list( pkg_list );
-                }
-
-                if( !flag )
-                {
-                    printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                    packages_manager_cleanup2( pm );
                 }
             }
 
@@ -563,26 +718,53 @@ int main( int argc, char **argv )
                     if( file_name[len - 1] == '/' )
                         file_name[len -1] = '\0';
 
-                    printf( "* Searching for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  file_name );
-                    pkg_list = packages_get_list_by_file( pm, 2000, 0, file_name );
-                    if( pkg_list )
+                    
+                    if( !pm )
+                        pm = packages_manager_init2( 1 );
+
+                    if( !pm )
                     {
-                        for( j = 0; j < pkg_list->cnt; j++ )
+                        switch( libypk_errno )
                         {
-                            file_type = packages_get_list_attr( pkg_list, j, "type");
-                            printf( "%s_%s: %s, " COLOR_WHILE "%s" COLOR_RESET,  packages_get_list_attr( pkg_list, j, "name"), packages_get_list_attr( pkg_list, j, "version"), file_type, packages_get_list_attr( pkg_list, j, "file") );
-                            if( file_type[0] == 'S' )
-                                printf( " -> %s", packages_get_list_attr( pkg_list, j, "extra") );
-                            printf( "\n" );
+                            case MISSING_DB:
+                                err = 4;
+                            break;
+
+                            case LOCK_ERROR:
+                                err = 5;
+                            break;
+
+                            default:
+                                err = 3;
                         }
-                        packages_free_list( pkg_list );
                     }
                     else
                     {
-                        printf( COLOR_RED "* %s not owned by any packages.\n" COLOR_RESET,  file_name );
+
+                        printf( "* Searching for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  file_name );
+                        pkg_list = packages_get_list_by_file( pm, 2000, 0, file_name );
+                        if( pkg_list )
+                        {
+                            for( j = 0; j < pkg_list->cnt; j++ )
+                            {
+                                file_type = packages_get_list_attr( pkg_list, j, "type");
+                                printf( "%s_%s: %s, " COLOR_WHILE "%s" COLOR_RESET,  packages_get_list_attr( pkg_list, j, "name"), packages_get_list_attr( pkg_list, j, "version"), file_type, packages_get_list_attr( pkg_list, j, "file") );
+                                if( file_type[0] == 'S' )
+                                    printf( " -> %s", packages_get_list_attr( pkg_list, j, "extra") );
+                                printf( "\n" );
+                            }
+                            packages_free_list( pkg_list );
+                        }
+                        else
+                        {
+                            printf( COLOR_RED "* %s not owned by any packages.\n" COLOR_RESET,  file_name );
+                        }
+                        printf( "\n" );
                     }
-                    printf( "\n" );
                 }
+
+                if( pm )
+                    packages_manager_cleanup2( pm );
             }
             break;
 
@@ -628,7 +810,7 @@ int main( int argc, char **argv )
                     }
                 }
 
-                packages_unpack_package( pm, ypk_path, tmp ? tmp : unpack_path , 1 );
+                packages_unpack_package( ypk_path, tmp ? tmp : unpack_path , 1 );
 
                 if( pkg )
                     packages_free_package( pkg );
@@ -680,7 +862,7 @@ int main( int argc, char **argv )
                     }
                 }
 
-                packages_unpack_package( pm, ypk_path, tmp ? tmp : unpack_path , 2 );
+                packages_unpack_package( ypk_path, tmp ? tmp : unpack_path , 2 );
 
                 if( pkg )
                     packages_free_package( pkg );
@@ -703,7 +885,7 @@ int main( int argc, char **argv )
                 pack_path = argv[2];
                 ypk_path = argc == 4 ? argv[3] : NULL;
 
-                ret = packages_pack_package( pm, pack_path, ypk_path, ypkg_pack_callback, NULL );
+                ret = packages_pack_package( pack_path, ypk_path, ypkg_pack_callback, NULL );
                 if( !ret )
                 {
                     printf( COLOR_GREEN "Package successful.\n" COLOR_RESET );
@@ -813,7 +995,6 @@ int main( int argc, char **argv )
         default:
             usage();
     }
-    packages_manager_cleanup( pm );
 
     if( err == 1 )
         usage();
@@ -821,6 +1002,10 @@ int main( int argc, char **argv )
         fprintf( stderr, "Permission Denied!\n" );
     else if( err == 3 )
         fprintf( stderr, "Failed!\n" );
+    else if( err == 4 )
+        fprintf( stderr, "Error: Cannot open database.\n" );
+    else if( err == 5 )
+        fprintf( stderr, "Error: Database is busy.\n" );
 
     if( err )
         exit_code = err;

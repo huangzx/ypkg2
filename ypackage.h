@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.3.6
+ * Date: 2012.3.30
  */
 #ifndef PACKAGE_H
 #define PACKAGE_H
@@ -59,6 +59,7 @@ typedef struct {
 #define PACKAGE_DB_DIR  "/var/ypkg/db"
 #define DB_NAME "/var/ypkg/db/package.db"
 #define LOG_FILE "/var/log/ypkg2.log"
+#define LOCK_FILE "/tmp/libypk.lock"
 #define UPDATE_DIR "updates"
 #define LIST_FILE "updates.list"
 #define LIST_DATE_FILE "updates.date"
@@ -67,7 +68,15 @@ typedef struct {
 #define LOCAL_UNIVERSE "/var/ypkg/packages/universe"
 #define LOCAL_WORLD "/var/ypkg/db/world"
 
+#define ARGS_INCORRECT -1
+#define MISSING_CONFIG -2
+#define MISSING_DB -3
+#define MISCONFIG -4
+#define LOCK_ERROR -5
+#define OTHER_FAILURES -6
+
 typedef struct {
+    int     lock_fd;
     char    *source_uri;
     char    *accept_repo;
     char    *package_dest;
@@ -126,6 +135,7 @@ typedef struct {
 }YPackageDCB;
 
 
+extern int libypk_errno;
 
 
 /**********************************/
@@ -137,6 +147,17 @@ typedef struct {
  */
 YPackageManager *packages_manager_init();
 void packages_manager_cleanup( YPackageManager *pm );
+
+YPackageManager *packages_manager_init2( int type );
+void packages_manager_cleanup2( YPackageManager *pm );
+
+/*
+ * lock
+ */
+int packages_lock( int type );
+int packages_unlock();
+#define packages_read_lock() packages_lock( 1 )
+#define packages_write_lock() packages_lock( 2 )
 
 /*
  * update database
@@ -215,8 +236,8 @@ int packages_compare_version( char *version1, char *version2 );
  */
 int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, int extra_max_len );
 
-int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int unzip_info );
-int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path, ypk_progress_callback cb, void *cb_arg );
+int packages_unpack_package( char *ypk_path, char *dest_dir, int unzip_info );
+int packages_pack_package( char *source_dir, char *ypk_path, ypk_progress_callback cb, void *cb_arg );
 
 
 //int packages_download_package( YPackageManager *pm, char *package_name, char *url, char *dest, int force, ypk_progress_callback cb, void *cb_arg );

@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
  * Version: 0.1
- * Date: 2012.2.20
+ * Date: 2012.3.30
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -436,7 +436,7 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
 
 int main( int argc, char **argv )
 {
-    int             c, force, download_only, simulation, reinstall, yes, unknown_arg, verbose, i, j, action, ret, err, flag, len, size, install_size, pkg_count, upgrade_ypkg;
+    int             c, force, init, download_only, simulation, reinstall, yes, unknown_arg, verbose, i, j, action, ret, err, flag, len, size, install_size, pkg_count, upgrade_ypkg;
     char            confirm, *tmp, *package_name, *install_date, *build_date, *version,  *installed, *can_update, *repo;
 
     YPackageManager *pm;
@@ -455,6 +455,7 @@ int main( int argc, char **argv )
     action = 0;
     err = 0;
     flag = 0;
+    init = 0;
     force = 0;
     download_only = 0;
     simulation = 0;
@@ -463,24 +464,30 @@ int main( int argc, char **argv )
     unknown_arg = 0;
     verbose = 0;
     upgrade_ypkg = 0;
+    pm = NULL;
 
 
     while( ( c = getopt_long( argc, argv, ":hIiRASstCuUpydfrv", longopts, NULL ) ) != -1 )
     {
         switch( c )
         {
-            case 'h': //show usage
             case 'I': //install
             case 'i': //install-dev
             case 'r': //reinstall
             case 'R': //remove
             case 'A': //autoremove
-            case 'S': //search
-            case 's': //search
-            case 't': //status
-            case 'C': //clean
             case 'u': //update
             case 'U': //upgrade
+                init++; //2 write
+
+            case 'S': //search
+            case 's': //show
+            case 't': //status
+            case 'C': //clean
+                init++; //1 read
+
+
+            case 'h': //show usage
                 if( !action )
                     action = c;
                 break;
@@ -517,11 +524,26 @@ int main( int argc, char **argv )
         return 1;
     }
 
-    pm = packages_manager_init();
-    if( !pm )
+    if( init )
     {
-        fprintf( stderr, "Error: Can not open database.\n" );
-        return 1;
+        pm = packages_manager_init2( init );
+        if( !pm )
+        {
+            switch( libypk_errno )
+            {
+                case MISSING_DB:
+                    fprintf( stderr, "Error: Cannot open database.\n" );
+                break;
+
+                case LOCK_ERROR:
+                    fprintf( stderr, "Error: Database is busy.\n" );
+                break;
+
+                default:
+                    fprintf( stderr, "Error: Failed to initialize.\n" );
+            }
+            return 1;
+        }
     }
 
     switch( action )
@@ -1274,7 +1296,7 @@ int main( int argc, char **argv )
         default:
             usage();
     }
-    packages_manager_cleanup( pm );
+    packages_manager_cleanup2( pm );
 
     if( err == 1 )
         usage();

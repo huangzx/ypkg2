@@ -4,11 +4,12 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.3.3
+ * Date: 2012.3.30
  */
 #define LIBYPK 1
 #include "ypackage.h"
 
+int libypk_errno;
 
 YPackageManager *packages_manager_init()
 {
@@ -63,6 +64,152 @@ void packages_manager_cleanup( YPackageManager *pm )
     free( pm );
 }
 
+YPackageManager *packages_manager_init2( int type )
+{
+    int             ret;
+    char            *config_file;
+    YPackageManager *pm;
+
+
+    if( type == 1 )
+    {
+        ret = packages_read_lock();
+    }
+    else if( type == 2 )
+    {
+        ret = packages_write_lock();
+    }
+    else
+    {
+        libypk_errno = ARGS_INCORRECT;
+        return NULL;
+    }
+
+    if( ret < 0 )
+    {
+        libypk_errno = LOCK_ERROR;
+        return NULL;
+    }
+
+    pm = malloc( sizeof(YPackageManager) );
+
+    if( !pm )
+    {
+        libypk_errno = OTHER_FAILURES;
+        return NULL;
+    }
+
+    pm->lock_fd = ret;
+
+    if( access( CONFIG_FILE, R_OK ) )
+    {
+        libypk_errno = MISSING_CONFIG;
+        free( pm );
+        return NULL;
+    }
+
+    if( access( DB_NAME, R_OK ) )
+    {
+        libypk_errno = MISSING_DB;
+        free( pm );
+        return NULL;
+    }
+
+    config_file = CONFIG_FILE;
+
+    pm->source_uri = util_get_config( config_file, "YPPATH_URI" );
+    if( !pm->source_uri )
+    {
+        libypk_errno = MISCONFIG;
+        free( pm );
+        return NULL;
+    }
+
+    pm->accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
+    pm->package_dest = util_get_config( config_file, "YPPATH_PKGDEST" );
+    pm->db_name = strdup( DB_NAME );
+    pm->log = util_get_config( config_file, "LOG" );
+
+    return pm;
+}
+
+void packages_manager_cleanup2( YPackageManager *pm )
+{
+    if( !pm )
+        return;
+
+    if( pm->source_uri )
+        free( pm->source_uri );
+
+    if( pm->accept_repo )
+        free( pm->accept_repo );
+
+    if( pm->package_dest )
+        free( pm->package_dest );
+
+    if( pm->db_name )
+        free( pm->db_name );
+
+    if( pm->log )
+        free( pm->log );
+
+    free( pm );
+
+    packages_unlock( pm->lock_fd );
+}
+
+
+
+int packages_lock( int type )
+{
+    int             fd;
+    struct flock    lock;
+
+    umask( 0 );
+    fd = open( LOCK_FILE, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH );
+
+    if( fd < 0 )
+    {
+        return -1;
+    }
+
+    lock.l_type = type == 2 ? F_WRLCK : F_RDLCK; /* F_RDLCK, F_WRLCK, F_UNLCK */
+    lock.l_start = 0;
+    lock.l_whence = SEEK_SET;
+    lock.l_len = 0;
+
+    if( fcntl( fd, F_SETLK, &lock ) == -1 )
+    {
+        close( fd );
+        return -2;
+    }
+
+    return fd;
+}
+
+int packages_unlock( int fd )
+{
+    struct flock    lock;
+
+    if( fd < 1 )
+    {
+        return -1;
+    }
+
+    lock.l_type = F_UNLCK;
+    lock.l_start = 0;
+    lock.l_whence = SEEK_SET;
+    lock.l_len = 0;
+
+    if( fcntl( fd, F_SETLK, &lock ) == -1 )
+    {
+        close( fd );
+        return -2;
+    }
+
+    close( fd );
+    return 0;
+}
 
 int packages_check_update( YPackageManager *pm )
 {
@@ -1562,7 +1709,15 @@ int packages_get_package_from_ypk( char *ypk_path, YPackage **package, YPackageD
             cur_xpath = *attr_xpath_offset++;
             cur_value =  xpath_get_node( xmldoc, (xmlChar *)cur_xpath );
 
-            hash_table_add_data( pkg->ht, cur_key, cur_value );
+            if( strcmp( cur_key, "is_desktop" ) == 0 )
+            {
+                hash_table_add_data( pkg->ht, cur_key, cur_value ? "1" : "0" );
+            }
+            else
+            {
+                hash_table_add_data( pkg->ht, cur_key, cur_value );
+            }
+
             if( cur_value )
                 free( cur_value );
         }
@@ -3315,7 +3470,7 @@ return_point:
  *
  * params: unzip_info - 0,1,2
  */
-int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int unzip_info )
+int packages_unpack_package( char *ypk_path, char *dest_dir, int unzip_info )
 {
     char                tmp_ypk_data[] = "/tmp/ypkdata.XXXXXX", tmp_ypk_info[] = "/tmp/ypkinfo.XXXXXX";
     char                *info_dest_dir;
@@ -3375,7 +3530,7 @@ int packages_unpack_package( YPackageManager *pm, char *ypk_path, char *dest_dir
 /*
  * packages_pack_package
  */
-int packages_pack_package( YPackageManager *pm, char *source_dir, char *ypk_path, ypk_progress_callback cb, void *cb_arg )
+int packages_pack_package( char *source_dir, char *ypk_path, ypk_progress_callback cb, void *cb_arg )
 {
     int                 ret, data_size, control_xml_size, del_var;
     time_t              now;
@@ -4012,7 +4167,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         cb( cb_arg, ypk_path, 6, -1, "copying files" );
     }
 
-    if( (ret = packages_unpack_package( pm, ypk_path, dest_dir, 0 )) != 0 )
+    if( (ret = packages_unpack_package( ypk_path, dest_dir, 0 )) != 0 )
     {
         //printf("unpack ret:%d\n",ret);
         return_code = -8; 
