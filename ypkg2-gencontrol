@@ -6,7 +6,7 @@
 #
 # Written by: 0o0<0o0zzyz@gmail.com>
 # Version: 0.1
-# Date: 2012.3.13
+# Date: 2012.3.30
 #
 # Usage:
 #       ypkg2-gencontrol [--desktop] [DIR] ...
@@ -84,6 +84,11 @@ sub get_info
                 while( <DESKTOP> )
                 {
                     if( /^Exec=(.*)/i )
+                    {
+                        $exec = $1;
+                        last;
+                    }
+                    elsif( /^TryExec=(.*)/i )
                     {
                         $exec = $1;
                         last;
@@ -169,7 +174,7 @@ sub generate_control
             return -1;
     }
 
-    find( { wanted => \&get_info, follow => 1 }, '.' );
+    find( { wanted => \&get_info }, '.' );
 
     printf FILELIST "I,%d,%d,%d,%ld,%d\n", $file_count, $dir_count, $link_count, $disk_usage / 2, ($total_size - 1) / 1024 + 1;
 

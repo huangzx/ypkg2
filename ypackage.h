@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.3.30
+ * Date: 2012.4.12
  */
 #ifndef PACKAGE_H
 #define PACKAGE_H
@@ -180,6 +180,8 @@ int packages_get_count( YPackageManager *pm, char *keys[], char *keywords[], int
 int packages_has_installed( YPackageManager *pm, char *name, char *version );
 int packages_exists( YPackageManager *pm, char *name, char *version );
 
+int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data, YPackageFile **package_file, char *install_script, char *desktop_file );
+
 int packages_get_package_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data );
 
 YPackage *packages_get_repo_package( YPackageManager *pm, char *name, int installed, char *repo );
@@ -197,6 +199,7 @@ void packages_free_package_data( YPackageData *pkg_data );
 
 /* get package file infomations */
 YPackageFile *packages_get_package_file( YPackageManager *pm, char *name );
+YPackageFile *packages_get_package_file_from_str( char *filelist );
 YPackageFile *packages_get_package_file_from_ypk( char *ypk_path );
 char *packages_get_package_file_attr( YPackageFile *pkg_file, int index, char *key );
 char *packages_get_package_file_attr2( YPackageFile *pkg_file, int index, char *key );

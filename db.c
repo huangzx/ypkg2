@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2011.11.23
+ * Date: 2012.4.12
  */
 #include "db.h"
 
@@ -61,7 +61,8 @@ int db_exec(DB *db, char *sql, ...)
 {
     va_list ap;
     char *arg;
-    int i = 1, ret;
+    int i = 1;
+    int ret;
 
 
     sqlite3_prepare_v2 ( db->handle, sql, strlen(sql), &(db->stmt), NULL );
@@ -87,10 +88,10 @@ int db_query(DB *db, char *sql, ...)
 {
     va_list ap;
     char *arg;
-    int i = 1, ret;
+    int i = 1;
 
 
-    ret = sqlite3_prepare_v2 ( db->handle, sql, strlen(sql), &(db->stmt), NULL );
+    sqlite3_prepare_v2 ( db->handle, sql, strlen(sql), &(db->stmt), NULL );
 
     va_start(ap, sql);
     while((arg = va_arg(ap, char *)) != NULL)

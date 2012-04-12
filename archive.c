@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.3.1
+ * Date: 2012.4.12
  */
 #include "archive.h"
 
@@ -108,7 +108,10 @@ int archive_extract_file2( char *arch_file, const char *src, void **dest_buff, s
 
             *dest_len = archive_entry_size( entry ); 
             if( *dest_len > 0 )
+            {
                 *dest_buff = malloc( *dest_len + 10 );
+                memset( *dest_buff, 0, *dest_len + 10 );
+            }
 
             if( archive_read_data( arch_r, *dest_buff, *dest_len) < 0 ) 
                 goto errout;
@@ -227,7 +230,10 @@ int archive_extract_file4( void *arch_buff, size_t arch_size, const char *src,  
 
             *dest_len = archive_entry_size( entry ); 
             if( *dest_len > 0 )
-                *dest_buff = malloc( *dest_len );
+            {
+                *dest_buff = malloc( *dest_len + 1 );
+                memset( *dest_buff, 0, *dest_len + 1 );
+            }
 
             if( archive_read_data( arch_r, *dest_buff, *dest_len) < 0 ) 
                 goto errout;

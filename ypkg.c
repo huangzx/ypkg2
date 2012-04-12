@@ -59,7 +59,7 @@ Commands:\n\
         -S|--whatprovides [file]                search which package provide this file\n\
         --compare-version old new               comprare two version strings \n\
                                                return 0 if same. \n\
-                                               return 1 if old is grater than new \n\
+                                               return 1 if old is greater than new \n\
                                                return 2 if old is lesser then new\n\
 \n\
 Options:\n\
@@ -929,7 +929,7 @@ int main( int argc, char **argv )
                 ret = packages_compare_version( version, version2 );
                 if( ret > 0 )
                 {
-                    printf( "[version:%s] is grater than [version:%s]\n", version,  version2 );
+                    printf( "[version:%s] is greater than [version:%s]\n", version,  version2 );
                     exit_code = 1;
                 }
                 else if( ret < 0 )

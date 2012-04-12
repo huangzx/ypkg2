@@ -35,7 +35,7 @@ HashTable *hash_table_init()
 
 int hash_table_add_data( HashTable *ht, char *key, char *value )
 {
-    int             len, buf_size, ret;
+    int             len, buf_size;
     ENTRY           item, *itemp;
     HashData       *new_data;
 
@@ -59,14 +59,14 @@ int hash_table_add_data( HashTable *ht, char *key, char *value )
         ht->cur_data->buf[ht->cur_data->pos + len] = '\0';
         item.key = key;
         item.data = (void *)(ht->cur_data->buf + ht->cur_data->pos);
-        ret = hsearch_r( item, ENTER, &itemp, ht->index );
+        hsearch_r( item, ENTER, &itemp, ht->index );
         ht->cur_data->pos += len + 1;
     }
     else
     {
         item.key = key;
         item.data = NULL;
-        ret = hsearch_r( item, ENTER, &itemp, ht->index );
+        hsearch_r( item, ENTER, &itemp, ht->index );
     }
     return 0;
 }
@@ -74,7 +74,6 @@ int hash_table_add_data( HashTable *ht, char *key, char *value )
 
 char *hash_table_get_data( HashTable *ht, char *key )
 {
-    int     ret;
     ENTRY   item, *itemp;
 
     if( !ht || !key )
@@ -82,7 +81,7 @@ char *hash_table_get_data( HashTable *ht, char *key )
 
     item.key = key;
     item.data = NULL;
-    ret = hsearch_r( item, FIND, &itemp, ht->index );
+    hsearch_r( item, FIND, &itemp, ht->index );
 
     return itemp ? itemp->data : NULL;
 }

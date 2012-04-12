@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
  * Version: 0.1
- * Date: 2012.3.30
+ * Date: 2012.4.12
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -44,7 +44,6 @@ struct option longopts[] = {
     { "clean", no_argument, NULL, 'C' },
     { "update", no_argument, NULL, 'u' },
     { "upgrade", no_argument, NULL, 'U' },
-    { "verbose", no_argument, NULL, 'v' },
     { 0, 0, 0, 0}
 };
 
@@ -436,7 +435,7 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
 
 int main( int argc, char **argv )
 {
-    int             c, force, init, download_only, simulation, reinstall, yes, unknown_arg, verbose, i, j, action, ret, err, flag, len, size, install_size, pkg_count, upgrade_ypkg;
+    int             c, force, init, download_only, simulation, reinstall, yes, unknown_arg, i, j, action, ret, err, len, size, install_size, pkg_count, upgrade_ypkg;
     char            confirm, *tmp, *package_name, *install_date, *build_date, *version,  *installed, *can_update, *repo;
 
     YPackageManager *pm;
@@ -454,7 +453,6 @@ int main( int argc, char **argv )
 
     action = 0;
     err = 0;
-    flag = 0;
     init = 0;
     force = 0;
     download_only = 0;
@@ -462,12 +460,11 @@ int main( int argc, char **argv )
     reinstall = 0;
     yes = 0;
     unknown_arg = 0;
-    verbose = 0;
     upgrade_ypkg = 0;
     pm = NULL;
 
 
-    while( ( c = getopt_long( argc, argv, ":hIiRASstCuUpydfrv", longopts, NULL ) ) != -1 )
+    while( ( c = getopt_long( argc, argv, ":hIiRASstCuUpydfr", longopts, NULL ) ) != -1 )
     {
         switch( c )
         {
@@ -506,10 +503,6 @@ int main( int argc, char **argv )
 
             case 'p': 
                 simulation = 1;
-                break;
-
-            case 'v': //verbose
-                verbose = 1;
                 break;
 
             case '?':
