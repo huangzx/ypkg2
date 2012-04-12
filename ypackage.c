@@ -4589,7 +4589,7 @@ return_point:
         packages_free_package_data( pkg_data );
 
     if( pkg_file )
-        packages_free_package_file( pkg_file2 );
+        packages_free_package_file( pkg_file );
 
     if( pkg_file2 )
         packages_free_package_file( pkg_file2 );
