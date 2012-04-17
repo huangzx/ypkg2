@@ -23,7 +23,7 @@ char *util_get_config(char *config_file, char *keyword)
     while( fgets( line, MAXCFGLINE, fp ) != NULL ) 
     {
         pos = strchr( line, '=' );
-        sprintf( pattern, "%%%ds%%*2s%%%ds", pos-line, MAXCFGLINE-1 );
+        sprintf( pattern, "%%%ds%%*2s%%%ds", (int)(pos - line), MAXCFGLINE-1 );
         n = sscanf( line, pattern, keybuf, valbuf );
         if( n == 2 && strcmp(keyword, keybuf) == 0 )
         {
@@ -223,7 +223,9 @@ int util_log( char *log, char *msg )
     fp = fopen( log, "a" );
     if( !fp )
         return -1;
-    fprintf( fp, msg );
+
+    fputs( msg,  fp );
+
     fclose( fp );
 
     return 0;

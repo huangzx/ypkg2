@@ -21,22 +21,44 @@ YPackageManager *packages_manager_init()
     if( !pm )
         return NULL;
 
-    if( access( CONFIG_FILE, R_OK ) )
-        return NULL;
-
     if( access( DB_NAME, R_OK ) )
+    {
+        free( pm );
         return NULL;
+    }
+    pm->db_name = strdup( DB_NAME );
 
     config_file = CONFIG_FILE;
 
-    pm->source_uri = util_get_config( config_file, "YPPATH_URI" );
-    if( !pm->source_uri )
-        return NULL;
+    if( access( config_file, R_OK ) )
+    {
+        pm->source_uri = util_get_config( config_file, "YPPATH_URI" );
+        if( !pm->source_uri )
+            pm->source_uri = strdup( DEFAULT_URI );
 
-    pm->accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
-    pm->package_dest = util_get_config( config_file, "YPPATH_PKGDEST" );
-    pm->db_name = strdup( DB_NAME );
-    pm->log = util_get_config( config_file, "LOG" );
+        pm->accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
+        if( !pm->accept_repo )
+            pm->accept_repo = strdup( DEFAULT_REPO );
+
+        pm->package_dest = util_get_config( config_file, "YPPATH_PKGDEST" );
+        if( !pm->package_dest )
+            pm->package_dest = strdup( DEFAULT_PKGDEST );
+
+        pm->log = util_get_config( config_file, "LOG" );
+        if( !pm->log )
+            pm->log = strdup( LOG_FILE );
+    }
+    else
+    {
+        pm->source_uri = strdup( DEFAULT_URI );
+
+        pm->accept_repo = strdup( DEFAULT_REPO );
+
+        pm->package_dest = strdup( DEFAULT_PKGDEST );
+
+        pm->log = strdup( LOG_FILE );
+    }
+
 
     return pm;
 }
@@ -101,12 +123,6 @@ YPackageManager *packages_manager_init2( int type )
 
     pm->lock_fd = ret;
 
-    if( access( CONFIG_FILE, R_OK ) )
-    {
-        libypk_errno = MISSING_CONFIG;
-        free( pm );
-        return NULL;
-    }
 
     if( access( DB_NAME, R_OK ) )
     {
@@ -114,21 +130,37 @@ YPackageManager *packages_manager_init2( int type )
         free( pm );
         return NULL;
     }
+    pm->db_name = strdup( DB_NAME );
 
     config_file = CONFIG_FILE;
-
-    pm->source_uri = util_get_config( config_file, "YPPATH_URI" );
-    if( !pm->source_uri )
+    if( access( config_file, R_OK ) )
     {
-        libypk_errno = MISCONFIG;
-        free( pm );
-        return NULL;
-    }
+        pm->source_uri = util_get_config( config_file, "YPPATH_URI" );
+        if( !pm->source_uri )
+            pm->source_uri = strdup( DEFAULT_URI );
 
-    pm->accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
-    pm->package_dest = util_get_config( config_file, "YPPATH_PKGDEST" );
-    pm->db_name = strdup( DB_NAME );
-    pm->log = util_get_config( config_file, "LOG" );
+        pm->accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
+        if( !pm->accept_repo )
+            pm->accept_repo = strdup( DEFAULT_REPO );
+
+        pm->package_dest = util_get_config( config_file, "YPPATH_PKGDEST" );
+        if( !pm->package_dest )
+            pm->package_dest = strdup( DEFAULT_PKGDEST );
+
+        pm->log = util_get_config( config_file, "LOG" );
+        if( !pm->log )
+            pm->log = strdup( LOG_FILE );
+    }
+    else
+    {
+        pm->source_uri = strdup( DEFAULT_URI );
+
+        pm->accept_repo = strdup( DEFAULT_REPO );
+
+        pm->package_dest = strdup( DEFAULT_PKGDEST );
+
+        pm->log = strdup( LOG_FILE );
+    }
 
     return pm;
 }
@@ -255,10 +287,10 @@ int packages_check_update( YPackageManager *pm )
 
 int packages_import_local_data( YPackageManager *pm )
 {
-    int                 xml_ret, is_desktop, i;
+    int                 xml_ret, i;
     size_t              list_len;
     char                *sql, *sql_testing, *sql_history, *sql_data, *sql_testing_data, *sql_history_data, *sql_filelist, *idx, *data_key,*data_name, *data_format, *data_size, *data_install_size, *data_depend, *data_bdepend, *data_recommended, *data_conflict, *file_path, *file_path_sub, *list_line;
-    char                 *saveptr, *package_name, *version, *repo, *install_time, *install_size, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *last_update;
+    char                 *saveptr, *package_name, *is_desktop, *version, *repo, *install_time, *install_size, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *last_update;
     char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
     struct stat         statbuf;
     struct dirent       *entry, *entry_sub;
@@ -284,7 +316,7 @@ int packages_import_local_data( YPackageManager *pm )
     sql_history = "replace into universe_history (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
     while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
     {
-        is_desktop = (int)reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
+        is_desktop = reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
         package_name = reader_get_value2( &xml_handle, "name" );
         version = reader_get_value2( &xml_handle, "version" );
         repo = reader_get_value( &xml_handle, "repo" );
@@ -448,7 +480,7 @@ int packages_import_local_data( YPackageManager *pm )
 
     while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
     {
-        is_desktop = (int)reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
+        is_desktop = reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
         package_name = reader_get_value2( &xml_handle, "name" );
         version = reader_get_value2( &xml_handle, "version" );
 
@@ -825,8 +857,8 @@ void packages_free_upgrade_list( YPackageChangeList *list )
 
 int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, ypk_progress_callback cb, void *cb_arg )
 {
-    int                 i, xml_ret, db_ret, cmp_ret, is_desktop, do_replace;
-    char                *xml_sha, *target_url, *msg, *sql, *sql_data, *sql_testing, *sql_testing_data, *sql_history, *sql_history_data, *package_name, *version, *repo, *delete, *idx, *data_key,*data_name, *data_format, *data_size, *data_install_size, *data_depend, *data_bdepend, *data_recommended, *data_conflict, *installed, *old_version, *can_update;
+    int                 i, xml_ret, db_ret, cmp_ret, do_replace;
+    char                *xml_sha, *target_url, *msg, *sql, *sql_data, *sql_testing, *sql_testing_data, *sql_history, *sql_history_data, *package_name, *version, *is_desktop, *repo, *delete, *idx, *data_key,*data_name, *data_format, *data_size, *data_install_size, *data_depend, *data_bdepend, *data_recommended, *data_conflict, *installed, *old_version, *can_update;
     char                tmp_bz2[] = "/tmp/tmp_bz2.XXXXXX";
     char                tmp_xml[] = "/tmp/tmp_xml.XXXXXX";
     char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
@@ -996,7 +1028,7 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
         }
         else
         {
-            is_desktop = (int)reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
+            is_desktop = reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
 
             //get original value
             do_replace = 0;
@@ -2150,12 +2182,12 @@ YPackageFile *packages_get_package_file_from_str( char *filelist )
 
     pkg_file = (YPackageFile *)malloc( sizeof( YPackageFile ) );
 
-    strtok_r( pos + 1, " ,", &saveptr );
-    pkg_file->cnt_file = atoi( strtok_r( NULL, " ,", &saveptr ) );
-    pkg_file->cnt_dir = atoi( strtok_r( NULL, " ,", &saveptr ) );
-    pkg_file->cnt_link = atoi( strtok_r( NULL, " ,", &saveptr ) );
-    strtok_r( NULL, " ,", &saveptr );
-    pkg_file->size = atoi( strtok_r( NULL, " ,", &saveptr ) );
+    strtok_r( pos + 1, ",", &saveptr );
+    pkg_file->cnt_file = atoi( strtok_r( NULL, ",", &saveptr ) );
+    pkg_file->cnt_dir = atoi( strtok_r( NULL, ",", &saveptr ) );
+    pkg_file->cnt_link = atoi( strtok_r( NULL, ",", &saveptr ) );
+    strtok_r( NULL, ",", &saveptr );
+    pkg_file->size = atoi( strtok_r( NULL, ",", &saveptr ) );
 
     file_count = pkg_file->cnt_file + pkg_file->cnt_dir + pkg_file->cnt_link;
     pkg_file->htl = hash_table_list_init( file_count );
@@ -2175,11 +2207,11 @@ YPackageFile *packages_get_package_file_from_str( char *filelist )
         if( list_line[0] == 'F' ||  list_line[0] == 'D' ||  list_line[0] == 'S'  )
         {
             attr_keys_offset = attr_keys;
-            cur_value = strtok_r( list_line, " ,", &saveptr );
+            cur_value = strtok_r( list_line, ",", &saveptr );
             while( (cur_key = *attr_keys_offset++) )
             {
                 hash_table_list_add_data( pkg_file->htl, cur_file_index, cur_key, cur_value );
-                cur_value =  strtok_r( NULL, " ,", &saveptr );
+                cur_value =  strtok_r( NULL, ",", &saveptr );
             }
             cur_file_index++;
         }

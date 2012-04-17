@@ -56,31 +56,31 @@ $(STATIC_LIB):$(OBJS)
 	ranlib $(STATIC_LIB)
 
 download.o: download.c
-	cc -c $(W)$(DEBUG)  $(O) download.c -o download.o
+	cc -c $(W)$(DEBUG)  $(O) -fPIC download.c -o download.o
 
 util.o: util.c
-	cc -c $(W)$(DEBUG)  $(O) util.c -o util.o
+	cc -c $(W)$(DEBUG)  $(O) -fPIC util.c -o util.o
 
 db.o: db.c
-	cc -c $(W)$(DEBUG)  $(O) db.c -o db.o
+	cc -c $(W)$(DEBUG)  $(O) -fPIC db.c -o db.o
 
 data.o: data.c
-	cc -c $(W)$(DEBUG)  $(O) data.c -o data.o
+	cc -c $(W)$(DEBUG)  $(O) -fPIC data.c -o data.o
 
 archive.o: archive.c
-	cc -c $(W)$(DEBUG)  $(O) -D_FILE_OFFSET_BITS=64 archive.c -o archive.o
+	cc -c $(W)$(DEBUG)  $(O) -fPIC -D_FILE_OFFSET_BITS=64 archive.c -o archive.o
 
 xml.o: xml.c
-	cc -c $(W)$(DEBUG)  $(O) xml.c -o xml.o
+	cc -c $(W)$(DEBUG)  $(O) -fPIC xml.c -o xml.o
 
 preg.o: preg.c
-	cc -c $(W)$(DEBUG)  $(O) preg.c -o preg.o
+	cc -c $(W)$(DEBUG)  $(O) -fPIC preg.c -o preg.o
 
 sha1.o: sha1.c
-	cc -c $(W)$(DEBUG)  $(O) sha1.c -o sha1.o
+	cc -c $(W)$(DEBUG)  $(O) -fPIC sha1.c -o sha1.o
 
 ypackage.o: ypackage.c
-	cc -c $(W)$(DEBUG)  $(O) ypackage.c -o ypackage.o
+	cc -c $(W)$(DEBUG)  $(O) -fPIC ypackage.c -o ypackage.o
 
 install: all
 	mkdir -p $(BINDIR) $(LIBDIR) $(INCDIR) $(LANGDIR) $(DBDIR) $(DATADIR) 

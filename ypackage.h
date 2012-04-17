@@ -56,9 +56,13 @@ typedef struct {
 #endif
 
 #define CONFIG_FILE "/etc/yget.conf"
+#define DEFAULT_REPO "stable"
+#define DEFAULT_URI "http://pkg.ylmf.com/proposed"
+#define DEFAULT_PKGDEST "/var/ypkg/packages"
+#define LOG_FILE "/var/log/ypkg2.log"
+
 #define PACKAGE_DB_DIR  "/var/ypkg/db"
 #define DB_NAME "/var/ypkg/db/package.db"
-#define LOG_FILE "/var/log/ypkg2.log"
 #define LOCK_FILE "/tmp/libypk.lock"
 #define UPDATE_DIR "updates"
 #define LIST_FILE "updates.list"
@@ -137,10 +141,6 @@ typedef struct {
 
 extern int libypk_errno;
 
-
-/**********************************/
-/* sync interface                 */
-/**********************************/
 
 /*
  * init & clean up
