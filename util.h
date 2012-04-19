@@ -39,6 +39,7 @@ char *util_get_config(char *config_file, char *keyword);
 char    *util_rtrim( char *str, char c );
 char    *util_mem_gets( char *mem );
 char    *util_chr_replace( char *str, char chr_s, char chr_d );
+char    *util_null2empty( char *str );
 char    *util_strcat(char *first, ...);
 char    *util_strcat2( char *dest, int size, char *first, ...);
 char    *util_int_to_str( int i );

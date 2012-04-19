@@ -30,7 +30,7 @@ YPackageManager *packages_manager_init()
 
     config_file = CONFIG_FILE;
 
-    if( access( config_file, R_OK ) )
+    if( !access( config_file, R_OK ) )
     {
         pm->source_uri = util_get_config( config_file, "YPPATH_URI" );
         if( !pm->source_uri )
@@ -133,7 +133,7 @@ YPackageManager *packages_manager_init2( int type )
     pm->db_name = strdup( DB_NAME );
 
     config_file = CONFIG_FILE;
-    if( access( config_file, R_OK ) )
+    if( !access( config_file, R_OK ) )
     {
         pm->source_uri = util_get_config( config_file, "YPPATH_URI" );
         if( !pm->source_uri )
@@ -190,7 +190,42 @@ void packages_manager_cleanup2( YPackageManager *pm )
     packages_unlock( pm->lock_fd );
 }
 
+void packages_upgrade_db( YPackageManager *pm )
+{
+    int                 version;
+    DB                  db;
 
+    version = 0;
+
+    if( access( DB_UPGRADE, R_OK ) )
+        return;
+
+    db_init( &db, pm->db_name, OPEN_WRITE );
+    db_exec( &db, "begin", NULL );  
+
+    db_query( &db, "select db_version from config", NULL );
+    if( db_fetch_assoc( &db ) )
+    {
+        version = atoi( db_get_value_by_key( &db, "db_version" ) );
+    }
+    else
+    {
+        if( db_exec( &db, "alter table config add column db_version text default '0'", NULL ) != SQLITE_DONE )
+        {
+            goto exception_handler;
+        }
+    }
+
+
+    //db_exec( &db, "update config set db_version='20120410'", NULL );
+    db_exec( &db, "end", NULL );  
+
+exception_handler:
+    db_exec( &db, "rollback", NULL );  
+    db_close( &db );
+
+    return 0;
+}
 
 int packages_lock( int type )
 {
@@ -3461,13 +3496,7 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
         return -1;
 
     //get ypk's infomations
-    if( packages_get_package_from_ypk( ypk_path, &pkg, &pkg_data ) < 0 )
-    {
-        return -1;
-    }
-
-
-    if( !( pkg_file = packages_get_package_file_from_ypk( ypk_path ) ) )
+    if( packages_get_info_from_ypk( ypk_path, &pkg, &pkg_data, &pkg_file, NULL, NULL ) != 0 )
     {
         return -1;
     }
@@ -4129,7 +4158,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     int                 i, j, installed, upgrade, delete_file, ret, return_code;
     void                *pkginfo, *filelist;
     char                *msg, *sql, *sql_data, *sql_filelist;
-    char                *package_name, *version, *version2, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *can_update;
+    char                *package_name, *version, *version2, *repo, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *can_update;
     char                tmp_ypk_install[] = "/tmp/ypkinstall.XXXXXX";
     char                extra[32];
     YPackage            *pkg, *pkg2, *pkg3;
@@ -4251,8 +4280,11 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
 
     package_name = packages_get_package_attr( pkg, "name" );
     version = packages_get_package_attr( pkg, "version" );
+    repo = packages_get_package_attr( pkg, "repo" );
 
-    pkg2 = packages_get_repo_package( pm, package_name, 0, "stable" );
+    if( !strcmp( repo, "stable" ) )
+        pkg2 = packages_get_repo_package( pm, package_name, 0, "stable" );
+
     pkg3 = packages_get_repo_package( pm, package_name, 0, "testing" );
 
     pkg_file2 = packages_get_package_file( pm, package_name );
@@ -4412,7 +4444,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             packages_get_package_attr2( pkg, "exec" ), //exec
             packages_get_package_attr2( pkg, "license" ), //license
             packages_get_package_attr2( pkg, "homepage" ), //homepage
-            packages_get_package_attr2( pkg, "repo" ), //repo
+            repo, //repo
             packages_get_package_attr2( pkg, "size" ), //size
             packages_get_package_attr2( pkg, "sha" ), //repo
             packages_get_package_attr2( pkg, "build_date" ), //build_date

@@ -477,8 +477,8 @@ int main( int argc, char **argv )
             case 'U': //upgrade
                 init++; //2 write
 
-            case 'S': //search
             case 's': //show
+            case 'S': //search
             case 't': //status
             case 'C': //clean
                 init++; //1 read
@@ -520,7 +520,7 @@ int main( int argc, char **argv )
     if( init )
     {
         pm = packages_manager_init2( init );
-        if( !pm )
+        if( !pm && action != 's' )
         {
             switch( libypk_errno )
             {
@@ -966,30 +966,121 @@ int main( int argc, char **argv )
                 pkg_data = NULL;
                 install_date = NULL;
                 build_date = NULL;
-                if( (pkg = packages_get_package( pm, package_name, 0 )) )
-                {
-                    installed = packages_get_package_attr( pkg, "installed" );
-                    can_update = packages_get_package_attr( pkg, "can_update" );
-                    if( installed[0] != '0' )
-                    {
-                        pkg2 = packages_get_package( pm, package_name, 1 );
-                    }
 
-                    if( installed[0] == '0' )
+                len = strlen( package_name );
+                if( strncmp( package_name+len-4, ".ypk", 4 ) || access( package_name, R_OK ) )
+                {
+                    if( !pm )
                     {
-                        installed = "*";
+                        switch( libypk_errno )
+                        {
+                            case MISSING_DB:
+                                fprintf( stderr, "Error: Cannot open database.\n" );
+                            break;
+
+                            case LOCK_ERROR:
+                                fprintf( stderr, "Error: Database is busy.\n" );
+                            break;
+
+                            default:
+                                fprintf( stderr, "Error: Failed to initialize.\n" );
+                        }
+                        return 1;
                     }
-                    else if( can_update[0] == '1' )
+                    i = 1;
+                }
+                else
+                {
+                    i = 0;
+                }
+
+                if( i )
+                {
+                    pkg = packages_get_package( pm, package_name, 0 );
+                }
+                else
+                {
+                    if( packages_get_package_from_ypk( package_name, &pkg, &pkg_data ) < 0 )
                     {
-                        installed = "U";
+                        printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                        return 1;
                     }
-                    else if( can_update[0] == '-' &&  can_update[1] == '1' )
+                }
+
+                if( pkg )
+                {
+                    if( i )
                     {
-                        installed = "D";
+                        installed = packages_get_package_attr( pkg, "installed" );
+                        can_update = packages_get_package_attr( pkg, "can_update" );
+                        if( installed )
+                        {
+                            if( installed[0] != '0' )
+                            {
+                                pkg2 = packages_get_package( pm, package_name, 1 );
+                            }
+
+                            if( installed[0] == '0' )
+                            {
+                                installed = "*";
+                            }
+                            else if( can_update[0] == '1' )
+                            {
+                                installed = "U";
+                            }
+                            else if( can_update[0] == '-' &&  can_update[1] == '1' )
+                            {
+                                installed = "D";
+                            }
+                            else
+                            {
+                                installed = "I";
+                            }
+                        }
+                        else
+                        {
+                            installed = "*";
+                        }
                     }
                     else
                     {
-                        installed = "I";
+                        package_name = packages_get_package_attr( pkg, "name");
+
+                        if( pm )
+                        {
+                            if( packages_has_installed( pm, package_name, NULL ) )
+                            {
+                                pkg2 = packages_get_package( pm, package_name, 1 );
+                                if( pkg2 )
+                                {
+                                    ret = packages_compare_version( packages_get_package_attr( pkg2, "version"), packages_get_package_attr( pkg, "version") ); 
+                                    if( ret > 0 )
+                                    {
+                                        installed = "D";
+                                    }
+                                    else if( ret < 0 )
+                                    {
+                                        installed = "U";
+                                    }
+                                    else
+                                    {
+                                        installed = "I";
+                                    }
+                                }
+                                else
+                                {
+                                    installed = "*";
+                                }
+                            }
+                            else
+                            {
+                                installed = "*";
+                            }
+                        }
+                        else
+                        {
+                            installed = "*";
+                        }
                     }
 
                     tmp = packages_get_package_attr( pkg, "build_date");
@@ -1010,7 +1101,11 @@ int main( int argc, char **argv )
                     tmp = packages_get_package_attr( pkg, "size");
                     size = tmp ? atoi( tmp ) : 0;
 
-                    pkg_data = packages_get_package_data( pm, package_name, 0 );
+                    if( i )
+                    {
+                        pkg_data = packages_get_package_data( pm, package_name, 0 );
+                    }
+
                     if( pkg_data )
                     {
                         tmp = packages_get_package_data_attr( pkg_data, 0, "data_install_size");
@@ -1028,28 +1123,28 @@ int main( int argc, char **argv )
                                 pkg2 ? packages_get_package_attr( pkg2, "version") : packages_get_package_attr( pkg, "version"), 
                                 packages_get_package_attr( pkg, "arch"), 
                                 repo,
-                                packages_get_package_attr( pkg, "category"), 
-                                packages_get_package_attr( pkg, "priority"), 
+                                util_null2empty( packages_get_package_attr( pkg, "category") ), 
+                                util_null2empty( packages_get_package_attr( pkg, "priority") ), 
                                 installed,
-                                install_date ? install_date : "",  //install date
+                                util_null2empty( install_date ),  //install date
                                 packages_get_package_attr( pkg, "version"),  //available
-                                packages_get_package_attr( pkg, "license"), 
-                                packages_get_package_attr( pkg, "packager"), 
-                                packages_get_package_attr( pkg, "install"), 
-                                packages_get_package_attr2( pkg, "exec"), 
+                                util_null2empty( packages_get_package_attr( pkg, "license") ), 
+                                util_null2empty( packages_get_package_attr( pkg, "packager") ), 
+                                util_null2empty( packages_get_package_attr( pkg, "install") ), 
+                                util_null2empty( packages_get_package_attr2( pkg, "exec") ), 
                                 size > 1000000 ? size / 1000000 : (size > 1000 ? size / 1000 : size), 
                                 size > 1000000 ? 'M' : (size > 1000 ? 'K' : 'B'), 
-                                packages_get_package_attr( pkg, "sha"), 
-                                build_date ? build_date : "",
-                                packages_get_package_attr( pkg, "uri"), 
+                                util_null2empty( packages_get_package_attr( pkg, "sha") ), 
+                                util_null2empty( build_date ),
+                                util_null2empty( packages_get_package_attr( pkg, "uri") ), 
                                 install_size > 1000000 ? install_size / 1000000 : (install_size > 1000 ? install_size / 1000 : install_size), 
                                 install_size > 1000000 ? 'M' : (install_size > 1000 ? 'K' : 'B'), 
-                                util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_depend"), ',', ' ' ),  //depend
-                                util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_bdepend"), ',', ' ' ),  //bdepend
-                                util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_recommended"), ',', ' ' ),  //recommended
-                                packages_get_package_data_attr( pkg_data, 0, "data_conflict"),  //conflict
-                                packages_get_package_attr( pkg, "description"),
-                                packages_get_package_attr( pkg, "homepage")
+                                util_null2empty( util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_depend"), ',', ' ' ) ),  //depend
+                                util_null2empty( util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_bdepend"), ',', ' ' ) ),  //bdepend
+                                util_null2empty( util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_recommended"), ',', ' ' ) ),  //recommended
+                                util_null2empty( packages_get_package_data_attr( pkg_data, 0, "data_conflict") ),  //conflict
+                                util_null2empty( packages_get_package_attr( pkg, "description") ),
+                                util_null2empty( packages_get_package_attr( pkg, "homepage") )
                                 );
                     }
 
@@ -1289,7 +1384,9 @@ int main( int argc, char **argv )
         default:
             usage();
     }
-    packages_manager_cleanup2( pm );
+
+    if( pm )
+        packages_manager_cleanup2( pm );
 
     if( err == 1 )
         usage();

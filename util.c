@@ -128,11 +128,19 @@ char *util_chr_replace( char *str, char chr_s, char chr_d )
 {
     char *p;
 
+    if( !str )
+        return NULL;
+
     while( ( p = strchr( str, chr_s ) ) )
     {
         *p = chr_d;
     }
     return str;
+}
+
+char *util_null2empty( char *str )
+{
+    return str ? str : "";
 }
 
 char *util_strcat( char *first, ... )

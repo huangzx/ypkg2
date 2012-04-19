@@ -63,6 +63,7 @@ typedef struct {
 
 #define PACKAGE_DB_DIR  "/var/ypkg/db"
 #define DB_NAME "/var/ypkg/db/package.db"
+#define DB_UPGRADE "/usr/share/ypkg/db_upgrade.list"
 #define LOCK_FILE "/tmp/libypk.lock"
 #define UPDATE_DIR "updates"
 #define LIST_FILE "updates.list"
