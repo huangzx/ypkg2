@@ -171,6 +171,7 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
 
 int packages_import_local_data( YPackageManager *pm );
 
+int packages_upgrade_db( YPackageManager *pm );
 
 /*
  * get package infomations

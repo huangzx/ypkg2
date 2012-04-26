@@ -190,23 +190,33 @@ void packages_manager_cleanup2( YPackageManager *pm )
     packages_unlock( pm->lock_fd );
 }
 
-void packages_upgrade_db( YPackageManager *pm )
+int packages_upgrade_db( YPackageManager *pm )
 {
-    int                 version;
+    size_t              len, cur_version, new_version, begin;
+    char                *line, tmp[11];
+    FILE                *fp;
     DB                  db;
 
-    version = 0;
+
+    if( !pm )
+        return -1;
 
     if( access( DB_UPGRADE, R_OK ) )
-        return;
+        return -1;
+
+    fp = fopen( DB_UPGRADE, "r" );
+    if( !fp )
+        return -1;
+
+    cur_version = 0;
+    new_version = 0;
+    begin = 0;
 
     db_init( &db, pm->db_name, OPEN_WRITE );
-    db_exec( &db, "begin", NULL );  
-
     db_query( &db, "select db_version from config", NULL );
     if( db_fetch_assoc( &db ) )
     {
-        version = atoi( db_get_value_by_key( &db, "db_version" ) );
+        cur_version = atoi( db_get_value_by_key( &db, "db_version" ) );
     }
     else
     {
@@ -216,15 +226,64 @@ void packages_upgrade_db( YPackageManager *pm )
         }
     }
 
+    db_exec( &db, "begin", NULL );  
 
-    //db_exec( &db, "update config set db_version='20120410'", NULL );
+    line = NULL;
+    while( getline( &line, &len, fp ) != -1 )
+    {
+        if( !strncmp( line, "Version:", 8 ) )
+        {
+            strncpy( tmp, line+8, 10 );
+            tmp[10] = 0;
+            new_version = atoi( tmp );
+            if( new_version > cur_version )
+            {
+                printf( "begin\n" );
+                cur_version = new_version; 
+                begin = 1;
+            }
+        }
+        else if( !strncmp( line, "End", 3 ) )
+        {
+            if( begin )
+            {
+                if( db_exec( &db, "update config set db_version=?", tmp, NULL ) != SQLITE_DONE )
+                {
+                    goto exception_handler;
+                }
+
+                begin = 0;
+                printf( "end\n" );
+            }
+        }
+        else
+        {
+            if( begin && strlen( line ) > 3 )
+            {
+                printf( "exec:%s\n", line );
+                if( db_exec( &db, line, NULL ) != SQLITE_DONE )
+                {
+                    goto exception_handler;
+                }
+            }
+        }
+
+    }
+
     db_exec( &db, "end", NULL );  
+
+    if( line )
+        free( line );
+
+    fclose( fp );
+
+    db_close( &db );
+    return 0;
 
 exception_handler:
     db_exec( &db, "rollback", NULL );  
     db_close( &db );
-
-    return 0;
+    return -1;
 }
 
 int packages_lock( int type )
@@ -2342,7 +2401,7 @@ void packages_free_package_file( YPackageFile *pkg_file )
 YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, char *keys[], char *keywords[], int wildcards[], int installed )
 {
     int                     cur_pkg_index, repo_testing;
-    char                    *table, *sql, *where_str, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset, *tmp;
+    char                    *table, *sql, *where_str, *order_str, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset, *tmp;
     char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", "repo", "exec", "install_time", "installed", "can_update", "homepage", "build_date", "packager", NULL  }; 
     DB                      db;
     YPackageList            *pkg_list;
@@ -2365,11 +2424,12 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
     limit_str = util_int_to_str( limit );
 
     table = installed ? "world" : repo_testing ? "universe_testing" : "universe";
+    order_str = installed ? " order by install_time desc " : "";
 
     db_init( &db, pm->db_name, OPEN_READ );
     if( !keys || !keywords || !wildcards || !(*keys) || !(*keywords) || !(*wildcards) )
     {
-        sql = util_strcat( "select * from ", table, " limit ? offset ?", NULL );
+        sql = util_strcat( "select * from ", table, order_str, " limit ? offset ?", NULL );
         db_query( &db, sql, limit_str, offset_str, NULL);
         free( sql );
     }
@@ -2434,7 +2494,7 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
 
         if( where_str )
         {
-            sql = util_strcat( "select * from ", table, " where ", where_str, " limit ? offset ?", NULL );
+            sql = util_strcat( "select * from ", table, " where ", where_str, order_str, " limit ? offset ?", NULL );
             db_query( &db, sql, limit_str, offset_str, NULL );
 
             free( where_str );
