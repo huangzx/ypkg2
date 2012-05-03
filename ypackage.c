@@ -238,7 +238,6 @@ int packages_upgrade_db( YPackageManager *pm )
             new_version = atoi( tmp );
             if( new_version > cur_version )
             {
-                printf( "begin\n" );
                 cur_version = new_version; 
                 begin = 1;
             }
@@ -253,14 +252,12 @@ int packages_upgrade_db( YPackageManager *pm )
                 }
 
                 begin = 0;
-                printf( "end\n" );
             }
         }
         else
         {
             if( begin && strlen( line ) > 3 )
             {
-                printf( "exec:%s\n", line );
                 if( db_exec( &db, line, NULL ) != SQLITE_DONE )
                 {
                     goto exception_handler;
@@ -299,7 +296,7 @@ int packages_lock( int type )
         return -1;
     }
 
-    lock.l_type = type == 2 ? F_WRLCK : F_RDLCK; /* F_RDLCK, F_WRLCK, F_UNLCK */
+    lock.l_type = type == 2 ? F_WRLCK : F_RDLCK; 
     lock.l_start = 0;
     lock.l_whence = SEEK_SET;
     lock.l_len = 0;
@@ -599,28 +596,6 @@ int packages_import_local_data( YPackageManager *pm )
                 is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
                 reader_get_value2( &xml_handle, "data_count" ), //data_count
                 NULL);
-        /*
-        printf( sql_test,
-                package_name, //name
-                is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
-                is_desktop ? "1" : "0", //desktop
-                reader_get_value2( &xml_handle, "category" ), //category
-                reader_get_value2( &xml_handle, "arch" ), //arch
-                version, //version
-                reader_get_value2( &xml_handle, "priority" ), //priority
-                reader_get_value2( &xml_handle, "install" ), //install
-                reader_get_value2( &xml_handle, "license" ), //license
-                reader_get_value2( &xml_handle, "homepage" ), //homepage
-                reader_get_value2( &xml_handle, "repo" ), //repo
-                reader_get_value2( &xml_handle, "size" ), //size
-                reader_get_value2( &xml_handle, "sha" ), //sha
-                reader_get_value2( &xml_handle, "build_date" ), //build_date
-                reader_get_value2( &xml_handle, "packager" ), //packager
-                reader_get_value2( &xml_handle, "uri" ), //uri
-                is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
-                reader_get_value2( &xml_handle, "data_count" ) //data_count
-     );
-     */
 
         //world_data
         db_exec( &db, "delete from world_data where name=?", package_name, NULL );  
@@ -669,7 +644,6 @@ int packages_import_local_data( YPackageManager *pm )
 
 
     //world_file
-    //printf( "Import file list  ...\n" );
     dir = opendir( PACKAGE_DB_DIR );
     if( !dir )
         return -1;
@@ -829,8 +803,6 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
         {
             if( timestamp > last_update )
             {
-                //printf("xml:%s time:%d sum:%s\n",  xml_file, timestamp, sum);
-                //printf("importing: %s %d %s\n",  xml_file, timestamp, sum);
                 packages_update_single_xml( pm, xml_file, sum, cb, cb_arg  );
                 last_update = timestamp;
                 cnt++;
@@ -858,7 +830,7 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
  */
 YPackageChangeList *packages_get_upgrade_list( YPackageManager *pm )
 {    
-    int             len, i, wildcards[] = { 2, 0 };
+    int             pkg_count, len, i, wildcards[] = { 2, 0 };
     char            *package_name, *version, *can_upgrade;
     char            *keys[] = { "can_update", NULL }, *keywords[] = { "%1", NULL };
     YPackageList    *pkg_list;
@@ -866,45 +838,50 @@ YPackageChangeList *packages_get_upgrade_list( YPackageManager *pm )
 
     list = NULL;
 
-    pkg_list = packages_get_list( pm, 100, 0, keys, keywords, wildcards, 0 );
-    if( pkg_list )
+    pkg_count = packages_get_count( pm,  keys, keywords, wildcards, 0 );
+
+    if( pkg_count > 0 )
     {
-        for( i = 0; i < pkg_list->cnt; i++ )
+        pkg_list = packages_get_list( pm, pkg_count, 0, keys, keywords, wildcards, 0 );
+        if( pkg_list )
         {
-            package_name = packages_get_list_attr( pkg_list, i, "name" );
-            version = packages_get_list_attr( pkg_list, i, "version" );
-            can_upgrade = packages_get_list_attr( pkg_list, i, "can_update" );
-            cur_pkg =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
-            len = strlen( package_name );
-            cur_pkg->name = (char *)malloc( len + 1 );
-            strncpy( cur_pkg->name, package_name, len );
-            cur_pkg->name[len] = 0;
+            for( i = 0; i < pkg_list->cnt; i++ )
+            {
+                package_name = packages_get_list_attr( pkg_list, i, "name" );
+                version = packages_get_list_attr( pkg_list, i, "version" );
+                can_upgrade = packages_get_list_attr( pkg_list, i, "can_update" );
+                cur_pkg =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
+                len = strlen( package_name );
+                cur_pkg->name = (char *)malloc( len + 1 );
+                strncpy( cur_pkg->name, package_name, len );
+                cur_pkg->name[len] = 0;
 
-            if( version)
-            {
-                len = strlen( version );
-                cur_pkg->version = (char *)malloc( len + 1 );
-                strncpy( cur_pkg->version, version, len );
-                cur_pkg->version[len] = 0;
-            }
-            else
-            {
-                version = NULL;
-            }
+                if( version)
+                {
+                    len = strlen( version );
+                    cur_pkg->version = (char *)malloc( len + 1 );
+                    strncpy( cur_pkg->version, version, len );
+                    cur_pkg->version[len] = 0;
+                }
+                else
+                {
+                    version = NULL;
+                }
 
-            if( can_upgrade && can_upgrade[0] )
-            {
-                cur_pkg->type = can_upgrade[0] == '1' ? 4 : 5;
-            }
-            else
-            {
-                cur_pkg->type = 4;
-            }
+                if( can_upgrade && can_upgrade[0] )
+                {
+                    cur_pkg->type = can_upgrade[0] == '1' ? 4 : 5;
+                }
+                else
+                {
+                    cur_pkg->type = 4;
+                }
 
-            cur_pkg->prev = list;
-            list = cur_pkg;
+                cur_pkg->prev = list;
+                list = cur_pkg;
+            }
+            packages_free_list( pkg_list );
         }
-        packages_free_list( pkg_list );
     }
 
     return list;
@@ -1077,14 +1054,6 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
 
     while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
     {
-        /*
-        repo = reader_get_value( &xml_handle, "repo" );
-        if( repo && strcmp( repo, pm->accept_repo ) )
-        {
-            continue;
-        }
-        */
-
         package_name = reader_get_value2( &xml_handle, "name" );
         version = reader_get_value2( &xml_handle, "version" );
         delete = reader_get_value( &xml_handle, "delete" );
@@ -1804,7 +1773,7 @@ int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData
     if( ret == -1 || pkginfo_len == 0 )
     {
         return_code = -1;
-        goto return_point;
+        goto exception_handler;
     }
 
     //get control info
@@ -1812,13 +1781,13 @@ int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData
     if( ret == -1 ||  control_len == 0 )
     {
         return_code = -2;
-        goto return_point;
+        goto exception_handler;
     }
 
 	if( ( xmldoc = xpath_open2( control, control_len ) ) == (xmlDocPtr)-1 )
     {
         return_code = -3;
-        goto return_point;
+        goto exception_handler;
     }
 
     if( control )
@@ -1923,7 +1892,7 @@ int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData
         if( ret == -1 ||  filelist_len == 0)
         {
             return_code = -4;
-            goto return_point;
+            goto exception_handler;
         }
 
         pkg_file = packages_get_package_file_from_str( filelist );
@@ -1942,7 +1911,7 @@ int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData
             if( ret == -1 )
             {
                 return_code = -5;
-                goto return_point;
+                goto exception_handler;
             }
         }
     }
@@ -1961,7 +1930,7 @@ int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData
             if( ret == -1 )
             {
                 return_code = -6;
-                goto return_point;
+                goto exception_handler;
             }
         }
     }
@@ -1987,7 +1956,7 @@ int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData
 
     return 0;
 
-return_point:
+exception_handler:
     if( pkginfo )
         free( pkginfo );
 
@@ -2346,18 +2315,18 @@ YPackageFile *packages_get_package_file_from_ypk( char *ypk_path )
     ret = archive_extract_file2( ypk_path, "pkginfo", &pkginfo, &pkginfo_len );
     if( ret == -1 || pkginfo_len == 0 )
     {
-        goto return_point;
+        goto exception_handler;
     }
 
     ret = archive_extract_file4( pkginfo, pkginfo_len, "filelist", &filelist, &filelist_len );
     if( ret == -1 ||  filelist_len == 0)
     {
-        goto return_point;
+        goto exception_handler;
     }
 
     pkg_file = packages_get_package_file_from_str( filelist );
 
-return_point:
+exception_handler:
     if( pkginfo )
         free( pkginfo );
 
@@ -2800,7 +2769,7 @@ int packages_download_package( YPackageManager *pm, char *package_name, char *ur
         if( !package_url )
         {
             return_code = -3;
-            goto return_point;
+            goto exception_handler;
         }
 
         package_path = util_strcat( pm->package_dest, "/", package_url+2, NULL );
@@ -2853,7 +2822,7 @@ int packages_download_package( YPackageManager *pm, char *package_name, char *ur
             if( file.stream )
                 fclose( file.stream );
             return_code = -4;
-            goto return_point;
+            goto exception_handler;
         }
         fclose( file.stream );
         if( cb )
@@ -2863,7 +2832,7 @@ int packages_download_package( YPackageManager *pm, char *package_name, char *ur
         }
     }
 
-return_point:
+exception_handler:
     if( target_url )
         free( target_url );
 
@@ -2913,7 +2882,7 @@ int packages_install_package( YPackageManager *pm, char *package_name, char *ver
     if( !package_url )
     {
         return_code = -3;
-        goto return_point;
+        goto exception_handler;
     }
 
     if( cb )
@@ -2934,7 +2903,7 @@ int packages_install_package( YPackageManager *pm, char *package_name, char *ver
             if( packages_download_package( NULL, package_name, target_url, package_path, 1, NULL, NULL, cb, cb_arg  ) < 0 )
             {
                 return -4;
-                goto return_point;
+                goto exception_handler;
             }
 
             free( ypk_sha );
@@ -2943,7 +2912,7 @@ int packages_install_package( YPackageManager *pm, char *package_name, char *ver
             if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
             {
                 return -4;
-                goto return_point;
+                goto exception_handler;
             }
         }
     }
@@ -2952,14 +2921,14 @@ int packages_install_package( YPackageManager *pm, char *package_name, char *ver
         if( packages_download_package( NULL, package_name, target_url, package_path, 0, NULL, NULL, cb, cb_arg  ) < 0 )
         {
             return -4;
-            goto return_point;
+            goto exception_handler;
         }
 
         ypk_sha = util_sha1( package_path );
         if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
         {
             return -4;
-            goto return_point;
+            goto exception_handler;
         }
     }
 
@@ -2968,7 +2937,7 @@ int packages_install_package( YPackageManager *pm, char *package_name, char *ver
         return_code = -5;
     }
 
-return_point:
+exception_handler:
     if( package_path )
         free( package_path );
 
@@ -3580,7 +3549,7 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
                     strncpy( extra, buf.machine, extra_max_len );
                 }
 
-                goto return_point;
+                goto exception_handler;
             }
         }
     }
@@ -3617,7 +3586,7 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
                     }
 
                     free( tmp );
-                    goto return_point;
+                    goto exception_handler;
                 }
 
                 free( tmp );
@@ -3656,7 +3625,7 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
                     }
 
                     free( tmp );
-                    goto return_point;
+                    goto exception_handler;
                 }
                 free( tmp );
                 version2 = NULL;
@@ -3684,11 +3653,11 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
                 strncpy( extra, version2, extra_max_len );
             }
 
-            goto return_point;
+            goto exception_handler;
         }
     }
 
-return_point:
+exception_handler:
     if( pkg )
         packages_free_package( pkg );
 
@@ -3704,9 +3673,9 @@ return_point:
 /*
  * packages_unpack_package
  *
- * params: unzip_info - 0,1,2
+ * params: unzip_info - 0 data, 1 data & info, 2 info
  */
-int packages_unpack_package( char *ypk_path, char *dest_dir, int unzip_info )
+int packages_unpack_package( char *ypk_path, char *dest_dir, int unzip_info, char *suffix )
 {
     char                tmp_ypk_data[] = "/tmp/ypkdata.XXXXXX", tmp_ypk_info[] = "/tmp/ypkinfo.XXXXXX";
     char                *info_dest_dir;
@@ -3728,7 +3697,7 @@ int packages_unpack_package( char *ypk_path, char *dest_dir, int unzip_info )
 
         //copy files 
         //printf( "unpacking files ...\n");
-        if( archive_extract_all( tmp_ypk_data, dest_dir ) == -1 )
+        if( archive_extract_all( tmp_ypk_data, dest_dir, suffix ) == -1 )
         {
             remove( tmp_ypk_data );
             return -3;
@@ -3749,7 +3718,7 @@ int packages_unpack_package( char *ypk_path, char *dest_dir, int unzip_info )
         util_rtrim( dest_dir, '/' );
         info_dest_dir = util_strcat( dest_dir, "/YLMFOS", NULL );
 
-        if( archive_extract_all( tmp_ypk_info, info_dest_dir ) == -1 )
+        if( archive_extract_all( tmp_ypk_info, info_dest_dir, suffix ) == -1 )
         {
             free(info_dest_dir);
             remove( tmp_ypk_info );
@@ -4216,9 +4185,9 @@ int packages_exec_script( char *script, char *package_name, char *version, char 
 int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int force, ypk_progress_callback cb, void *cb_arg  )
 {
     int                 i, j, installed, upgrade, delete_file, ret, return_code;
-    void                *pkginfo, *filelist;
+    void                *filelist;
     char                *msg, *sql, *sql_data, *sql_filelist;
-    char                *package_name, *version, *version2, *repo, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *can_update;
+    char                *package_name, *version, *version2, *repo, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *can_update, *tmp_file;
     char                tmp_ypk_install[] = "/tmp/ypkinstall.XXXXXX";
     char                extra[32];
     YPackage            *pkg, *pkg2, *pkg3;
@@ -4231,7 +4200,6 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     upgrade = 0;
     return_code = 0;
     msg = NULL;
-    pkginfo = NULL; 
     filelist = NULL;
     pkg = NULL; 
     pkg2 = NULL; 
@@ -4335,7 +4303,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( ret != 0 )
     {
         return_code = -5;
-        goto return_point;
+        goto exception_handler;
     }
 
     package_name = packages_get_package_attr( pkg, "name" );
@@ -4367,7 +4335,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             if( packages_exec_script( tmp_ypk_install, package_name, version, NULL, "pre_install" ) == -1 )
             {
                 return_code = -7; 
-                goto return_point;
+                goto exception_handler;
             }
         }
         else if( upgrade == 1 )
@@ -4376,7 +4344,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             if( packages_exec_script( tmp_ypk_install, package_name, version, version2, "pre_upgrade" ) == -1 )
             {
                 return_code = -7; 
-                goto return_point;
+                goto exception_handler;
             }
         }
         else //downgrade
@@ -4385,7 +4353,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             if( packages_exec_script( tmp_ypk_install, package_name, version, version2, "pre_downgrade" ) == -1 )
             {
                 return_code = -7; 
-                goto return_point;
+                goto exception_handler;
             }
         }
     }
@@ -4401,82 +4369,19 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         cb( cb_arg, ypk_path, 6, -1, "copying files" );
     }
 
-    if( (ret = packages_unpack_package( ypk_path, dest_dir, 0 )) != 0 )
+    if( (ret = packages_unpack_package( ypk_path, dest_dir, 0, ".tmp" )) != 0 )
     {
         //printf("unpack ret:%d\n",ret);
         return_code = -8; 
-        goto return_point;
+        goto exception_handler;
     }
 
-    //delete the files only in the old version
-    if( installed && pkg_file && pkg_file2 )
-    {
-        for( i = 0; i < pkg_file2->cnt; i++ )
-        {
-            file_file = packages_get_package_file_attr( pkg_file2, i, "file");
-            if( file_file )
-            {
-                delete_file = 1;
-                for( j = 0; j < pkg_file->cnt; j++ )
-                {
-                    if( !strcmp( file_file, packages_get_package_file_attr( pkg_file, j, "file" ) ) )
-                    {
-                        delete_file = 0;
-                        break;
-                    }
-                }
-
-                if( delete_file )
-                    remove( file_file );
-            }
-        }
-    }
 
     if( cb )
     {
         cb( cb_arg, ypk_path, 6, 1, NULL );
     }
 
-    //exec post_x script
-    if( cb )
-    {
-        cb( cb_arg, ypk_path, 7, -1, "executing post_install script" );
-    }
-
-    if( !access( tmp_ypk_install, R_OK ) )
-    {
-        if( !upgrade )
-        {
-            if( packages_exec_script( tmp_ypk_install, package_name, version, NULL, "post_install" ) == -1 )
-            {
-                return_code = -9; 
-                goto return_point;
-            }
-        }
-        else if( upgrade == 1 )
-        {
-            version2 = extra;
-            if( packages_exec_script( tmp_ypk_install, package_name, version, version2, "post_upgrade" ) == -1 )
-            {
-                return_code = -9; 
-                goto return_point;
-            }
-        }
-        else //downgrade
-        {
-            version2 = extra;
-            if( packages_exec_script( tmp_ypk_install, package_name, version, version2, "post_downgrade" ) == -1 )
-            {
-                return_code = -9; 
-                goto return_point;
-            }
-        }
-    }
-
-    if( cb )
-    {
-        cb( cb_arg, ypk_path, 7, 1, NULL );
-    }
 
     //update db
     if( cb )
@@ -4520,7 +4425,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         db_exec( &db, "rollback", NULL );  
         //printf( "rollback, db_ret:%d\n", ret );
         return_code = -10; 
-        goto return_point;
+        goto exception_handler;
     }
     
     //update world_data
@@ -4530,7 +4435,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         ret = db_exec( &db, "rollback", NULL );  
         //printf( "rollback, db_ret:%d\n", ret );
         return_code = -10; 
-        goto return_point;
+        goto exception_handler;
     }
 
     sql_data = "insert into world_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
@@ -4555,7 +4460,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             db_exec( &db, "rollback", NULL );  
             //printf( "rollback, db_ret:%d\n", ret );
             return_code = -10; 
-            goto return_point;
+            goto exception_handler;
         }
     }
 
@@ -4567,7 +4472,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         db_exec( &db, "rollback", NULL );  
         //printf( "rollback, db_ret:%d\n", ret );
         return_code = -10; 
-        goto return_point;
+        goto exception_handler;
     }
 
     sql_filelist = "insert into world_file (name, version, type, file, size, perms, uid, gid, mtime, extra) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; 
@@ -4601,7 +4506,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
                 db_exec( &db, "rollback", NULL );  
                 //printf( "rollback, db_ret:%d\n", ret );
                 return_code = -10; 
-                goto return_point;
+                goto exception_handler;
             }
     }
 
@@ -4636,7 +4541,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             db_exec( &db, "rollback", NULL );  
             //printf( "rollback, db_ret:%d\n", ret );
             return_code = -10; 
-            goto return_point;
+            goto exception_handler;
         }
     }
 
@@ -4669,7 +4574,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             db_exec( &db, "rollback", NULL );  
             //printf( "rollback, db_ret:%d\n", ret );
             return_code = -10; 
-            goto return_point;
+            goto exception_handler;
         }
     }
 
@@ -4679,7 +4584,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         db_exec( &db, "rollback", NULL );  
         //printf( "rollback, db_ret:%d\n", ret );
         return_code = -10; 
-        goto return_point;
+        goto exception_handler;
     }
     db_close( &db );
 
@@ -4688,15 +4593,129 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         cb( cb_arg, ypk_path, 8, 1, NULL );
     }
 
+    //rename files
+    for( i = 0; i < pkg_file->cnt; i++ )
+    {
+        file_file = packages_get_package_file_attr( pkg_file, i, "file");
+        if( file_file )
+        {
+            tmp_file = util_strcat( file_file, ".tmp", NULL );
+            if( tmp_file )
+            {
+                rename( tmp_file, file_file );
+                free( tmp_file );
+                tmp_file = NULL;
+            }
+        }
+    }
+
+    //delete the files only in the old version
+    if( installed && pkg_file && pkg_file2 )
+    {
+        for( i = 0; i < pkg_file2->cnt; i++ )
+        {
+            file_file = packages_get_package_file_attr( pkg_file2, i, "file");
+            if( file_file )
+            {
+                delete_file = 1;
+                for( j = 0; j < pkg_file->cnt; j++ )
+                {
+                    if( !strcmp( file_file, packages_get_package_file_attr( pkg_file, j, "file" ) ) )
+                    {
+                        delete_file = 0;
+                        break;
+                    }
+                }
+
+                if( delete_file )
+                    remove( file_file );
+            }
+        }
+    }
+
+
+    //exec post_x script
+    if( cb )
+    {
+        cb( cb_arg, ypk_path, 7, -1, "executing post_install script" );
+    }
+
+    if( !access( tmp_ypk_install, R_OK ) )
+    {
+        if( !upgrade )
+        {
+            if( packages_exec_script( tmp_ypk_install, package_name, version, NULL, "post_install" ) == -1 )
+            {
+                return_code = -11; 
+                goto exception_handler;
+            }
+        }
+        else if( upgrade == 1 )
+        {
+            version2 = extra;
+            if( packages_exec_script( tmp_ypk_install, package_name, version, version2, "post_upgrade" ) == -1 )
+            {
+                return_code = -11; 
+                goto exception_handler;
+            }
+        }
+        else //downgrade
+        {
+            version2 = extra;
+            if( packages_exec_script( tmp_ypk_install, package_name, version, version2, "post_downgrade" ) == -1 )
+            {
+                return_code = -11; 
+                goto exception_handler;
+            }
+        }
+    }
+
+    if( cb )
+    {
+        cb( cb_arg, ypk_path, 7, 1, NULL );
+    }
+
     if( cb )
     {
         cb( cb_arg, ypk_path, 9, 1, NULL );
     }
 
-return_point:
-    if( pkginfo )
-        free( pkginfo );
+exception_handler:
 
+    //rollback
+    if( return_code <= -8 && return_code > -11 )
+    {
+        for( i = 0; i < pkg_file->cnt; i++ )
+        {
+            tmp_file = util_strcat( packages_get_package_file_attr( pkg_file, i, "file"), ".tmp", NULL);
+            if( tmp_file )
+            {
+                remove( tmp_file );
+                free( tmp_file );
+                tmp_file = NULL;
+            }
+        }
+    }
+
+    if( return_code <= -7 && return_code > -11 && access( tmp_ypk_install, R_OK ) == 0 )
+    {
+        if( !upgrade )
+        {
+            packages_exec_script( tmp_ypk_install, package_name, version, NULL, "pre_install_fallback" );
+        }
+        else if( upgrade == 1 )
+        {
+            version2 = extra;
+            packages_exec_script( tmp_ypk_install, package_name, version, version2, "pre_upgrade_fallback" );
+        }
+        else
+        {
+            version2 = extra;
+            packages_exec_script( tmp_ypk_install, package_name, version, version2, "pre_downgrade_fallback" );
+        }
+    }
+
+    //clean up
     if( filelist )
         free( filelist );
 
@@ -4775,7 +4794,7 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
             if( packages_exec_script( install_file_path, package_name, version, NULL, "pre_remove" ) == -1 )
             {
                 return_code = -3; 
-                goto return_point;
+                goto exception_handler;
             }
         }
     }
@@ -4843,7 +4862,7 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
         if( packages_exec_script( install_file_path, package_name, version, NULL, "post_remove" ) == -1 )
         {
             return_code = -5; 
-            goto return_point;
+            goto exception_handler;
         }
     }
 
@@ -4891,7 +4910,7 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
     }
 
 
-return_point:
+exception_handler:
     if( install_file_path )
         free( install_file_path );
 

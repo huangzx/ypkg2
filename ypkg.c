@@ -810,7 +810,7 @@ int main( int argc, char **argv )
                     }
                 }
 
-                packages_unpack_package( ypk_path, tmp ? tmp : unpack_path , 1 );
+                packages_unpack_package( ypk_path, tmp ? tmp : unpack_path , 1, NULL );
 
                 if( pkg )
                     packages_free_package( pkg );
@@ -862,7 +862,7 @@ int main( int argc, char **argv )
                     }
                 }
 
-                packages_unpack_package( ypk_path, tmp ? tmp : unpack_path , 2 );
+                packages_unpack_package( ypk_path, tmp ? tmp : unpack_path , 2, NULL );
 
                 if( pkg )
                     packages_free_package( pkg );

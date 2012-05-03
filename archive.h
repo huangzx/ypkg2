@@ -47,14 +47,11 @@ int archive_extract_file4( void *arch_buff, size_t arch_size, const char *src,  
 /*
  * extract all files of the archive
  */
-int archive_extract_all( char *filename, char *dest_dir );
+int archive_extract_all( char *arch_file, char *dest_dir, char *suffix );
 
 /*
  * pack a dir to a archive
  */
-int archive_extract_all( char *filename, char *dest_dir );
-
-
 int archive_create( char *arch_file, int compress, int format, char *src_dir, char **exclude );
 int archive_create2( char *arch_file, int compress, int format, char **files );
 #endif /* !ARCHIVE_H */

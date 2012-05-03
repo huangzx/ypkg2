@@ -241,7 +241,7 @@ int packages_compare_version( char *version1, char *version2 );
  */
 int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, int extra_max_len );
 
-int packages_unpack_package( char *ypk_path, char *dest_dir, int unzip_info );
+int packages_unpack_package( char *ypk_path, char *dest_dir, int unzip_info, char *suffix );
 int packages_pack_package( char *source_dir, char *ypk_path, ypk_progress_callback cb, void *cb_arg );
 
 

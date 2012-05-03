@@ -253,15 +253,13 @@ errout:
 
 }
 
-int archive_extract_all( char *arch_file, char *dest_dir )
+int archive_extract_all( char *arch_file, char *dest_dir, char *suffix )
 {
     int                     ret, flags;     
-    char                    *pwd = NULL;
-#ifdef DEBUG
-    char                    *filename;
-#endif
+    char                    *pwd = NULL, *filename = NULL, *filename_new = NULL;
     struct archive          *arch_r = NULL, *arch_w = NULL;
     struct archive_entry    *entry = NULL;
+
 
     if( !arch_file )
         return -1;
@@ -301,10 +299,25 @@ int archive_extract_all( char *arch_file, char *dest_dir )
 
     while( archive_read_next_header( arch_r, &entry ) == ARCHIVE_OK ) 
     {
+        if( suffix )
+            filename = (char *)archive_entry_pathname( entry );
+        
 #ifdef DEBUG
-        filename = (char *)archive_entry_pathname( entry );
+        if( !filename )
+            filename = (char *)archive_entry_pathname( entry );
+
         printf("extract:%s\n", filename );
 #endif
+
+        if( suffix )
+        {
+            if( archive_entry_filetype( entry ) == AE_IFDIR )
+                continue;
+
+            filename_new = util_strcat( filename, suffix, NULL );
+            archive_entry_set_pathname( entry, filename_new );
+            free( filename_new );
+        }
 
         ret = archive_read_extract2( arch_r, entry, arch_w );
         if( ret != ARCHIVE_OK && ret != ARCHIVE_WARN ) 
