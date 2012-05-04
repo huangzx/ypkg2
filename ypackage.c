@@ -4187,7 +4187,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     int                 i, j, installed, upgrade, delete_file, ret, return_code;
     void                *filelist;
     char                *msg, *sql, *sql_data, *sql_filelist;
-    char                *package_name, *version, *version2, *repo, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *can_update, *tmp_file;
+    char                *package_name, *version, *version2, *repo, *install, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *can_update, *tmp_file;
     char                tmp_ypk_install[] = "/tmp/ypkinstall.XXXXXX";
     char                extra[32];
     YPackage            *pkg, *pkg2, *pkg3;
@@ -4207,6 +4207,8 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     pkg_data = NULL;
     pkg_file = NULL;
     pkg_file2 = NULL;
+    package_name = NULL;
+    install = NULL;
 
     //check
     if( !ypk_path || access( ypk_path, R_OK ) )
@@ -4309,6 +4311,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     package_name = packages_get_package_attr( pkg, "name" );
     version = packages_get_package_attr( pkg, "version" );
     repo = packages_get_package_attr( pkg, "repo" );
+    install = packages_get_package_attr( pkg, "install" );
 
     if( !strcmp( repo, "stable" ) )
         pkg2 = packages_get_repo_package( pm, package_name, 0, "stable" );
@@ -4369,7 +4372,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         cb( cb_arg, ypk_path, 6, -1, "copying files" );
     }
 
-    if( (ret = packages_unpack_package( ypk_path, dest_dir, 0, ".tmp" )) != 0 )
+    if( (ret = packages_unpack_package( ypk_path, dest_dir, 0, "~ypk" )) != 0 )
     {
         //printf("unpack ret:%d\n",ret);
         return_code = -8; 
@@ -4599,13 +4602,30 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         file_file = packages_get_package_file_attr( pkg_file, i, "file");
         if( file_file )
         {
-            tmp_file = util_strcat( file_file, ".tmp", NULL );
+            tmp_file = util_strcat( file_file, "~ypk", NULL );
             if( tmp_file )
             {
                 rename( tmp_file, file_file );
                 free( tmp_file );
                 tmp_file = NULL;
             }
+        }
+    }
+
+    if( install && strlen( install ) )
+    {
+        file_file = util_strcat( "/var/ypkg/db/", package_name, "/", install, NULL );
+        if( file_file )
+        {
+            tmp_file = util_strcat( "/var/ypkg/db/", package_name, "/", install, "~ypk", NULL );
+            if( tmp_file )
+            {
+                rename( tmp_file, file_file );
+                free( tmp_file );
+                tmp_file = NULL;
+            }
+            free( file_file );
+            file_file = NULL;
         }
     }
 
@@ -4687,13 +4707,24 @@ exception_handler:
     {
         for( i = 0; i < pkg_file->cnt; i++ )
         {
-            tmp_file = util_strcat( packages_get_package_file_attr( pkg_file, i, "file"), ".tmp", NULL);
+            tmp_file = util_strcat( packages_get_package_file_attr( pkg_file, i, "file"), "~ypk", NULL);
             if( tmp_file )
             {
                 remove( tmp_file );
                 free( tmp_file );
                 tmp_file = NULL;
             }
+        }
+    }
+
+    if( install && strlen( install ) )
+    {
+        tmp_file = util_strcat( "/var/ypkg/db/", package_name, "/", install, "~ypk", NULL );
+        if( tmp_file )
+        {
+            remove( tmp_file );
+            free( tmp_file );
+            tmp_file = NULL;
         }
     }
 
