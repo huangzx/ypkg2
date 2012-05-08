@@ -256,7 +256,7 @@ errout:
 int archive_extract_all( char *arch_file, char *dest_dir, char *suffix )
 {
     int                     ret, flags;     
-    char                    *pwd = NULL, *filename = NULL, *filename_new = NULL;
+    char                    *pwd = NULL, *filename = NULL, *filename_new = NULL, *hardlink = NULL;
     struct archive          *arch_r = NULL, *arch_w = NULL;
     struct archive_entry    *entry = NULL;
 
@@ -309,14 +309,23 @@ int archive_extract_all( char *arch_file, char *dest_dir, char *suffix )
         printf("extract:%s\n", filename );
 #endif
 
-        if( suffix )
+        if( suffix && archive_entry_filetype( entry ) != AE_IFDIR  )
         {
-            if( archive_entry_filetype( entry ) == AE_IFDIR )
-                continue;
-
             filename_new = util_strcat( filename, suffix, NULL );
             archive_entry_set_pathname( entry, filename_new );
             free( filename_new );
+
+            if( archive_entry_nlink( entry ) > 0 )
+            {
+                hardlink = (char *)archive_entry_hardlink( entry );
+                if( hardlink )
+                {
+                    filename_new = util_strcat( hardlink, suffix, NULL );
+                    archive_entry_set_hardlink( entry, filename_new );
+                    free( filename_new );
+                }
+            }
+
         }
 
         ret = archive_read_extract2( arch_r, entry, arch_w );
@@ -325,6 +334,7 @@ int archive_extract_all( char *arch_file, char *dest_dir, char *suffix )
             goto errout;
         }
 
+
 #ifdef DEBUG
         if( ret != ARCHIVE_OK)
         {
@@ -332,6 +342,7 @@ int archive_extract_all( char *arch_file, char *dest_dir, char *suffix )
         }
 #endif
     }
+
 
     archive_read_finish( arch_r );
     archive_write_finish( arch_w );
@@ -343,6 +354,7 @@ int archive_extract_all( char *arch_file, char *dest_dir, char *suffix )
     return 0;
 
 errout:
+
     if( arch_r )
         archive_read_finish( arch_r );
 
