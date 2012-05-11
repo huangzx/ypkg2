@@ -3514,12 +3514,10 @@ void packages_free_remove_list( YPackageChangeList *list )
  */
 int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, int extra_max_len )
 {
-    int                 i, ret, return_code = 0;
-    char                *depend, *conflict, *token, *saveptr, *package_name, *arch, *version, *version2, *tmp, *tmp2;
-    struct utsname      buf;
-    YPackage            *pkg = NULL, *pkg2 = NULL;
+    int                 ret;
+    YPackage            *pkg = NULL;
     YPackageData        *pkg_data = NULL;
-    YPackageFile        *pkg_file;
+    YPackageFile        *pkg_file = NULL;
 
     if( !ypk_path || access( ypk_path, R_OK ) )
         return -1;
@@ -3531,9 +3529,33 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
     }
     packages_free_package_file( pkg_file );
 
+    ret = packages_check_package2( pm, pkg, pkg_data, extra, extra_max_len );
+
+    if( pkg )
+        packages_free_package( pkg );
+
+    if( pkg_data )
+        packages_free_package_data( pkg_data );
+
+    return ret;
+}
+
+
+int packages_check_package2( YPackageManager *pm, YPackage *pkg, YPackageData *pkg_data, char *extra, int extra_max_len )
+{
+    int                 i, ret, return_code = 0;
+    char                *depend, *conflict, *token, *saveptr, *package_name, *arch, *version, *version2, *repo, *repo2, *tmp, *tmp2;
+    struct utsname      buf;
+    YPackage            *pkg2 = NULL;
+
+
+    if( !pkg || !pkg_data )
+        return -1;
+
     package_name = packages_get_package_attr( pkg, "name" );
     arch = packages_get_package_attr( pkg, "arch" );
     version = packages_get_package_attr( pkg, "version" );
+    repo = packages_get_package_attr( pkg, "repo" );
 
     //check arch
     if( arch && ( arch[0] != 'a' || arch[1] != 'n' || arch[2] != 'y' ) )
@@ -3557,9 +3579,11 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
     for( i = 0; i < pkg_data->cnt; i++ )
     {
         //check depend
-        depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
-        if( depend )
+        tmp = packages_get_package_data_attr( pkg_data, i, "data_depend");
+        if( tmp )
         {
+            depend = strdup( tmp );
+            tmp = NULL;
             version2 = NULL;
             token = strtok_r( depend, " ,", &saveptr );
             while( token )
@@ -3593,12 +3617,15 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
                 version2 = NULL;
                 token = strtok_r( NULL, " ,", &saveptr );
             }
+            free( depend );
         }
 
         //check conflict
-        conflict = packages_get_package_data_attr( pkg_data, i, "data_conflict");
-        if( conflict )
+        tmp = packages_get_package_data_attr( pkg_data, i, "data_conflict");
+        if( tmp )
         {
+            conflict = strdup( tmp );
+            tmp = NULL;
             version2 = NULL;
             token = strtok_r( conflict, " ,", &saveptr );
             while( token )
@@ -3631,6 +3658,7 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
                 version2 = NULL;
                 token = strtok_r( NULL, " ,", &saveptr );
             }
+            free( conflict );
         }
     }
 
@@ -3638,15 +3666,29 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
     if( (pkg2 = packages_get_package( pm, package_name, 1 ))  )
     {
         version2 = packages_get_package_attr( pkg2, "version" );
+        repo2 = packages_get_package_attr( pkg2, "repo" );
         if( version && (strlen( version ) > 0) && version2 && (strlen( version2 ) > 0) )
         {
             ret = packages_compare_version( version, version2 );
             if( ret > 0 )
-                return_code = 3; 
+            {
+                if( repo && repo2 && strcmp( repo, repo2 ) )
+                {
+                    return_code = 3; 
+                }
+                else
+                {
+                    return_code = 2; 
+                }
+            }
             else if( ret == 0 )
+            {
                 return_code = 2; 
+            }
             else
+            {
                 return_code = 1; 
+            }
 
             if( extra && extra_max_len > 0 )
             {
@@ -3658,14 +3700,8 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
     }
 
 exception_handler:
-    if( pkg )
-        packages_free_package( pkg );
-
     if( pkg2 )
         packages_free_package( pkg2 );
-
-    if( pkg_data )
-        packages_free_package_data( pkg_data );
 
     return return_code;
 }
@@ -4219,8 +4255,21 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         cb( cb_arg, ypk_path, 3, -1, "check dependencies of package" );
     }
 
+    mkstemp( tmp_ypk_install );
+    ret = packages_get_info_from_ypk( ypk_path, &pkg, &pkg_data, &pkg_file, tmp_ypk_install, NULL );
+    if( ret != 0 )
+    {
+        msg = util_strcat( "Error: Invalid format or File not found.", NULL );
+        cb( cb_arg, ypk_path, 3, 1, msg );
+        free( msg );
+        msg = NULL;
+
+        return_code = -1;
+        goto exception_handler;
+    }
+
     memset( extra, 0, 32 );
-    ret = packages_check_package( pm, ypk_path, extra, 32 ); //ret = -4 ~ 3
+    ret = packages_check_package2( pm, pkg, pkg_data, extra, 32 );
 
     if( cb )
     {
@@ -4300,13 +4349,6 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         cb( cb_arg, ypk_path, 4, -1, "reading package information" );
     }
 
-    mkstemp( tmp_ypk_install );
-    ret = packages_get_info_from_ypk( ypk_path, &pkg, &pkg_data, &pkg_file, tmp_ypk_install, NULL );
-    if( ret != 0 )
-    {
-        return_code = -5;
-        goto exception_handler;
-    }
 
     package_name = packages_get_package_attr( pkg, "name" );
     version = packages_get_package_attr( pkg, "version" );

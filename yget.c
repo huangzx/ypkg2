@@ -1341,6 +1341,14 @@ int main( int argc, char **argv )
                                     {
                                         yget_install_list( pm, recommended_list, download_only );
                                     }
+                                    else
+                                    {
+                                        err = 3;
+                                    }
+                                }
+                                else
+                                {
+                                    err = 3;
                                 }
                             }
                         }
