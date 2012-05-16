@@ -929,7 +929,7 @@ void packages_free_upgrade_list( YPackageChangeList *list )
 int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, ypk_progress_callback cb, void *cb_arg )
 {
     int                 i, xml_ret, db_ret, cmp_ret, do_replace;
-    char                *xml_sha, *target_url, *msg, *sql, *sql_data, *sql_testing, *sql_testing_data, *sql_history, *sql_history_data, *package_name, *version, *is_desktop, *repo, *delete, *idx, *data_key,*data_name, *data_format, *data_size, *data_install_size, *data_depend, *data_bdepend, *data_recommended, *data_conflict, *installed, *old_version, *can_update;
+    char                *xml_sha, *target_url, *msg, *sql, *sql_data, *sql_testing, *sql_testing_data, *sql_history, *sql_history_data, *package_name, *version, *is_desktop, *repo, *delete, *idx, *data_key,*data_name, *data_format, *data_size, *data_install_size, *data_depend, *data_bdepend, *data_recommended, *data_conflict, *installed, *old_version, *old_repo, *can_update, *can_update2;
     char                tmp_bz2[] = "/tmp/tmp_bz2.XXXXXX";
     char                tmp_xml[] = "/tmp/tmp_xml.XXXXXX";
     char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
@@ -1092,16 +1092,19 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
         else
         {
             is_desktop = reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
+            repo = reader_get_value( &xml_handle, "repo" );
 
             //get original value
             do_replace = 0;
             can_update = "0";
+            can_update2 = "0";
             installed = "0";
 
-            db_query( &db, "select version from world where name=?", package_name, NULL);
+            db_query( &db, "select version, repo from world where name=?", package_name, NULL);
             if( db_fetch_assoc( &db ) )
             {
                 old_version = db_get_value_by_key( &db, "version" );
+                old_repo = db_get_value_by_key( &db, "repo" );
 
                 if( version && (strlen( version ) > 0) && old_version && (strlen( old_version ) > 0)  )
                 {
@@ -1109,10 +1112,25 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
                         if( cmp_ret == 1 )
                         {
                             can_update = "1"; //can upgrade
+                            can_update2 = "1"; //can upgrade
                         }
                         else if( cmp_ret == -1 )
                         {
-                            can_update = "-1"; //can downgrade
+                            if( repo && old_repo )
+                            { 
+                                if( old_repo[0] == 't' )
+                                {
+                                    if( repo[0] == 's' )
+                                    {
+                                        can_update = "-1";
+                                    }
+                                }
+                                else
+                                {
+                                    can_update2 = "-1";
+                                }
+
+                            }
                         }
                 }
 
@@ -1128,7 +1146,6 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
             //universe
             if( do_replace )
             {
-                repo = reader_get_value( &xml_handle, "repo" );
 
                 if( repo && !strcmp( repo, "stable" ) )
                 {
@@ -1177,7 +1194,7 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
                         reader_get_value2( &xml_handle, "uri" ), //uri
                         is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
                         reader_get_value2( &xml_handle, "data_count" ), //data_count
-                        can_update,
+                        can_update2,
                         installed,
                         NULL);
 
@@ -4223,7 +4240,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     int                 i, j, installed, upgrade, delete_file, ret, return_code;
     void                *filelist;
     char                *msg, *sql, *sql_data, *sql_filelist;
-    char                *package_name, *version, *version2, *repo, *install, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *can_update, *tmp_file;
+    char                *package_name, *version, *version2, *repo, *repo2, *install, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *can_update, *tmp_file;
     char                tmp_ypk_install[] = "/tmp/ypkinstall.XXXXXX";
     char                extra[32];
     YPackage            *pkg, *pkg2, *pkg3;
@@ -4560,6 +4577,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( pkg2 )
     {
         version2 = packages_get_package_attr( pkg2, "version" );
+        repo2 = packages_get_package_attr( pkg2, "repo" );
         if( version && (strlen( version ) > 0) && version2 && (strlen( version2 ) > 0) )
         {
             switch( packages_compare_version( version2, version ) )
@@ -4571,7 +4589,14 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
                     can_update = "0";
                     break;
                 case -1:
-                    can_update = "-1";
+                    if( repo && repo2 && strcmp( repo, repo2 ) )
+                    {
+                        can_update = "-1";
+                    }
+                    else
+                    {
+                        can_update = "0";
+                    }
                     break;
             }
         }
@@ -4593,6 +4618,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( pkg3 )
     {
         version2 = packages_get_package_attr( pkg3, "version" );
+        repo2 = packages_get_package_attr( pkg3, "repo" );
         if( version && (strlen( version ) > 0) && version2 && (strlen( version2 ) > 0) )
         {
             switch( packages_compare_version( version2, version ) )
@@ -4604,7 +4630,14 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
                     can_update = "0";
                     break;
                 case -1:
-                    can_update = "-1";
+                    if( repo && repo2 && strcmp( repo, repo2 ) )
+                    {
+                        can_update = "-1";
+                    }
+                    else
+                    {
+                        can_update = "0";
+                    }
                     break;
             }
         }
