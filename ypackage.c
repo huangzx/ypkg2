@@ -3689,6 +3689,7 @@ int packages_check_package2( YPackageManager *pm, YPackage *pkg, YPackageData *p
             ret = packages_compare_version( version, version2 );
             if( ret > 0 )
             {
+                /*
                 if( repo && repo2 && strcmp( repo, repo2 ) )
                 {
                     return_code = 3; 
@@ -3697,6 +3698,9 @@ int packages_check_package2( YPackageManager *pm, YPackage *pkg, YPackageData *p
                 {
                     return_code = 2; 
                 }
+                */
+
+                    return_code = 3; 
             }
             else if( ret == 0 )
             {
@@ -3704,7 +3708,14 @@ int packages_check_package2( YPackageManager *pm, YPackage *pkg, YPackageData *p
             }
             else
             {
-                return_code = 1; 
+                if( repo && repo2 && strcmp( repo, repo2 ) )
+                {
+                    return_code = 1; 
+                }
+                else
+                {
+                    return_code = 2; 
+                }
             }
 
             if( extra && extra_max_len > 0 )
