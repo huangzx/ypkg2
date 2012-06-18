@@ -2789,9 +2789,10 @@ int packages_download_package( YPackageManager *pm, char *package_name, char *ur
             goto exception_handler;
         }
 
-        package_path = util_strcat( pm->package_dest, "/", package_url+2, NULL );
+        package_path = util_strcat( pm->package_dest, "/", basename( package_url ), NULL );
         target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
     }
+        printf( "path:%s\n", package_path );
 
     if( force || access( package_path, R_OK ) )
     {
@@ -2907,7 +2908,7 @@ int packages_install_package( YPackageManager *pm, char *package_name, char *ver
         cb( cb_arg, package_name, 1, 1, NULL );
     }
 
-    package_path = util_strcat( pm->package_dest, "/", package_url+2, NULL );
+    package_path = util_strcat( pm->package_dest, "/", basename( package_url ), NULL );
     target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
     pkg_sha = packages_get_package_attr( pkg, "sha" );
 

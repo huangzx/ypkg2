@@ -281,7 +281,7 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
         goto return_point;
     }
 
-    package_path = util_strcat( pm->package_dest, "/", package_url+2, NULL );
+    package_path = util_strcat( pm->package_dest, "/", basename( package_url ), NULL );
     target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
 
     packages_log( pm, package_name, "downloading" );
@@ -304,7 +304,7 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
             if( packages_download_package( NULL, package_name, target_url, package_path, 1, yget_download_progress_callback,&dl_stat, yget_progress_callback, pm ) < 0 )
             {
                 printf( COLOR_RED "Error: Can't download the package %s from %s.\n" COLOR_RESET, package_name, target_url );
-                return -4;
+                return_code = -4;
                 goto return_point;
             }
 
@@ -314,7 +314,7 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
             if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
             {
                 printf( COLOR_RED "Error: Download failed, sha1 checksum does not match. [%s sha1sum:%s]\n" COLOR_RESET, package_path, ypk_sha );
-                return -4;
+                return_code = -4;
                 goto return_point;
             }
         }
@@ -324,7 +324,7 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
         if( packages_download_package( NULL, package_name, target_url, package_path, 0, yget_download_progress_callback,&dl_stat, yget_progress_callback, pm ) < 0 )
         {
             printf( COLOR_RED "Error: Can't download the package %s from %s.\n" COLOR_RESET, package_name, target_url );
-            return -4;
+            return_code = -4;
             goto return_point;
         }
 
@@ -332,7 +332,7 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
         if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
         {
             printf( COLOR_RED "Error: Download failed, sha1 checksum does not match. [%s sha1sum:%s]\n" COLOR_RESET, package_path, ypk_sha );
-            return -4;
+            return_code = -4;
             goto return_point;
         }
     }
