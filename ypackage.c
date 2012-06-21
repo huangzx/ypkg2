@@ -2498,7 +2498,7 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
         if( where_str )
         {
             //sql = util_strcat( "select * from ", table, " where ", where_str, order_str, " limit ? offset ?", NULL );
-            sql = util_strcat( "select * from ", table, " left join keywords on ", table, ".name=keywords.name where ", where_str, order_str, " limit ? offset ?", NULL );
+            sql = util_strcat( "select * from ", table, " left join keywords on ", table, ".name=keywords.name where ", where_str, order_str, " group by ", table, ".name limit ? offset ?", NULL );
             //printf( "%s\n", sql );
             db_query( &db, sql, limit_str, offset_str, NULL );
 
