@@ -4793,6 +4793,11 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         cb( cb_arg, ypk_path, 7, 1, NULL );
     }
 
+    if( !strcmp( package_name, "ypkg2" ) )
+    {
+        packages_upgrade_db( pm );
+    }
+
     if( cb )
     {
         cb( cb_arg, ypk_path, 9, 1, NULL );
