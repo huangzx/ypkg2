@@ -99,6 +99,11 @@ for( @ARGV )
     {
         $dir = substr $_, 2;
     }
+    elsif( /^-/ )
+    {
+        &usage;
+        exit 0;
+    }
 }
 
 if( $dir eq '' || ! -d -r -x $dir )
