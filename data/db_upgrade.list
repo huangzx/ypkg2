@@ -4,3 +4,7 @@ ALTER TABLE universe_testing ADD COLUMN rir INTEGER DEFAULT 0
 ALTER TABLE universe_history ADD COLUMN rir INTEGER DEFAULT 0
 ALTER TABLE world ADD COLUMN rir INTEGER DEFAULT 0
 End
+
+Version:2012062001
+CREATE TABLE keywords (name TEXT, language TEXT, kw_name TEXT, kw_generic_name TEXT, kw_fullname TEXT, kw_comment , PRIMARY KEY(name,language) );
+End

@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.4.12
+ * Date: 2012.6.21
  */
 #define LIBYPK 1
 #include "ypackage.h"
@@ -2381,6 +2381,7 @@ void packages_free_package_file( YPackageFile *pkg_file )
     free( pkg_file );
 }
 
+
 /*
  * packages_get_list
  */
@@ -2388,7 +2389,7 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
 {
     int                     cur_pkg_index, repo_testing;
     char                    *table, *sql, *where_str, *order_str, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset, *tmp;
-    char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", "repo", "exec", "install_time", "installed", "can_update", "homepage", "build_date", "packager", NULL  }; 
+    char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", "repo", "exec", "install_time", "installed", "can_update", "homepage", "build_date", "packager", "language", "kw_name", "kw_generic_name", "kw_fullname", "kw_comment", NULL  }; 
     DB                      db;
     YPackageList            *pkg_list;
 
@@ -2432,7 +2433,7 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
                 if( where_str )
                     tmp = where_str;
 
-                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(name like '%", *keywords, "%' or generic_name like  '%", *keywords, "%' or description like '%", *keywords, "%')", NULL );
+                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(", table, ".name like '%", *keywords, "%' or ", table, ".generic_name like  '%", *keywords, "%' or ", table, ".description like  '%", *keywords, "%' or keywords.kw_name like  '%", *keywords, "%' or keywords.kw_generic_name like  '%", *keywords, "%' or keywords.kw_fullname like  '%", *keywords, "%' or keywords.kw_comment like '%", *keywords, "%')", NULL );
                 if( tmp )
                     free( tmp );
 
@@ -2447,7 +2448,7 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
                 if( where_str )
                     tmp = where_str;
 
-                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(name = '", *keywords, "' or generic_name = '", *keywords, "' or description = '", *keywords, "')", NULL );
+                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(" , table, ".name = '", *keywords, "' or ", table, ".generic_name = '", *keywords, "' or keywords.kw_name = '", *keywords, "' or keywords.kw_generic_name = '", *keywords, "' or keywords.kw_fullname = '", *keywords, "')", NULL );
                 if( tmp )
                     free( tmp );
 
@@ -2461,7 +2462,15 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
                 if( where_str )
                     tmp = where_str;
 
-                where_str = util_strcat( tmp ? tmp : "", tmp ? " and (" : "(", *keys, *wildcards == 2 ? " like '%" : " = '", *keywords, *wildcards == 2 ? "%')" : "')", NULL );
+                if( strncmp( *keys, "kw_", 3 ) && strcmp( *keys, "language" ) )
+                {
+                    where_str = util_strcat( tmp ? tmp : "", tmp ? " and (" : "(", table, ".", *keys, *wildcards == 2 ? " like '%" : " = '", *keywords, *wildcards == 2 ? "%')" : "')", NULL );
+                }
+                else
+                {
+                    where_str = util_strcat( tmp ? tmp : "", tmp ? " and (keywords." : "(keywords.", *keys, *wildcards == 2 ? " like '%" : " = '", *keywords, *wildcards == 2 ? "%')" : "')", NULL );
+                }
+
                 if( tmp )
                     free( tmp );
 
@@ -2480,7 +2489,9 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
 
         if( where_str )
         {
-            sql = util_strcat( "select * from ", table, " where ", where_str, order_str, " limit ? offset ?", NULL );
+            //sql = util_strcat( "select * from ", table, " where ", where_str, order_str, " limit ? offset ?", NULL );
+            sql = util_strcat( "select * from ", table, " left join keywords on ", table, ".name=keywords.name where ", where_str, order_str, " limit ? offset ?", NULL );
+            //printf( "%s\n", sql );
             db_query( &db, sql, limit_str, offset_str, NULL );
 
             free( where_str );

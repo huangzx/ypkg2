@@ -12,6 +12,9 @@ CREATE TABLE world (name TEXT, generic_name TEXT, is_desktop INTEGER, category T
 CREATE TABLE world_data (name TEXT, version TEXT, data_name TEXT, data_format TEXT, data_size INTEGER, data_install_size INTEGER, data_depend TEXT, data_bdepend TEXT, data_recommended TEXT, data_conflict TEXT);
 CREATE TABLE world_file (name TEXT, version TEXT, file TEXT , type TEXT, size INTEGER, perms TEXT, uid INTEGER, gid INTEGER, mtime INTEGER, extra TEXT);
 CREATE TABLE world_language (name TEXT, version TEXT, language TEXT,  generic_name TEXT, description TEXT );
+
+CREATE TABLE keywords (name TEXT, language TEXT, kw_name TEXT, kw_generic_name TEXT, kw_fullname TEXT, kw_comment , PRIMARY KEY(name,language) );
+
 CREATE INDEX universe_data_name ON universe_data ( name );
 CREATE INDEX universe_testing_data_name ON universe_testing_data ( name );
 CREATE INDEX universe_history_name ON universe_history ( name );

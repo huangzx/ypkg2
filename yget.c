@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
  * Version: 0.1
- * Date: 2012.4.12
+ * Date: 2012.6.21
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -890,11 +890,12 @@ int main( int argc, char **argv )
                 {
                     package_name = argv[i];
 
-                    char *keys[] = { "name", NULL }; 
+                    char *keys[] = { "*", NULL }; 
                     char *keywords[] = { package_name, NULL }; 
                     int wildcards[] = { 2, 0 }; 
 
-                    pkg_count = packages_get_count( pm,  keys, keywords, wildcards, 0 );
+                    //pkg_count = packages_get_count( pm,  keys, keywords, wildcards, 0 );
+                    pkg_count = 3;
                     if( pkg_count > 0 )
                     {
 
