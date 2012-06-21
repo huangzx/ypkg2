@@ -894,8 +894,7 @@ int main( int argc, char **argv )
                     char *keywords[] = { package_name, NULL }; 
                     int wildcards[] = { 2, 0 }; 
 
-                    //pkg_count = packages_get_count( pm,  keys, keywords, wildcards, 0 );
-                    pkg_count = 3;
+                    pkg_count = packages_get_count( pm,  keys, keywords, wildcards, 0 );
                     if( pkg_count > 0 )
                     {
 

@@ -12,7 +12,7 @@ int main( int argc, char **argv )
     YPackageManager     *(*packages_manager_init)() = NULL;
     void                (*packages_manager_cleanup)( YPackageManager *pm ) = NULL;
     int                 (*packages_install_local_package)( YPackageManager *pm, char *ypk_path, char *dest_dir, int force, ypk_progress_callback cb, void *cb_arg ) = NULL;
-    ssize_t             (*packages_upgrade_db)( YPackageManager *pm ) = NULL;
+    //ssize_t             (*packages_upgrade_db)( YPackageManager *pm ) = NULL;
 
     if( argc != 3 )
         return 1;
@@ -78,6 +78,7 @@ int main( int argc, char **argv )
         goto exception_handler;
     }
 
+    /*
     packages_upgrade_db = dlsym( dl_handle, "packages_upgrade_db" );
     if( (dl_error = dlerror()) != NULL )
     {
@@ -85,6 +86,7 @@ int main( int argc, char **argv )
         fprintf( stderr, "Error: %s\n", dlerror() );
         goto exception_handler;
     }
+    */
 
     pm = packages_manager_init();
     if( !pm )

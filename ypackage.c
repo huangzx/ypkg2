@@ -1453,7 +1453,7 @@ int packages_get_count( YPackageManager *pm, char *keys[], char *keywords[], int
                 if( where_str )
                     tmp = where_str;
 
-                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(name like '%", *keywords, "%' or generic_name like  '%", *keywords, "%' or description like '%", *keywords, "%')", NULL );
+                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(", table, ".name like '%", *keywords, "%' or ", table, ".generic_name like  '%", *keywords, "%' or ", table, ".description like  '%", *keywords, "%' or keywords.kw_name like  '%", *keywords, "%' or keywords.kw_generic_name like  '%", *keywords, "%' or keywords.kw_fullname like  '%", *keywords, "%' or keywords.kw_comment like '%", *keywords, "%')", NULL );
                 if( tmp )
                     free( tmp );
             }
@@ -1462,7 +1462,7 @@ int packages_get_count( YPackageManager *pm, char *keys[], char *keywords[], int
                 if( where_str )
                     tmp = where_str;
 
-                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(name = '", *keywords, "' or generic_name = '", *keywords, "' or description = '", *keywords, "')", NULL );
+                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(" , table, ".name = '", *keywords, "' or ", table, ".generic_name = '", *keywords, "' or keywords.kw_name = '", *keywords, "' or keywords.kw_generic_name = '", *keywords, "' or keywords.kw_fullname = '", *keywords, "')", NULL );
                 if( tmp )
                     free( tmp );
             }
@@ -1471,7 +1471,15 @@ int packages_get_count( YPackageManager *pm, char *keys[], char *keywords[], int
                 if( where_str )
                     tmp = where_str;
 
-                where_str = util_strcat( tmp ? tmp : "", tmp ? " and (" : "(", *keys, *wildcards == 2 ? " like '%" : " = '", *keywords, *wildcards == 2 ? "%')" : "')", NULL );
+                if( strncmp( *keys, "kw_", 3 ) && strcmp( *keys, "language" ) )
+                {
+                    where_str = util_strcat( tmp ? tmp : "", tmp ? " and (" : "(", table, ".", *keys, *wildcards == 2 ? " like '%" : " = '", *keywords, *wildcards == 2 ? "%')" : "')", NULL );
+                }
+                else
+                {
+                    where_str = util_strcat( tmp ? tmp : "", tmp ? " and (keywords." : "(keywords.", *keys, *wildcards == 2 ? " like '%" : " = '", *keywords, *wildcards == 2 ? "%')" : "')", NULL );
+                }
+
                 if( tmp )
                     free( tmp );
             }
@@ -1486,7 +1494,7 @@ int packages_get_count( YPackageManager *pm, char *keys[], char *keywords[], int
 
         if( where_str )
         {
-            sql = util_strcat( "select count(*) from ", table, " where ", where_str, NULL );
+            sql = util_strcat( "select count(*) from ", table, " left join keywords on ", table, ".name=keywords.name where ", where_str, NULL );
             db_query( &db, sql, NULL );
 
             free( where_str );
