@@ -9,7 +9,7 @@ my ( $language, $name, $dir ) = ( 'zh_CN', '', '/usr/share/app-info/desktop' );
 
 sub usage
 {
-    print "Usage:\n  ypkg2-import-desktop [-llanguage] [-nname] [-ddir]\n\neg:  ypkg2-improt-desktop -lzh_CN -nfirefox -d/usr/share/app-info/desktop\n  ypkg2-import-desktop\n";
+    print "Usage:\n  ypkg2-import-desktop [-llanguage] [-nname] [-ddir]\n\neg:  ypkg2-improt-desktop -lzh_CN -nfirefox -d/usr/share/app-info/desktop\n";
 }
 
 sub import_desktop
