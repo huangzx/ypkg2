@@ -104,12 +104,14 @@ int main( int argc, char **argv )
         goto exception_handler;
     }
 
+    /*
     if( packages_upgrade_db( pm ) != 0 )
     {
         ret = 5;
         fprintf( stderr, "Error: Upgrade failed.\n" );
         goto exception_handler;
     }
+    */
 
     printf( "Upgrade successful.\n" );
 
