@@ -3,6 +3,7 @@ YPKG=ypkg2
 YGET=yget2
 YPKGUPGRADE=ypkg2-upgrade
 YPKGIMPORT=ypkg2-import
+YPKGIMPORTDESKTOP=ypkg2-import-desktop
 YPKGGENCONTROL=ypkg2-gencontrol
 LIBYPK= libypk.so
 YPACKAGEH=ypackage.h
@@ -89,6 +90,7 @@ install: all
 	cp $(YPKG) $(BINDIR)
 	cp $(YGET) $(BINDIR)
 	cp $(YPKGIMPORT) $(BINDIR) 
+	cp $(YPKGIMPORTDESKTOP) $(BINDIR) 
 	cp $(YPKGUPGRADE) $(BINDIR) 
 	cp $(YPKGGENCONTROL) $(BINDIR) 
 	#cp po/zh_CN.mo $(LANGDIR)/ypkg.mo
@@ -106,6 +108,7 @@ remove:
 	rm -f $(BINDIR)/$(YPKG) 
 	rm -f $(BINDIR)/$(YGET) 
 	rm -f $(BINDIR)/$(YPKGIMPORT)
+	rm -f $(BINDIR)/$(YPKGIMPORTDESKTOP)
 	rm -f $(BINDIR)/$(YPKGUPGRADE)
 	rm -f $(BINDIR)/$(YPKGGENCONTROL)
 	rm -f $(LIBDIR)/$(LIBYPK).$(VERSION) 
