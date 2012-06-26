@@ -1494,8 +1494,10 @@ int packages_get_count( YPackageManager *pm, char *keys[], char *keywords[], int
 
         if( where_str )
         {
-            sql = util_strcat( "select count(*) from ", table, " left join keywords on ", table, ".name=keywords.name where ", where_str, NULL );
+            //sql = util_strcat( "select count(*) from ", table, " left join keywords on ", table, ".name=keywords.name where ", where_str, " group by ", table, ".name ", NULL );
+            sql = util_strcat( "select count(distinct ", table, ".name) from ", table, " left join keywords on ", table, ".name=keywords.name where ", where_str, NULL );
             db_query( &db, sql, NULL );
+            printf( "%s\n", sql);
 
             free( where_str );
             free( sql );
@@ -2498,7 +2500,7 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
         if( where_str )
         {
             //sql = util_strcat( "select * from ", table, " where ", where_str, order_str, " limit ? offset ?", NULL );
-            sql = util_strcat( "select * from ", table, " left join keywords on ", table, ".name=keywords.name where ", where_str, order_str, " group by ", table, ".name limit ? offset ?", NULL );
+            sql = util_strcat( "select * from ", table, " left join keywords on ", table, ".name=keywords.name where ", where_str, " group by ", table, ".name ", order_str, " limit ? offset ?", NULL );
             //printf( "%s\n", sql );
             db_query( &db, sql, limit_str, offset_str, NULL );
 

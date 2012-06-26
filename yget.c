@@ -892,7 +892,7 @@ int main( int argc, char **argv )
 
                     char *keys[] = { "*", NULL }; 
                     char *keywords[] = { package_name, NULL }; 
-                    int wildcards[] = { 2, 0 }; 
+                    int wildcards[] = { 2,  0 }; 
 
                     pkg_count = packages_get_count( pm,  keys, keywords, wildcards, 0 );
                     if( pkg_count > 0 )
@@ -905,7 +905,7 @@ int main( int argc, char **argv )
                             {
                                 installed = packages_get_list_attr( pkg_list, j, "installed" );
                                 can_update = packages_get_list_attr( pkg_list, j, "can_update" );
-                                if( installed[0] == '0' )
+                                if( installed && installed[0] == '0' )
                                 {
                                     installed = "[*]";
                                 }
