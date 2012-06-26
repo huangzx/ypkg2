@@ -47,7 +47,11 @@ int hash_table_add_data( HashTable *ht, char *key, char *value )
         len = strlen( value );
         if( ht->cur_data->pos + len + 1 > ht->cur_data->size )
         {
-            buf_size = HashTable_SIZE;
+            if( len > HashTable_SIZE )
+                buf_size = HashTable_SIZE + len;
+            else
+                buf_size = HashTable_SIZE;
+
             new_data = hash_table_malloc_data( ht->cur_data, buf_size );
             if( !new_data )
                 return -1;
@@ -208,7 +212,9 @@ int hash_table_list_add_data( HashTableList *htl, int index, char *key, char *va
         len = strlen( value );
         if( htl->cur_data->pos + len + 1 > htl->cur_data->size )
         {
-            if( htl->cur_cnt > htl->max_cnt * 3 / 4 )
+            if( htl->max_cnt < 4 )
+                buf_size = HashTable_SIZE * 4;
+            else if( htl->cur_cnt > htl->max_cnt * 3 / 4 )
                 buf_size = HashTable_SIZE * htl->max_cnt / 3;
             else if( htl->cur_cnt > htl->max_cnt * 2 / 3 )
                 buf_size = HashTable_SIZE * htl->max_cnt / 2;
@@ -216,6 +222,9 @@ int hash_table_list_add_data( HashTableList *htl, int index, char *key, char *va
                 buf_size = HashTable_SIZE * htl->max_cnt;
             else
                 buf_size = HashTable_SIZE * htl->max_cnt * 2;
+
+            if( len > buf_size )
+                buf_size += len;
 
             new_data = hash_table_malloc_data( htl->cur_data, buf_size );
             if( !new_data )
