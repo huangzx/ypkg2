@@ -8,7 +8,3 @@ End
 Version:2012062001
 CREATE TABLE keywords (name TEXT, language TEXT, kw_name TEXT, kw_generic_name TEXT, kw_fullname TEXT, kw_comment , PRIMARY KEY(name,language) );
 End
-
-Version:2012062801
-CREATE TABLE test1111 (id INTEGER);
-End
