@@ -519,7 +519,15 @@ int main( int argc, char **argv )
 
     if( init )
     {
-        pm = packages_manager_init2( init );
+        i = 0;
+        do
+        {
+            sleep( 1 );
+            pm = packages_manager_init2( init );
+        }
+        while( !pm && (i++ < 5) );
+
+        //pm = packages_manager_init2( init );
         if( !pm && action != 's' )
         {
             switch( libypk_errno )

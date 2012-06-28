@@ -170,6 +170,8 @@ void packages_manager_cleanup2( YPackageManager *pm )
     if( !pm )
         return;
 
+    packages_unlock( pm->lock_fd );
+
     if( pm->source_uri )
         free( pm->source_uri );
 
@@ -187,7 +189,6 @@ void packages_manager_cleanup2( YPackageManager *pm )
 
     free( pm );
 
-    packages_unlock( pm->lock_fd );
 }
 
 int packages_upgrade_db( YPackageManager *pm )
@@ -196,7 +197,6 @@ int packages_upgrade_db( YPackageManager *pm )
     char                *line, tmp[11];
     FILE                *fp;
     DB                  db;
-
 
     if( !pm )
         return -1;
@@ -211,6 +211,7 @@ int packages_upgrade_db( YPackageManager *pm )
     cur_version = 0;
     new_version = 0;
     begin = 0;
+
 
     db_init( &db, pm->db_name, OPEN_WRITE );
     db_query( &db, "select db_version from config", NULL );
@@ -258,6 +259,7 @@ int packages_upgrade_db( YPackageManager *pm )
         {
             if( begin && strlen( line ) > 3 )
             {
+                printf( "debug: exec %s\n", line );
                 if( db_exec( &db, line, NULL ) != SQLITE_DONE )
                 {
                     goto exception_handler;
@@ -766,8 +768,8 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
     //download updates list
     if( cb )
     {
-        cb( cb_arg, "*", 0, 1, "resynchronize the package information" );
-        cb( cb_arg, "*", 1, -1, "initialization" );
+        cb( cb_arg, "*", 0, 1, "resynchronize the package information\n" );
+        cb( cb_arg, "*", 1, -1, "initialization\n" );
     }
 
     list_file = UPDATE_DIR "/" LIST_FILE;
@@ -781,7 +783,7 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
         target_url = NULL;
         if( cb )
         {
-            cb( cb_arg, "*", 1, 1, "Connection fails, check your network and configuration." );
+            cb( cb_arg, "*", 1, 1, "Connection fails, check your network and configuration.\n" );
         }
         return -1; 
     }
@@ -967,7 +969,7 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
     {
         if( cb )
         {
-            cb( cb_arg, "Download failed.", 2, 1, NULL );
+            cb( cb_arg, "Download failed.\n", 2, 1, NULL );
         }
         remove(tmp_bz2);
         return -1; 
@@ -983,7 +985,7 @@ int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, 
     {
         if( cb )
         {
-            cb( cb_arg, "sha1 checksum does not match.", 2, 1, NULL );
+            cb( cb_arg, "sha1 checksum does not match.\n", 2, 1, NULL );
         }
         return -1;
     }
@@ -2899,8 +2901,8 @@ int packages_install_package( YPackageManager *pm, char *package_name, char *ver
 
     if( cb )
     {
-        cb( cb_arg, package_name, 0, 2, "install" );
-        cb( cb_arg, package_name, 1, -1, "initialization" );
+        cb( cb_arg, package_name, 0, 2, "install\n" );
+        cb( cb_arg, package_name, 1, -1, "initialization\n" );
     }
 
     return_code = 0;
@@ -3893,7 +3895,7 @@ int packages_pack_package( char *source_dir, char *ypk_path, ypk_progress_callba
 
     if( cb )
     {
-        msg = util_strcat( "building package  `", package_name, ":", version, ":", arch, "`  in `", package_name, "_", version, "-", arch, ".ypk'", NULL );
+        msg = util_strcat( "building package  `", package_name, ":", version, ":", arch, "`  in `", package_name, "_", version, "-", arch, ".ypk'\n", NULL );
         cb( cb_arg, "*", 0, 1, msg );
     }
 
@@ -4300,14 +4302,14 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
 
     if( cb )
     {
-        cb( cb_arg, ypk_path, 3, -1, "check dependencies of package" );
+        cb( cb_arg, ypk_path, 3, -1, "check dependencies of package\n" );
     }
 
     mkstemp( tmp_ypk_install );
     ret = packages_get_info_from_ypk( ypk_path, &pkg, &pkg_data, &pkg_file, tmp_ypk_install, NULL );
     if( ret != 0 )
     {
-        msg = util_strcat( "Error: Invalid format or File not found.", NULL );
+        msg = util_strcat( "Error: Invalid format or File not found.\n", NULL );
         cb( cb_arg, ypk_path, 3, 1, msg );
         free( msg );
         msg = NULL;
@@ -4394,7 +4396,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     //get package infomations
     if( cb )
     {
-        cb( cb_arg, ypk_path, 4, -1, "reading package information" );
+        cb( cb_arg, ypk_path, 4, -1, "reading package information\n" );
     }
 
 
@@ -4418,7 +4420,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     //exec pre_x script
     if( cb )
     {
-        cb( cb_arg, ypk_path, 5, -1, "executing pre_install script" );
+        cb( cb_arg, ypk_path, 5, -1, "executing pre_install script\n" );
     }
 
     if( !access( tmp_ypk_install, R_OK ) )
@@ -4459,7 +4461,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     //copy files 
     if( cb )
     {
-        cb( cb_arg, ypk_path, 6, -1, "copying files" );
+        cb( cb_arg, ypk_path, 6, -1, "copying files\n" );
     }
 
     if( (ret = packages_unpack_package( ypk_path, dest_dir, 0, "~ypk" )) != 0 )
@@ -4479,10 +4481,10 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     //update db
     if( cb )
     {
-        cb( cb_arg, ypk_path, 8, -1, "updating database" );
+        cb( cb_arg, ypk_path, 8, -1, "updating database\n" );
     }
 
-    db_init( &db, pm->db_name, OPEN_WRITE );
+    ret = db_init( &db, pm->db_name, OPEN_WRITE );
     db_cleanup( &db );
     db_exec( &db, "begin", NULL );  
 
@@ -4516,7 +4518,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( ret != SQLITE_DONE )
     {
         db_exec( &db, "rollback", NULL );  
-        //printf( "rollback, db_ret:%d\n", ret );
+        //printf( "rollback world, db_ret:%d\n", ret );
         return_code = -10; 
         goto exception_handler;
     }
@@ -4526,7 +4528,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( ret != SQLITE_DONE )
     {
         ret = db_exec( &db, "rollback", NULL );  
-        //printf( "rollback, db_ret:%d\n", ret );
+        //printf( "rollback world_data, db_ret:%d\n", ret );
         return_code = -10; 
         goto exception_handler;
     }
@@ -4551,7 +4553,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         if( ret != SQLITE_DONE )
         {
             db_exec( &db, "rollback", NULL );  
-            //printf( "rollback, db_ret:%d\n", ret );
+            //printf( "rollback world_data, db_ret:%d\n", ret );
             return_code = -10; 
             goto exception_handler;
         }
@@ -4563,7 +4565,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( ret != SQLITE_DONE )
     {
         db_exec( &db, "rollback", NULL );  
-        //printf( "rollback, db_ret:%d\n", ret );
+        //printf( "rollback file list, db_ret:%d\n", ret );
         return_code = -10; 
         goto exception_handler;
     }
@@ -4597,7 +4599,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             if( ret != SQLITE_DONE )
             {
                 db_exec( &db, "rollback", NULL );  
-                //printf( "rollback, db_ret:%d\n", ret );
+                //printf( "rollback file list, db_ret:%d\n", ret );
                 return_code = -10; 
                 goto exception_handler;
             }
@@ -4640,7 +4642,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         if( ret != SQLITE_DONE )
         {
             db_exec( &db, "rollback", NULL );  
-            //printf( "rollback, db_ret:%d\n", ret );
+            //printf( "rollback universe, db_ret:%d\n", ret );
             return_code = -10; 
             goto exception_handler;
         }
@@ -4681,7 +4683,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         if( ret != SQLITE_DONE )
         {
             db_exec( &db, "rollback", NULL );  
-            //printf( "rollback, db_ret:%d\n", ret );
+            //printf( "rollback universe_testing, db_ret:%d\n", ret );
             return_code = -10; 
             goto exception_handler;
         }
@@ -4691,7 +4693,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     if( ret != SQLITE_DONE )
     {
         db_exec( &db, "rollback", NULL );  
-        //printf( "rollback, db_ret:%d\n", ret );
+        //printf( "rollback commit, db_ret:%d\n", ret );
         return_code = -10; 
         goto exception_handler;
     }
@@ -4763,7 +4765,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     //exec post_x script
     if( cb )
     {
-        cb( cb_arg, ypk_path, 7, -1, "executing post_install script" );
+        cb( cb_arg, ypk_path, 7, -1, "executing post_install script\n" );
     }
 
     if( !access( tmp_ypk_install, R_OK ) )
@@ -4923,7 +4925,7 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
 
     if( cb )
     {
-        cb( cb_arg, package_name, 5, -1, "executing pre_remove script" );
+        cb( cb_arg, package_name, 5, -1, "executing pre_remove script\n" );
     }
 
     //exec pre_remove script
@@ -4948,7 +4950,7 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
 
     if( cb )
     {
-        cb( cb_arg, package_name, 6, -1, "deleting files" );
+        cb( cb_arg, package_name, 6, -1, "deleting files\n" );
     }
 
     //delete files
@@ -4994,7 +4996,7 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
 
     if( cb )
     {
-        cb( cb_arg, package_name, 7, -1, "executing post_remove script" );
+        cb( cb_arg, package_name, 7, -1, "executing post_remove script\n" );
     }
 
     //exec post_remove script
@@ -5022,7 +5024,7 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
 
     if( cb )
     {
-        cb( cb_arg, package_name, 8, -1, "updating database" );
+        cb( cb_arg, package_name, 8, -1, "updating database\n" );
     }
 
     //update db

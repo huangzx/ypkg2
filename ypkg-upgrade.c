@@ -4,13 +4,13 @@
 
 int main( int argc, char **argv )
 {
-    int                 ret;
+    int                 i, ret, pid;
     char                *exec_path, *package_path, *dl_error;
     void                *dl_handle = NULL;
 
     YPackageManager     *pm;
-    YPackageManager     *(*packages_manager_init)() = NULL;
-    void                (*packages_manager_cleanup)( YPackageManager *pm ) = NULL;
+    YPackageManager     *(*packages_manager_init2)() = NULL;
+    void                (*packages_manager_cleanup2)( YPackageManager *pm ) = NULL;
     int                 (*packages_install_local_package)( YPackageManager *pm, char *ypk_path, char *dest_dir, int force, ypk_progress_callback cb, void *cb_arg ) = NULL;
     //ssize_t             (*packages_upgrade_db)( YPackageManager *pm ) = NULL;
 
@@ -54,7 +54,7 @@ int main( int argc, char **argv )
 
     dlerror();
 
-    packages_manager_init = dlsym( dl_handle, "packages_manager_init" );
+    packages_manager_init2 = dlsym( dl_handle, "packages_manager_init2" );
     if( (dl_error = dlerror()) != NULL )
     {
         ret = 3;
@@ -62,7 +62,7 @@ int main( int argc, char **argv )
         goto exception_handler;
     }
 
-    packages_manager_cleanup = dlsym( dl_handle, "packages_manager_cleanup" );
+    packages_manager_cleanup2 = dlsym( dl_handle, "packages_manager_cleanup2" );
     if( (dl_error = dlerror()) != NULL )
     {
         ret = 3;
@@ -88,7 +88,15 @@ int main( int argc, char **argv )
     }
     */
 
-    pm = packages_manager_init();
+    i = 0;
+
+    do
+    {
+        sleep( 1 );
+        pm = packages_manager_init2( 2 );
+    }
+    while( !pm && (i++ < 5) );
+
     if( !pm )
     {
         ret = 4;
@@ -97,7 +105,6 @@ int main( int argc, char **argv )
     }
 
 
-    sleep( 1 );
 
     if( packages_install_local_package( pm, package_path, "/", 1, NULL, NULL ) != 0 )
     {
@@ -117,13 +124,20 @@ int main( int argc, char **argv )
 
     printf( "Upgrade successful.\n" );
 
-
-    packages_manager_cleanup( pm );
+    packages_manager_cleanup2( pm );
     dlclose( dl_handle );
 
-    system( "yget2 --upgrade -y" );
+    if( (pid = fork()) < 0 )
+    {
+        ret = 6;
+    }
+    else if( pid == 0 )
+    {
+        sleep( 1 );
+        if( execl( "/usr/bin/yget2", "yget2", "--upgrade", "-y", NULL ) < 0 )
+        ret = 6;
+    }
 
-    putchar( '\n' );
     return 0;
 
 exception_handler:
@@ -138,7 +152,7 @@ exception_handler:
     if( dl_handle )
         dlclose( dl_handle );
 
-    packages_manager_cleanup( pm );
+    packages_manager_cleanup2( pm );
 
     return ret;
 }

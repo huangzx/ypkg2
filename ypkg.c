@@ -265,6 +265,7 @@ int main( int argc, char **argv )
                         package_name = argv[i];
                         packages_log( pm, package_name, "install" );
                         printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", package_name );
+
                         ret = packages_install_local_package( pm, package_name, "/", force, ypkg_progress_callback, pm );
 
                         switch( ret )
