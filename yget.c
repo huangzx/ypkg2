@@ -62,6 +62,7 @@ void usage()
             --search                  search packages\n\
             --show                    show package's infomations\n\
             --clean                   remove all downloaded packages\n\
+            --autoremove              remove automatically all unused packages\n\
             --upgrade                 upgrade system\n\
             --update                  retrieve new lists of packages\n\
 \n\
