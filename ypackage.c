@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.6.21
+ * Date: 2012.7.6
  */
 #define LIBYPK 1
 #include "ypackage.h"
@@ -3547,6 +3547,123 @@ void packages_free_remove_list( YPackageChangeList *list )
     packages_free_change_list( list );
 }
 
+int packages_check_depend( YPackageManager *pm, YPackageData *pkg_data, char *extra, int extra_max_len )
+{
+    int                 i, len, offset = 0, ret = 0;
+    char                *depend, *token, *saveptr, *version, *tmp, *tmp2;
+
+    if( !pkg_data )
+        return -1;
+
+    for( i = 0; i < pkg_data->cnt; i++ )
+    {
+        tmp = packages_get_package_data_attr( pkg_data, i, "data_depend");
+        if( tmp )
+        {
+            depend = strdup( tmp );
+            tmp = NULL;
+            version = NULL;
+            token = strtok_r( depend, " ,", &saveptr );
+            while( token )
+            {
+                tmp = util_strcat( token, NULL );
+                if( (version = strchr( tmp, '(' )) )
+                {
+                    *version++ = 0;
+
+                    while( *version == ' ' )
+                        version++;
+
+                    if( (tmp2 = strchr( version, ')' )) )
+                        *tmp2 = 0;
+                }
+
+                if( !packages_has_installed( pm, tmp, version ) )
+                {
+                    if( extra && extra_max_len > 0 )
+                    {
+                        len = strlen( token );
+                        if( extra_max_len > offset + len + 2 )
+                        {
+                            strncpy( extra + offset, token, len );
+                            offset += len;
+                            extra[offset] = ' ';
+                            extra[++offset] = 0;
+                        }
+
+                    }
+
+                    ret = -1;
+                }
+
+                free( tmp );
+                version = NULL;
+                token = strtok_r( NULL, " ,", &saveptr );
+            }
+            free( depend );
+        }
+    }
+
+    return ret;
+}
+
+int packages_check_conflict( YPackageManager *pm, YPackageData *pkg_data, char *extra, int extra_max_len )
+{
+    int                 i, len, offset = 0, ret = 0;
+    char                *conflict, *token, *saveptr, *version, *tmp, *tmp2;
+
+    if( !pkg_data )
+        return -1;
+
+    for( i = 0; i < pkg_data->cnt; i++ )
+    {
+        tmp = packages_get_package_data_attr( pkg_data, i, "data_conflict");
+        if( tmp )
+        {
+            conflict = strdup( tmp );
+            tmp = NULL;
+            version = NULL;
+            token = strtok_r( conflict, " ,", &saveptr );
+            while( token )
+            {
+                tmp = util_strcat( token, NULL );
+                if( (version = strchr( tmp, '(' )) )
+                {
+                    *version++ = 0;
+
+                    while( *version == ' ' )
+                        version++;
+
+                    if( (tmp2 = strchr( version, ')' )) )
+                        *tmp2 = 0;
+                }
+
+                if( packages_has_installed( pm, tmp, version ) )
+                {
+                    if( extra && extra_max_len > 0 )
+                    {
+                        len = strlen( token );
+                        if( extra_max_len > offset + len + 2 )
+                        {
+                            strncpy( extra + offset, token, len );
+                            offset += len;
+                            extra[offset] = ' ';
+                            extra[++offset] = 0;
+                        }
+                    }
+
+                    ret = -1;
+                }
+                free( tmp );
+                version = NULL;
+                token = strtok_r( NULL, " ,", &saveptr );
+            }
+            free( conflict );
+        }
+    }
+
+    return ret;
+}
 
 /*
  * packages_check_package
@@ -3582,8 +3699,8 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
 
 int packages_check_package2( YPackageManager *pm, YPackage *pkg, YPackageData *pkg_data, char *extra, int extra_max_len )
 {
-    int                 i, ret, return_code = 0;
-    char                *depend, *conflict, *token, *saveptr, *package_name, *arch, *version, *version2, *repo, *repo2, *tmp, *tmp2;
+    int                 ret, return_code = 0;
+    char                *package_name, *arch, *version, *version2, *repo, *repo2;
     struct utsname      buf;
     YPackage            *pkg2 = NULL;
 
@@ -3615,90 +3732,17 @@ int packages_check_package2( YPackageManager *pm, YPackage *pkg, YPackageData *p
         }
     }
 
-    for( i = 0; i < pkg_data->cnt; i++ )
+    if( packages_check_depend( pm, pkg_data, extra, extra_max_len ) == -1 )
     {
-        //check depend
-        tmp = packages_get_package_data_attr( pkg_data, i, "data_depend");
-        if( tmp )
-        {
-            depend = strdup( tmp );
-            tmp = NULL;
-            version2 = NULL;
-            token = strtok_r( depend, " ,", &saveptr );
-            while( token )
-            {
-                tmp = util_strcat( token, NULL );
-                if( (version2 = strchr( tmp, '(' )) )
-                {
-                    *version2++ = 0;
+        return_code = -3; 
+        goto exception_handler;
+    }
 
-                    while( *version2 == ' ' )
-                        version2++;
 
-                    if( (tmp2 = strchr( version2, ')' )) )
-                        *tmp2 = 0;
-                }
-
-                if( !packages_has_installed( pm, tmp, version2 ) )
-                {
-                    return_code = -3; 
-
-                    if( extra && extra_max_len > 0 )
-                    {
-                        strncpy( extra, token, extra_max_len );
-                    }
-
-                    free( tmp );
-                    goto exception_handler;
-                }
-
-                free( tmp );
-                version2 = NULL;
-                token = strtok_r( NULL, " ,", &saveptr );
-            }
-            free( depend );
-        }
-
-        //check conflict
-        tmp = packages_get_package_data_attr( pkg_data, i, "data_conflict");
-        if( tmp )
-        {
-            conflict = strdup( tmp );
-            tmp = NULL;
-            version2 = NULL;
-            token = strtok_r( conflict, " ,", &saveptr );
-            while( token )
-            {
-                tmp = util_strcat( token, NULL );
-                if( (version2 = strchr( tmp, '(' )) )
-                {
-                    *version2++ = 0;
-
-                    while( *version2 == ' ' )
-                        version2++;
-
-                    if( (tmp2 = strchr( version2, ')' )) )
-                        *tmp2 = 0;
-                }
-
-                if( packages_has_installed( pm, tmp, version2 ) )
-                {
-                    return_code = -4; 
-
-                    if( extra && extra_max_len > 0 )
-                    {
-                        strncpy( extra, token, extra_max_len );
-                    }
-
-                    free( tmp );
-                    goto exception_handler;
-                }
-                free( tmp );
-                version2 = NULL;
-                token = strtok_r( NULL, " ,", &saveptr );
-            }
-            free( conflict );
-        }
+    if( packages_check_conflict( pm, pkg_data, extra, extra_max_len ) == -1 )
+    {
+        return_code = -4; 
+        goto exception_handler;
     }
 
     //check installed

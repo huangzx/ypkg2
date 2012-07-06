@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
  * Version: 0.1
- * Date: 2012.6.21
+ * Date: 2012.7.6
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -640,6 +640,74 @@ int main( int argc, char **argv )
          * autoremove
          */
         case 'A':
+            if( geteuid() )
+            {
+                err = 2;
+            }
+            else
+            {
+                remove_list = NULL;
+                pkg_count = packages_get_count( pm, NULL, NULL, NULL, 1 );
+                if( pkg_count > 0 )
+                {
+                    pkg_list = packages_get_list( pm, pkg_count, 0, NULL, NULL, NULL, 1 );
+                    if( pkg_list )
+                    {
+                        for( i = 0; i < pkg_list->cnt; i++ )
+                        {
+                            package_name = packages_get_list_attr( pkg_list, i, "name");
+                            pkg_data = packages_get_package_data( pm, package_name, 1 );
+                            if( pkg_data )
+                            {
+                                if( packages_check_depend( pm, pkg_data, NULL, 0 ) == -1 )
+                                {
+                                    cur_package =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
+                                    len = strlen( package_name );
+                                    cur_package->name = (char *)malloc( len + 1 );
+                                    strncpy( cur_package->name, package_name, len );
+                                    cur_package->name[len] = 0;
+                                    cur_package->version = NULL;
+                                    cur_package->type = 1;
+                                    cur_package->prev = remove_list;
+                                    remove_list = cur_package;
+                                }
+                                packages_free_package_data( pkg_data );
+                            }
+                        }
+                        packages_free_list( pkg_list );
+                    }
+                }
+
+                if( remove_list )
+                {
+                    printf( "Auto-remove:" );
+                    cur_package = remove_list;
+                    while( cur_package )
+                    {
+                        if( cur_package->type == 1 )
+                            printf(" %s", cur_package->name );
+
+                        cur_package = cur_package->prev;
+                    }
+
+                    if( yes )
+                    {
+                        confirm = 'Y';
+                    }
+                    else
+                    {
+                        printf( "\nDo you want to continue [y/N]?" );
+                        confirm = getchar();
+                    }
+
+                    if( confirm == 'Y' || confirm == 'y' )
+                    {
+                        packages_remove_list( pm, remove_list, yget_progress_callback, pm );
+                    }
+                    packages_free_remove_list( remove_list );
+                }
+                puts( "No package can be removed." );
+            }
             break;
 
         /*

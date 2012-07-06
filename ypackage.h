@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.6.20
+ * Date: 2012.7.6
  */
 #ifndef PACKAGE_H
 #define PACKAGE_H
@@ -239,6 +239,8 @@ int packages_compare_version( char *version1, char *version2 );
 /*
  * package install & remove & upgrade
  */
+int packages_check_depend( YPackageManager *pm, YPackageData *pkg_data, char *extra, int extra_max_len );
+int packages_check_conflict( YPackageManager *pm, YPackageData *pkg_data, char *extra, int extra_max_len );
 int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, int extra_max_len );
 int packages_check_package2( YPackageManager *pm, YPackage *pkg, YPackageData *pkg_data, char *extra, int extra_max_len );
 
