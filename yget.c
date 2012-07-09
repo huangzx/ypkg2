@@ -1454,9 +1454,14 @@ int main( int argc, char **argv )
                 if(ret)
                 {
                     if( packages_update( pm, yget_progress_callback, pm ) == -1 )
-                        printf("Failed!\n");
+                    {
+                        err = 3;
+                        //printf("Failed!\n");
+                    }
                     else
+                    {
                         printf("Done!\n");
+                    }
 
                 }
                 else
