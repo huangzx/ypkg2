@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.7.6
+ * Date: 2012.7.10
  */
 #define LIBYPK 1
 #include "ypackage.h"
@@ -4251,6 +4251,8 @@ int packages_compare_sub_version( char *version1, char *version2 )
     if( version1 == NULL )
         level1 = 2;
     else if( isdigit( version1[0] ) )
+        level1 = 5;
+    else if( version1[0] == 'r' && isdigit( version1[1] ) )
         level1 = 4;
     else if( version1[0] == 'y' && version1[1] == 'l' )
         level1 = 3;
@@ -4260,24 +4262,29 @@ int packages_compare_sub_version( char *version1, char *version2 )
     if( version2 == NULL )
         level2 = 2;
     else if( isdigit( version2[0] ) )
+        level2 = 5;
+    else if( version2[0] == 'r' && isdigit( version2[1] ) )
         level2 = 4;
     else if( version2[0] == 'y' && version2[1] == 'l' )
         level2 = 3;
     else
         level2 = 1;
 
+
     if( level1 == level2 )
     {
         if( level1 == 2 )
             return 0;
-        else if( level1 == 4 )
+        else if( level1 == 5 )
             return atoi( version1 ) - atoi( version2 ); // 2 > 1
+        else if( level1 == 4 )
+            return atoi( version1+1 ) - atoi( version2+1 ); // r2 > r1
         else
-            return strcmp( version1, version2 ); //ymlf2 > ylmf1 > rc1 > beta1 > alpha1 
+            return strcmp( version1, version2 ); //ymlf2 > ylmf1  rc1 > beta1 > alpha1 
     }
     else
     {
-        return level1 - level2; // foo_1.0-1 > foo_1.0 > foo_1.0-ylmf1
+        return level1 - level2; // foo_1.0-1 > foo_1.0-r1 > foo_1.0-ylmf1 > foo_1.0 > foo_1.0-rc1
     }
 }
 
