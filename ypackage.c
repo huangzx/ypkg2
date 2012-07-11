@@ -4249,38 +4249,58 @@ int packages_compare_sub_version( char *version1, char *version2 )
 
 
     if( version1 == NULL )
-        level1 = 2;
-    else if( isdigit( version1[0] ) )
-        level1 = 5;
-    else if( version1[0] == 'r' && isdigit( version1[1] ) )
         level1 = 4;
-    else if( version1[0] == 'y' && version1[1] == 'l' )
+    else if( isdigit( version1[0] ) )
+        level1 = 7;
+    else if( version1[0] == 'r' && isdigit( version1[1] ) )
+        level1 = 6;
+    else if( !strncmp( version1, "ylmf", 4 ) && isdigit( version1[4] ) )
+        level1 = 5;
+    else if( version1[0] == 'r' && version1[1] == 'c' && isdigit( version1[2] ) )
         level1 = 3;
-    else
+    else if( !strncmp( version1, "beta", 4 ) && isdigit( version1[4] ) )
+        level1 = 2;
+    else if( !strncmp( version1, "alpha", 5 ) && isdigit( version1[5] ) )
         level1 = 1;
+    else 
+        level1 = 0;
 
     if( version2 == NULL )
-        level2 = 2;
-    else if( isdigit( version2[0] ) )
-        level2 = 5;
-    else if( version2[0] == 'r' && isdigit( version2[1] ) )
         level2 = 4;
-    else if( version2[0] == 'y' && version2[1] == 'l' )
+    else if( isdigit( version2[0] ) )
+        level2 = 7;
+    else if( version2[0] == 'r' && isdigit( version2[1] ) )
+        level2 = 6;
+    else if( !strncmp( version2, "ylmf", 4 ) && isdigit( version2[4] ) )
+        level2 = 5;
+    else if( version2[0] == 'r' && version2[1] == 'c' && isdigit( version2[2] ) )
         level2 = 3;
-    else
+    else if( !strncmp( version2, "beta", 4 ) && isdigit( version2[4] ) )
+        level2 = 2;
+    else if( !strncmp( version2, "alpha", 5 ) && isdigit( version2[5] ) )
         level2 = 1;
+    else 
+        level2 = 0;
 
 
     if( level1 == level2 )
     {
-        if( level1 == 2 )
+        if( level1 == 4 )
             return 0;
-        else if( level1 == 5 )
+        else if( level1 == 7 )
             return atoi( version1 ) - atoi( version2 ); // 2 > 1
-        else if( level1 == 4 )
+        else if( level1 == 6 )
             return atoi( version1+1 ) - atoi( version2+1 ); // r2 > r1
+        else if( level1 == 5 )
+            return atoi( version1+4 ) - atoi( version2+4 ); //ylmf
+        else if( level1 == 3 )
+            return atoi( version1+2 ) - atoi( version2+2 ); //rc
+        else if( level1 == 2 )
+            return atoi( version1+4 ) - atoi( version2+4 );
+        else if( level1 == 1 )
+            return atoi( version1+5 ) - atoi( version2+5 );
         else
-            return strcmp( version1, version2 ); //ymlf2 > ylmf1  rc1 > beta1 > alpha1 
+            return 0;
     }
     else
     {

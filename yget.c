@@ -347,7 +347,7 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
         }
         else
         {
-            if( (ret = packages_install_local_package( pm, package_path, "/", 1, yget_progress_callback, pm )) )
+            if( (ret = packages_install_local_package( pm, package_path, "/", 0, yget_progress_callback, pm )) )
             {
                 switch( ret )
                 {
