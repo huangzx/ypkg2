@@ -100,7 +100,7 @@ int main( int argc, char **argv )
     if( !pm )
     {
         ret = 4;
-        fprintf( stderr, "Error: Can not open database.\n" );
+        fprintf( stderr, "Error: open database failed.\n" );
         goto exception_handler;
     }
 
@@ -109,7 +109,7 @@ int main( int argc, char **argv )
     if( packages_install_local_package( pm, package_path, "/", 1, NULL, NULL ) != 0 )
     {
         ret = 5;
-        fprintf( stderr, "Error: Upgrade failed.\n" );
+        fprintf( stderr, "Error: upgrade failed.\n" );
         goto exception_handler;
     }
 

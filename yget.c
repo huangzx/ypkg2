@@ -50,28 +50,26 @@ struct option longopts[] = {
 void usage()
 {
     char *usage = "\
-        Usage: yget command [options] pkg1 [pkg2 ...]\n\n\
-        yget is a simple command line interface for downloading and\n\
-        installing packages. The most frequently used commands are update\n\
-        and install.\n\n\
-        Commands:\n\
-            --install                 install packages and dependencies (pkg is leafpad not leafpad_0.8.17.ypk)\n\
-            --reinstall               reinstall packages and dependencies (pkg is leafpad not leafpad_0.8.17.ypk)\n\
-            --install-dev             install build-dependencies for packages (pkg is leafpad not leafpad_0.8.17.ypk)\n\
-            --remove                  remove package and orphaned dependencies\n\
-            --search                  search packages\n\
-            --show                    show package's infomations\n\
-            --clean                   remove all downloaded packages\n\
-            --autoremove              remove automatically all unused packages\n\
-            --upgrade                 upgrade system\n\
-            --update                  retrieve new lists of packages\n\
-\n\
-        Options:\n\
-            -p                      instead of actually install, simply display what to do\n\
-            -y                      assume Yes to all queries\n\
-            -d		                download only - do NOT install\n\
-            -f | --force            force\n\
-       ";
+Usage: yget command [options] pkg1 [pkg2 ...]\n\n\
+yget is a simple command line interface for downloading and\n\
+installing packages. The most frequently used commands are update and install.\n\n\
+Commands:\n\
+  --install           Install packages and dependencies (pkg is leafpad not leafpad.ypk)\n\
+  --reinstall         Reinstall packages and dependencies (pkg is leafpad not leafpad.ypk)\n\
+  --install-dev       Install build-dependencies for packages (pkg is leafpad not leafpad.ypk)\n\
+  --remove            Remove package\n\
+  --search            Search the package list for a regex pattern\n\
+  --show              Show a readable record for the package\n\
+  --clean             Erase downloaded archive files\n\
+  --autoremove        Remove automatically all unused packages\n\
+  --upgrade           Perform an upgrade\n\
+  --update            Retrieve new lists of packages\n\n\
+Options:\n\
+  -p                  Instead of actually install, simply display what to do\n\
+  -y                  Assume Yes to all queries\n\
+  -d		      Download only - do NOT install\n\
+  -f | --force        Force install, override problems\n\
+";
 
     printf( "%s\n", usage );
 }
@@ -90,7 +88,7 @@ int yget_progress_callback( void *cb_arg, char *package_name, int action, double
     }
     else if( action == 9 )
     {
-        packages_log( pm, package_name, "finish" );
+        packages_log( pm, package_name, "Finish" );
     }
     else
     {
@@ -257,27 +255,27 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
     if( !package_name )
         return -1;
 
-    packages_log( pm, package_name, "install" );
-    packages_log( pm, package_name, "initialization" );
+    packages_log( pm, package_name, "Install" );
+    packages_log( pm, package_name, "Initializing" );
 
     return_code = 0;
     if( !packages_exists( pm, package_name, version ) )
     {
-        printf( COLOR_RED "Error: Can't find the package %s(%s).\n" COLOR_RESET, package_name, version );
+        printf( COLOR_RED "Error: package %s(%s) not found.\n" COLOR_RESET, package_name, version );
         return -2;
     }
 
     pkg = packages_get_package( pm, package_name, 0 );
     if( !pkg )
     {
-        printf( COLOR_RED "Error: Can't find the package %s(%s).\n" COLOR_RESET, package_name, version );
+        printf( COLOR_RED "Error: package %s(%s) not found.\n" COLOR_RESET, package_name, version );
         return -2;
     }
 
     package_url = packages_get_package_attr( pkg, "uri" );
     if( !package_url )
     {
-        printf( COLOR_RED "Error: Can't get the download url of the package.\n" COLOR_RESET );
+        printf( COLOR_RED "Error: read download url of package failed.\n" COLOR_RESET );
         return_code = -3;
         goto return_point;
     }
@@ -285,8 +283,8 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
     package_path = util_strcat( pm->package_dest, "/", basename( package_url ), NULL );
     target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
 
-    packages_log( pm, package_name, "downloading" );
-    printf( "Downloading %s to %s\n", target_url, package_path  );
+    packages_log( pm, package_name, "Downloading" );
+    printf( "Downloading %s to %s/\n", target_url, pm->package_dest  );
     dl_stat.progress = 0;
     dl_stat.cnt = 0;
     dl_stat.st.tv_sec = 0;
@@ -304,7 +302,7 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
         {
             if( packages_download_package( NULL, package_name, target_url, package_path, 1, yget_download_progress_callback,&dl_stat, yget_progress_callback, pm ) < 0 )
             {
-                printf( COLOR_RED "Error: Can't download the package %s from %s.\n" COLOR_RESET, package_name, target_url );
+                printf( COLOR_RED "Error: download %s from %s failed.\n" COLOR_RESET, package_name, target_url );
                 return_code = -4;
                 goto return_point;
             }
@@ -314,7 +312,7 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
             ypk_sha = util_sha1( package_path );
             if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
             {
-                printf( COLOR_RED "Error: Download failed, sha1 checksum does not match. [%s sha1sum:%s]\n" COLOR_RESET, package_path, ypk_sha );
+                printf( COLOR_RED "Error: checksum mismatched. [%s sha1sum: %s]\n" COLOR_RESET, package_path, ypk_sha );
                 return_code = -4;
                 goto return_point;
             }
@@ -324,7 +322,7 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
     {
         if( packages_download_package( NULL, package_name, target_url, package_path, 0, yget_download_progress_callback,&dl_stat, yget_progress_callback, pm ) < 0 )
         {
-            printf( COLOR_RED "Error: Can't download the package %s from %s.\n" COLOR_RESET, package_name, target_url );
+            printf( COLOR_RED "Error: download %s from %s failed.\n" COLOR_RESET, package_name, target_url );
             return_code = -4;
             goto return_point;
         }
@@ -332,7 +330,7 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
         ypk_sha = util_sha1( package_path );
         if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
         {
-            printf( COLOR_RED "Error: Download failed, sha1 checksum does not match. [%s sha1sum:%s]\n" COLOR_RESET, package_path, ypk_sha );
+            printf( COLOR_RED "Error: checksum mismatched. [%s sha1sum: %s]\n" COLOR_RESET, package_path, ypk_sha );
             return_code = -4;
             goto return_point;
         }
@@ -353,37 +351,37 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
                 {
                     case 1:
                     case 2:
-                        printf( COLOR_YELLO "The latest version has installed.\n" COLOR_RESET );
+                        printf( COLOR_YELLO "Newer or same version installed, skipped.\n" COLOR_RESET );
                         break;
                     case 0:
                         printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
                         break;
                     case -1:
-                        printf( COLOR_RED "Error: Invalid format or File not found.\n" COLOR_RESET );
+                        printf( COLOR_RED "Error: invalid format or file not found.\n" COLOR_RESET );
                         break;
                     case -2:
-                        printf( COLOR_RED "Error: Architecture does not match.\n" COLOR_RESET );
+                        printf( COLOR_RED "Error: architecture mismatched.\n" COLOR_RESET );
                         break;
                     case -3:
-                        printf( COLOR_RED "Error: missing runtime deps.\n" COLOR_RESET );
+                        printf( COLOR_RED "Error: missing runtime dependencies.\n" COLOR_RESET );
                         break;
                     case -4:
-                        printf( COLOR_RED "Error: conflicting deps.\n" COLOR_RESET );
+                        printf( COLOR_RED "Error: conflicting dependencies found.\n" COLOR_RESET );
                         break;
                     case -5:
                     case -6:
-                        printf( COLOR_RED "Error: Can not get package's infomation.\n" COLOR_RESET );
+                        printf( COLOR_RED "Error: read state infomation failed.\n" COLOR_RESET );
                         break;
                     case -7:
-                        printf( COLOR_RED "Error: An error occurred while executing the pre_install script.\n" COLOR_RESET );
+                        printf( COLOR_RED "Error: an error occurred while executing pre_install script.\n" COLOR_RESET );
                         break;
                     case -8:
-                        printf( COLOR_RED "Error: An error occurred while copy files.\n" COLOR_RESET );
+                        printf( COLOR_RED "Error: an error occurred while copying files.\n" COLOR_RESET );
                         break;
                     case -9:
-                        printf( COLOR_RED "Error: An error occurred while executing the post_install script.\n" COLOR_RESET );
+                        printf( COLOR_RED "Error: an error occurred while executing post_install script.\n" COLOR_RESET );
                     case -10:
-                        printf( COLOR_RED "Error: An error occurred while updating database.\n" COLOR_RESET );
+                        printf( COLOR_RED "Error: an error occurred while updating database.\n" COLOR_RESET );
                         break;
                 }
 
@@ -424,7 +422,7 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
         }
         else
         {
-            printf( COLOR_RED "Error: Installation failed.\n" COLOR_RESET );
+            printf( COLOR_RED "Error: installation failed.\n" COLOR_RESET );
             return ret;
         }
         list = list->prev;
@@ -534,15 +532,15 @@ int main( int argc, char **argv )
             switch( libypk_errno )
             {
                 case MISSING_DB:
-                    fprintf( stderr, "Error: Cannot open database.\n" );
+                    fprintf( stderr, "Error: open database failed.\n" );
                 break;
 
                 case LOCK_ERROR:
-                    fprintf( stderr, "Error: Database is busy.\n" );
+                    fprintf( stderr, "Error: database is locked.\n" );
                 break;
 
                 default:
-                    fprintf( stderr, "Error: Failed to initialize.\n" );
+                    fprintf( stderr, "Error: initialize failed.\n" );
             }
             return 1;
         }
@@ -588,7 +586,7 @@ int main( int argc, char **argv )
                     }
                     else
                     {
-                        printf( "%s has no installed.\n", package_name );
+                        printf( "Error: Unable to locate package %s\n", package_name );
                     }
                 }
 
@@ -707,7 +705,7 @@ int main( int argc, char **argv )
                     }
                     packages_free_remove_list( remove_list );
                 }
-                puts( "No package can be removed." );
+                puts( "No package is unused." );
             }
             break;
 
@@ -763,7 +761,7 @@ int main( int argc, char **argv )
                         {
                             if( packages_has_installed( pm, package_name, version ) )
                             {
-                                printf( "%s_%s has installed.\n", package_name, version );
+                                printf( "%s_%s is already the newest version.\n", package_name, version );
                                 continue;
                             }
                         }
@@ -927,7 +925,7 @@ int main( int argc, char **argv )
                     }
                     else
                     {
-                        printf( "%s's development packages have installed.\n", package_name );
+                        printf( "Build-dependencies for %s installed.\n", package_name );
                     }
                 }
             }
@@ -961,7 +959,7 @@ int main( int argc, char **argv )
             }
             else
             {
-                printf( "status \tname \tversion    \tchannel  \tdescription\n====================================================================\n" );
+                printf( "Status \tName  \tChannel  \tDescription\n====================================================================\n" );
 
                 for( i = optind; i < argc; i++)
                 {
@@ -1002,10 +1000,9 @@ int main( int argc, char **argv )
                                 repo = packages_get_list_attr( pkg_list, j, "repo" );
 
                                 printf( 
-                                        COLOR_GREEN "%-s "  COLOR_RESET  "\t%-s \t%-10s \t%-8s \t%-s\n",
+                                        COLOR_GREEN "%-s "  COLOR_RESET  "\t%-s \t%-8s \t%-s\n",
                                         installed, 
                                         packages_get_list_attr( pkg_list, j, "name"), 
-                                        packages_get_list_attr( pkg_list, j, "version"), 
                                         repo, 
                                         packages_get_list_attr( pkg_list, j, "description") 
                                         );
@@ -1015,12 +1012,12 @@ int main( int argc, char **argv )
                         }
                         else
                         {
-                            printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                            printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
                         }
                     }
                     else
                     {
-                        printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                        printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
                     }
                 }
             }
@@ -1052,15 +1049,15 @@ int main( int argc, char **argv )
                         switch( libypk_errno )
                         {
                             case MISSING_DB:
-                                fprintf( stderr, "Error: Cannot open database.\n" );
+                                fprintf( stderr, "Error: open database failed.\n" );
                             break;
 
                             case LOCK_ERROR:
-                                fprintf( stderr, "Error: Database is busy.\n" );
+                                fprintf( stderr, "Error: database is locked.\n" );
                             break;
 
                             default:
-                                fprintf( stderr, "Error: Failed to initialize.\n" );
+                                fprintf( stderr, "Error: initialize failed.\n" );
                         }
                         return 1;
                     }
@@ -1079,7 +1076,7 @@ int main( int argc, char **argv )
                 {
                     if( packages_get_package_from_ypk( package_name, &pkg, &pkg_data ) < 0 )
                     {
-                        printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                        printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
                         return 1;
                     }
                 }
@@ -1195,7 +1192,7 @@ int main( int argc, char **argv )
                         }
 
                         printf( 
-                                "Name: %s\nVersion: %s\nArch: %s\nRepo:%s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nExec: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nDescription: %s\nHomepage: %s\n", 
+                                "Name: %s\nVersion: %s\nArch: %s\nRepo: %s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nExec: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nDescription: %s\nHomepage: %s\n", 
                                 package_name,
                                 pkg2 ? packages_get_package_attr( pkg2, "version") : packages_get_package_attr( pkg, "version"), 
                                 packages_get_package_attr( pkg, "arch"), 
@@ -1237,7 +1234,7 @@ int main( int argc, char **argv )
                 }
                 else
                 {
-                    printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                    printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
                 }
 
             }
@@ -1290,7 +1287,7 @@ int main( int argc, char **argv )
                 }
                 else
                 {
-                    printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                    printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
                 }
             }
 
@@ -1397,7 +1394,7 @@ int main( int argc, char **argv )
                         }
                         else
                         {
-                            printf( "Do you want to continue [y/N]?" );
+                            printf( "\nDo you want to continue [y/N]?" );
                             confirm = getchar();
                         }
 
@@ -1460,13 +1457,13 @@ int main( int argc, char **argv )
                     }
                     else
                     {
-                        printf("Done!\n");
+                        printf("Done.\n");
                     }
 
                 }
                 else
                 {
-                    printf("Done!\n");
+                    printf("Done.\n");
                 }
             }
             break;

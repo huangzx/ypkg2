@@ -97,7 +97,7 @@ install: all
 	cp data/db_create.sql $(DATADIR)
 	cp data/db_upgrade.list $(DATADIR)
 	#sqlite3 $(DBDIR)/package.db ".read $(DATADIR)/db_create.sql"
-	cd  $(LIBDIR) && ln -s $(LIBYPK).$(VERSION) ./$(LIBYPK)
+	cd  $(LIBDIR) && ln -sf $(LIBYPK).$(VERSION) ./$(LIBYPK)
 	#$(BINDIR)/$(YPKGIMPORT)
 	
 

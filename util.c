@@ -455,7 +455,7 @@ char *util_time_to_str( time_t time )
     if( !result )
         return NULL;
     memset( result, '\0', 20 );
-    if( strftime( result, 20, "%Y-%m-%d %H:%M:%S", tmp) == 0 ) 
+    if( strftime( result, 20, "%Y-%m-%d,%H:%M:%S", tmp) == 0 ) 
     {
         free( result );
         return NULL;

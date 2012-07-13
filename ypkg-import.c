@@ -14,7 +14,7 @@ int main()
     pm = packages_manager_init();
     if( !pm )
     {
-        fprintf( stderr, "Error: Can not open database.\n" );
+        fprintf( stderr, "Error: open database failed.\n" );
         return 1;
     }
 
