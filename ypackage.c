@@ -2425,7 +2425,7 @@ YPackageReplaceFileList *packages_get_replace_file_list( YPackageManager *pm, YP
                     for( j = 0; j < pkg_file2->cnt; j++ )
                     {
                         replace_with = packages_get_package_file_attr( pkg_file2, j, "replace_with");
-                        if( replace_with && strlen( replace_with ) > 1 )
+                        if( replace_with && strlen( replace_with ) > 0 )
                             continue;
 
                         file = packages_get_package_file_attr( pkg_file2, j, "file");
@@ -4784,7 +4784,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         {
             replace_name = packages_get_package_file_attr( pkg_file2, i, "replace");
             replace_file = packages_get_package_file_attr( pkg_file2, i, "file");
-            if( replace_name && replace_file && strlen( replace_name ) > 1 )
+            if( replace_name && replace_file && strlen( replace_name ) > 0 )
             {
                 ret = db_exec( &db, "update world_file set replace=?, replace_with='' where name=? and file=?", replace_name, package_name, replace_file, NULL );  
                 if( ret != SQLITE_DONE )
@@ -4803,7 +4803,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         {
             replace_name = hash_table_list_get_data( replace_list->htl, i, "replace" );
             replace_file = hash_table_list_get_data( replace_list->htl, i, "file" );
-            if( replace_name && replace_file && strlen( replace_name ) > 1 )
+            if( replace_name && replace_file && strlen( replace_name ) > 0 )
             {
                 ret = db_exec( &db, "update world_file set replace=? where name=? and file=?", replace_name, package_name, replace_file, NULL );  
                 if( ret != SQLITE_DONE )
@@ -4930,9 +4930,9 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         {
             replace_name = hash_table_list_get_data( replace_list->htl, i, "replace" );
             replace_file = hash_table_list_get_data( replace_list->htl, i, "file" );
-            if( replace_name && replace_file && strlen( replace_name ) > 1 )
+            if( replace_name && replace_file && strlen( replace_name ) > 0 )
             {
-                tmp_file = util_strcat( replace_file, "~ypk~", replace_name, NULL );
+                tmp_file = util_strcat( replace_file, "~", replace_name, ".orig", NULL );
                 if( tmp_file )
                 {
                     rename( replace_file, tmp_file );
@@ -4998,9 +4998,9 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             }
 
             replace_with = packages_get_package_file_attr( pkg_file2, i, "replace_with");
-            if( replace_with && strlen( replace_with ) > 1 )
+            if( replace_with && strlen( replace_with ) > 0 )
             {
-                tmp_file = util_strcat( file_file, "~ypk~", package_name, NULL );
+                tmp_file = util_strcat( file_file, "~", package_name, ".orig", NULL );
                 if( tmp_file )
                 {
                     remove( tmp_file );
@@ -5223,9 +5223,9 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
         replace_with = packages_get_package_file_attr( pkg_file, i, "replace_with");
         if( file_path && file_type && ( file_type[0] == 'F' || file_type[0] == 'S' ) )
         {
-            if( replace_with && strlen( replace_with ) > 1 )
+            if( replace_with && strlen( replace_with ) > 0 )
             {
-                tmp_file = util_strcat( file_path, "~ypk~", package_name, NULL );
+                tmp_file = util_strcat( file_path, "~", package_name, ".orig", NULL );
                 if( tmp_file )
                 {
                     remove( tmp_file );
@@ -5236,9 +5236,9 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
             else
             {
                 remove( file_path );
-                if( replace && strlen( replace ) > 1 )
+                if( replace && strlen( replace ) > 0 )
                 {
-                    tmp_file = util_strcat( file_path, "~ypk~", replace, NULL );
+                    tmp_file = util_strcat( file_path, "~", replace, ".orig", NULL );
                     if( tmp_file )
                     {
                         rename( tmp_file, file_path );
@@ -5314,9 +5314,9 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
         replace_with = packages_get_package_file_attr( pkg_file, i, "replace_with");
         if( file_path && file_type && ( file_type[0] == 'F' || file_type[0] == 'S' ) )
         {
-            if( replace_with && strlen( replace_with ) > 1  )
+            if( replace_with && strlen( replace_with ) > 0  )
             {
-                if( replace && strlen( replace ) > 1  )
+                if( replace && strlen( replace ) > 0  )
                 {
                     db_exec( &db, "update world_file set replace=? where name=? and file=?", replace, replace_with, file_path, NULL );  
 
@@ -5329,7 +5329,7 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
             }
             else
             {
-                if( replace && strlen( replace ) > 1  )
+                if( replace && strlen( replace ) > 0  )
                     db_exec( &db, "update world_file set replace_with='' where name=? and file=?", replace, file_path, NULL );  
             }
 
