@@ -3572,7 +3572,7 @@ YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package
             cur_pkg->name[len] = 0;
             cur_pkg->version = NULL;
             cur_pkg->type = 2;
-            cur_pkg->size = atoi( size );
+            cur_pkg->size = size ? atoi( size ) : 0;
             cur_pkg->prev = list;
             list = cur_pkg;
         }
