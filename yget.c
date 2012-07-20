@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
  * Version: 0.1
- * Date: 2012.7.6
+ * Date: 2012.7.20
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -1192,7 +1192,7 @@ int main( int argc, char **argv )
                         }
 
                         printf( 
-                                "Name: %s\nVersion: %s\nArch: %s\nRepo: %s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nExec: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nDescription: %s\nHomepage: %s\n", 
+                                "Name: %s\nVersion: %s\nArch: %s\nRepo: %s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nExec: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nReplace: %s\nDescription: %s\nHomepage: %s\n", 
                                 package_name,
                                 pkg2 ? packages_get_package_attr( pkg2, "version") : packages_get_package_attr( pkg, "version"), 
                                 packages_get_package_attr( pkg, "arch"), 
@@ -1217,6 +1217,7 @@ int main( int argc, char **argv )
                                 util_null2empty( util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_bdepend"), ',', ' ' ) ),  //bdepend
                                 util_null2empty( util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_recommended"), ',', ' ' ) ),  //recommended
                                 util_null2empty( packages_get_package_data_attr( pkg_data, 0, "data_conflict") ),  //conflict
+                                util_null2empty( packages_get_package_data_attr( pkg_data, 0, "data_replace") ),  //replace
                                 util_null2empty( packages_get_package_attr( pkg, "description") ),
                                 util_null2empty( packages_get_package_attr( pkg, "homepage") )
                                 );

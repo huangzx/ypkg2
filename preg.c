@@ -115,6 +115,7 @@ char *preg_replace( char *pattern, char *replace, char *subject, int options, in
     alloc_len =  2 * subject_len + 1;
     result = (char *)malloc( alloc_len );
     tmp = (char *)malloc( alloc_len );
+    memset( result, 0, alloc_len );
     memset( tmp, 0, alloc_len );
 
     re = pcre_compile( pattern, options, &error, &erroffset, NULL );                

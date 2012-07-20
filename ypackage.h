@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.7.6
+ * Date: 2012.7.20
  */
 #ifndef PACKAGE_H
 #define PACKAGE_H
@@ -107,6 +107,13 @@ typedef struct {
     HashTableList         *htl;
 }YPackageFile;
 
+
+typedef struct {
+    int                 max_cnt;
+    int                 cur_cnt;
+    HashTableList         *htl;
+}YPackageReplaceFileList;
+
 typedef struct {
     int                     cnt;
     HashTableList         *htl;
@@ -206,6 +213,10 @@ YPackageFile *packages_get_package_file_from_ypk( char *ypk_path );
 char *packages_get_package_file_attr( YPackageFile *pkg_file, int index, char *key );
 char *packages_get_package_file_attr2( YPackageFile *pkg_file, int index, char *key );
 void packages_free_package_file( YPackageFile *pkg_file );
+
+
+YPackageReplaceFileList *packages_get_replace_file_list( YPackageManager *pm, YPackageData *pkg_data, YPackageFile *pkg_file );
+void packages_free_replace_file_list( YPackageReplaceFileList *list );
 
 /* get package list */
 YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, char *keys[], char *keywords[], int wildcards[], int installed );
