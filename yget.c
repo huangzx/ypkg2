@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
  * Version: 0.1
- * Date: 2012.7.20
+ * Date: 2012.7.24
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -244,7 +244,7 @@ failed:
 }
 
 
-int yget_install_package( YPackageManager *pm, char *package_name, char *version, int download_only, int upgrade_self )
+int yget_install_package( YPackageManager *pm, char *package_name, char *version, int download_only, int upgrade_self, int force )
 {
     int                 ret, return_code;
     char                *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
@@ -345,7 +345,7 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
         }
         else
         {
-            if( (ret = packages_install_local_package( pm, package_path, "/", 0, yget_progress_callback, pm )) )
+            if( (ret = packages_install_local_package( pm, package_path, "/", force, yget_progress_callback, pm )) )
             {
                 switch( ret )
                 {
@@ -401,9 +401,9 @@ return_point:
     return return_code;
 }
 
-int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int download_only )
+int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int download_only, int force )
 {
-    int                     ret;
+    int                     ret, return_code = 0;
     YPackageChangeList      *cur_pkg;
 
     if( !list )
@@ -415,7 +415,7 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
         cur_pkg = list;
         
         printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
-        ret = yget_install_package( pm, cur_pkg->name, cur_pkg->version, download_only, 0 );
+        ret = yget_install_package( pm, cur_pkg->name, cur_pkg->version, download_only, 0, force );
         if( !ret )
         {
             printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
@@ -423,18 +423,23 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
         else
         {
             printf( COLOR_RED "Error: installation failed.\n" COLOR_RESET );
-            return ret;
+            return_code = -1;
+
+            /*
+            if( force != 1 )
+                return ret;
+                */
         }
         list = list->prev;
     }
 
-    return 0;
+    return return_code;
 }
 
 
 int main( int argc, char **argv )
 {
-    int             c, force, init, download_only, simulation, reinstall, yes, unknown_arg, i, j, action, ret, err, len, size, install_size, pkg_count, upgrade_ypkg;
+    int             c, force, init, download_only, simulation, yes, unknown_arg, i, j, action, ret, err, len, size, install_size, pkg_count, upgrade_ypkg;
     char            confirm, *tmp, *package_name, *install_date, *build_date, *version,  *installed, *can_update, *repo;
 
     YPackageManager *pm;
@@ -456,7 +461,6 @@ int main( int argc, char **argv )
     force = 0;
     download_only = 0;
     simulation = 0;
-    reinstall = 0;
     yes = 0;
     unknown_arg = 0;
     upgrade_ypkg = 0;
@@ -713,7 +717,7 @@ int main( int argc, char **argv )
          * install package
          */
         case 'r':
-            reinstall = 1;
+            force ?: (force = 2);
 
         case 'I':
             if( argc < 3 )
@@ -757,7 +761,7 @@ int main( int argc, char **argv )
                     if( (pkg = packages_get_package( pm, package_name, 0 )) )
                     {
                         version = packages_get_package_attr( pkg, "version" );
-                        if( !force && !reinstall )
+                        if( !force )
                         {
                             if( packages_has_installed( pm, package_name, version ) )
                             {
@@ -855,11 +859,11 @@ int main( int argc, char **argv )
                         }
                         if( confirm != 'n' && confirm != 'N' )
                         {
-                            if( !yget_install_list( pm, depend_list, download_only ) || force )
+                            if( !yget_install_list( pm, depend_list, download_only, force ) || force )
                             {
-                                if( !yget_install_list( pm, install_list, download_only ) )
+                                if( !yget_install_list( pm, install_list, download_only, force ) )
                                 {
-                                    yget_install_list( pm, recommended_list, download_only );
+                                    yget_install_list( pm, recommended_list, download_only, force );
                                 }
                             }
                             else
@@ -918,7 +922,7 @@ int main( int argc, char **argv )
 
                         if( confirm == 'Y' || confirm == 'y' )
                         {
-                            yget_install_list( pm, install_list, 0 );
+                            yget_install_list( pm, install_list, 0, force );
                         }
 
                         packages_free_dev_list( install_list );
@@ -1403,18 +1407,18 @@ int main( int argc, char **argv )
                         {
                             if( upgrade_ypkg ) //upgrade self
                             {
-                                if( yget_install_package( pm, "ypkg2", NULL, 0, 1 ) != 0 )
+                                if( yget_install_package( pm, "ypkg2", NULL, 0, 1, 0 ) != 0 )
                                 {
                                     err = 3;
                                 }
                             }
                             else //normal upgrade
                             {
-                                if( !yget_install_list( pm, depend_list, download_only ) || force )
+                                if( !yget_install_list( pm, depend_list, download_only, force ) || force )
                                 {
-                                    if( !yget_install_list( pm, upgrade_list, download_only ) )
+                                    if( !yget_install_list( pm, upgrade_list, download_only, force ) )
                                     {
-                                        yget_install_list( pm, recommended_list, download_only );
+                                        yget_install_list( pm, recommended_list, download_only, force );
                                     }
                                     else
                                     {

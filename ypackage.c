@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.7.20
+ * Date: 2012.7.24
  */
 #define LIBYPK 1
 #include "ypackage.h"
@@ -4433,6 +4433,8 @@ int packages_exec_script( char *script, char *package_name, char *version, char 
 
 /*
  * packages_install_local_package
+ *
+ * args: force == 1 force; force == 2 reinstall 
  */
 int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *dest_dir, int force, ypk_progress_callback cb, void *cb_arg  )
 {
@@ -4532,13 +4534,13 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     {
         return -1;
     }
-    else if( ret < -1 && !force )
+    else if( ret < -1 && force != 1 )
     {
         return ret;
     }
     else if( ret == 1 )
     {
-        if( !force )
+        if( force != 1  )
             return 1;
 
         installed = 1;
@@ -4546,7 +4548,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     }
     else if( ret == 2 )
     {
-        if( !force )
+        if( !force ) //not force/reinstall
             return 1;
 
         installed = 1;
