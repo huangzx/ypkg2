@@ -1,6 +1,6 @@
 /* Libypk
  *
- * Copyright (c) 2011-2012 Ylmf OS
+ * Copyright (c) 2011-2012 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
@@ -1772,9 +1772,7 @@ YPackage *packages_get_package( YPackageManager *pm, char *name, int installed )
  */
 int packages_get_package_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data )
 {
-    char                tmp_ypk_desktop[] = "/tmp/ypkdesktop.XXXXXX"; //for ypki2
-
-    return packages_get_info_from_ypk( ypk_path, package, package_data, NULL, NULL, tmp_ypk_desktop );
+    return packages_get_info_from_ypk( ypk_path, package, package_data, NULL, NULL, NULL );
 }
 
 

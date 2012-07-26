@@ -2,7 +2,7 @@
 #
 # ypk control.xml generator
 #
-# Copyright (c) 2011-2012 Ylmf OS
+# Copyright (c) 2012 StartOS
 #
 # Written by: 0o0<0o0zzyz@gmail.com>
 # Version: 0.1
@@ -60,6 +60,7 @@ sub xml_content
             <depend></depend>              
             <bdepend></bdepend>
             <recommended></recommended>      
+            <replace></replace>      
             <conflict></conflict>      
         </data>                              
     </Package>

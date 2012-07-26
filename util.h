@@ -1,6 +1,6 @@
 /* Libypk utility functions
  *
- * Copyright (c) 2011-2012 Ylmf OS
+ * Copyright (c) 2012 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
