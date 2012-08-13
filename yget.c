@@ -1,11 +1,14 @@
 /* yget2
  *
- * Copyright (c) 2011-2012 StartOS
+ * Copyright (c) 2012 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
  * Version: 0.1
- * Date: 2012.7.24
+ * Date: 2012.8.13
  */
+
+#define LIBYPK 1
+
 #include <stdio.h>
 #include <getopt.h>
 #include <unistd.h>
@@ -397,6 +400,9 @@ return_point:
     if( target_url )
         free( target_url );
 
+    if( ypk_sha )
+        free( ypk_sha );
+
     packages_free_package( pkg );
     return return_code;
 }
@@ -404,16 +410,14 @@ return_point:
 int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int download_only, int force )
 {
     int                     ret, return_code = 0;
-    YPackageChangeList      *cur_pkg;
+    YPackageChangePackage   *cur_pkg;
 
     if( !list )
         return 0;
 
-
-    while( list )
+    cur_pkg = dlist_head_data( list );
+    while( cur_pkg )
     {
-        cur_pkg = list;
-        
         printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
         ret = yget_install_package( pm, cur_pkg->name, cur_pkg->version, download_only, 0, force );
         if( !ret )
@@ -430,7 +434,7 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
                 return ret;
                 */
         }
-        list = list->prev;
+        cur_pkg = dlist_next_data( list );
     }
 
     return return_code;
@@ -446,7 +450,8 @@ int main( int argc, char **argv )
     YPackage        *pkg, *pkg2;
     YPackageData    *pkg_data;
     YPackageList    *pkg_list;
-    YPackageChangeList     *depend_list, *recommended_list, *sub_list, *install_list, *remove_list, *upgrade_list, *cur_package, *cur_package2;       
+    YPackageChangePackage  *cur_package;       
+    YPackageChangeList     *depend_list, *recommended_list, *sub_list, *install_list, *remove_list, *upgrade_list;
 
     if( argc == 1 )
     {
@@ -576,16 +581,14 @@ int main( int argc, char **argv )
                 remove_list = NULL;
                 for( i = optind; i < argc; i++)
                 {
-                    package_name = argv[i];
-                    sub_list = packages_get_remove_list( pm, package_name, 0 );
 
+                    package_name = argv[i];
+
+                    sub_list = packages_get_remove_list( pm, package_name, 0 );
                     if( sub_list )
                     {
-                        cur_package = sub_list;
-                        while( cur_package->prev )
-                            cur_package = cur_package->prev;
-
-                        cur_package->prev = remove_list;
+                        dlist_cat( sub_list, remove_list );
+                        dlist_cleanup( remove_list, packages_free_change_package );
                         remove_list = sub_list;
                     }
                     else
@@ -600,24 +603,25 @@ int main( int argc, char **argv )
 
                 if( remove_list )
                 {
+                    packages_clist_remove_duplicate_item( remove_list );
                     printf( "Remove:" );
-                    cur_package = remove_list;
+                    cur_package = dlist_head_data( remove_list );
                     while( cur_package )
                     {
                         if( cur_package->type == 1 )
                             printf(" %s", cur_package->name );
 
-                        cur_package = cur_package->prev;
+                        cur_package = dlist_next_data( remove_list );;
                     }
 
                     printf( "\nAuto-remove:" );
-                    cur_package = remove_list;
+                    cur_package = dlist_head_data( remove_list );
                     while( cur_package )
                     {
                         if( cur_package->type == 2 )
                             printf(" %s", cur_package->name );
 
-                        cur_package = cur_package->prev;
+                        cur_package = dlist_next_data( remove_list );;
                     }
 
                     if( yes )
@@ -664,15 +668,17 @@ int main( int argc, char **argv )
                             {
                                 if( packages_check_depend( pm, pkg_data, NULL, 0 ) == -1 )
                                 {
-                                    cur_package =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
+                                    if( !remove_list )
+                                        remove_list = dlist_init();
+
+                                    cur_package =  (YPackageChangePackage *)malloc( sizeof( YPackageChangePackage ) );
                                     len = strlen( package_name );
                                     cur_package->name = (char *)malloc( len + 1 );
                                     strncpy( cur_package->name, package_name, len );
                                     cur_package->name[len] = 0;
                                     cur_package->version = NULL;
                                     cur_package->type = 1;
-                                    cur_package->prev = remove_list;
-                                    remove_list = cur_package;
+                                    dlist_append( remove_list, cur_package );
                                 }
                                 packages_free_package_data( pkg_data );
                             }
@@ -684,13 +690,13 @@ int main( int argc, char **argv )
                 if( remove_list )
                 {
                     printf( "Auto-remove:" );
-                    cur_package = remove_list;
+                    cur_package = dlist_head_data( remove_list );
                     while( cur_package )
                     {
                         if( cur_package->type == 1 )
                             printf(" %s", cur_package->name );
 
-                        cur_package = cur_package->prev;
+                        cur_package = dlist_next_data( remove_list );
                     }
 
                     if( yes )
@@ -766,6 +772,7 @@ int main( int argc, char **argv )
                             if( packages_has_installed( pm, package_name, version ) )
                             {
                                 printf( "%s_%s is already the newest version.\n", package_name, version );
+                                packages_free_package( pkg );
                                 continue;
                             }
                         }
@@ -775,37 +782,24 @@ int main( int argc, char **argv )
                         printf( "Error: %s not found.\n",  package_name );
                         continue;
                     }
+                    if( !install_list )
+                        install_list = dlist_init();
 
-
-                    cur_package =  (YPackageChangeList *)malloc( sizeof( YPackageChangeList ) );
-                    len = strlen( package_name );
-                    cur_package->name = (char *)malloc( len + 1 );
-                    strncpy( cur_package->name, package_name, len );
-                    cur_package->name[len] = 0;
-                    cur_package->version = util_strcat( version, NULL );
-                    cur_package->type = 1;
-                    cur_package->prev = install_list;
-                    install_list = cur_package;
-
+                    packages_clist_append( install_list, package_name, version, 0, 1 );
 
                     sub_list = packages_get_depend_list( pm, package_name, version );
                     if( sub_list )
                     {
-                        cur_package = sub_list;
-                        while( cur_package->prev )
-                            cur_package = cur_package->prev;
-                        cur_package->prev = depend_list;
+                        dlist_cat( sub_list, depend_list );
+                        dlist_cleanup( depend_list, packages_free_change_package );
                         depend_list = sub_list;
                     }
-
 
                     sub_list = packages_get_recommended_list( pm, package_name, version );
                     if( sub_list )
                     {
-                        cur_package = sub_list;
-                        while( cur_package->prev )
-                            cur_package = cur_package->prev;
-                        cur_package->prev = recommended_list;
+                        dlist_cat( sub_list, recommended_list );
+                        dlist_cleanup( recommended_list, packages_free_change_package );
                         recommended_list = sub_list;
                     }
 
@@ -815,33 +809,37 @@ int main( int argc, char **argv )
 
                 if( install_list )
                 {
-                    printf( "Install: %s", install_list->name );
-                    cur_package = install_list->prev;
+                    cur_package = dlist_head_data( install_list );
+                    printf( "Install: %s", cur_package->name );
+
+                    cur_package = dlist_next_data( install_list );
                     while( cur_package )
                     {
                         printf(" %s ", cur_package->name );
-                        cur_package = cur_package->prev;
+                        cur_package = dlist_next_data( install_list );
                     }
 
                     if( depend_list )
                     {
-                        printf( "\nAuto-install: %s", depend_list->name );
-                        cur_package = depend_list->prev;
+                        cur_package = dlist_head_data( depend_list );
+                        printf( "\nAuto-install: %s", cur_package->name );
+                        cur_package = dlist_next_data( depend_list );
                         while( cur_package )
                         {
                             printf(" %s ", cur_package->name );
-                            cur_package = cur_package->prev;
+                            cur_package = dlist_next_data( depend_list );
                         }
                     }
 
                     if( recommended_list )
                     {
-                        printf( "\nRecommended-install: %s", recommended_list->name );
-                        cur_package = recommended_list->prev;
+                        cur_package = dlist_head_data( recommended_list );
+                        printf( "\nRecommended-install: %s", cur_package->name );
+                        cur_package = dlist_next_data( recommended_list );
                         while( cur_package )
                         {
                             printf(" %s ", cur_package->name );
-                            cur_package = cur_package->prev;
+                            cur_package = dlist_next_data( recommended_list );
                         }
                     }
                     putchar( '\n' );
@@ -873,6 +871,9 @@ int main( int argc, char **argv )
                             err = 3;
                     }
 
+                    if( pkg )
+                        packages_free_package( pkg );
+
                     packages_free_install_list( install_list );
                     packages_free_install_list( depend_list );
                     packages_free_install_list( recommended_list );
@@ -902,12 +903,13 @@ int main( int argc, char **argv )
 
                     if( install_list )
                     {
-                        printf( "Install list: %s", install_list->name );
-                        cur_package = install_list->prev;
+                        cur_package = dlist_head_data( install_list );
+                        printf( "Install list: %s", cur_package->name );
+                        cur_package = dlist_next_data( install_list );
                         while( cur_package )
                         {
                             printf(" %s ", cur_package->name );
-                            cur_package = cur_package->prev;
+                            cur_package = dlist_next_data( install_list );
                         }
 
                         if( yes )
@@ -1259,6 +1261,7 @@ int main( int argc, char **argv )
                 package_name = argv[optind];
                 if( (pkg = packages_get_package( pm, package_name, 0 )) )
                 {
+                    pkg2 = NULL;
                     installed = packages_get_package_attr( pkg, "installed" );
                     can_update = packages_get_package_attr( pkg, "can_update" );
                     if( installed[0] != '0' )
@@ -1289,6 +1292,9 @@ int main( int argc, char **argv )
                             packages_get_package_attr( pkg, "version"), 
                             packages_get_package_attr( pkg, "description") 
                             );
+
+                    packages_free_package( pkg );
+                    packages_free_package( pkg2 );
                 }
                 else
                 {
@@ -1316,7 +1322,9 @@ int main( int argc, char **argv )
 
                     if( upgrade_list )
                     {
-                        cur_package = upgrade_list;
+                        //cur_package = upgrade_list;
+                        cur_package = dlist_head_data( upgrade_list );
+
                         while( cur_package )
                         {
                             if( !strcmp( cur_package->name, "ypkg2" ) )
@@ -1325,70 +1333,110 @@ int main( int argc, char **argv )
                             }
 
                             sub_list = packages_get_depend_list( pm, cur_package->name, cur_package->version );
+
                             if( sub_list )
                             {
-                                cur_package2 = sub_list;
-                                while( cur_package2->prev )
-                                    cur_package2 = cur_package2->prev;
-                                cur_package2->prev = depend_list;
-                                depend_list = sub_list;
+                                if( !depend_list )
+                                {
+                                    depend_list = sub_list;
+                                }
+                                else
+                                {
+                                    dlist_cat( sub_list, depend_list );
+                                    dlist_cleanup( depend_list, packages_free_change_package );
+                                    depend_list = sub_list;
+                                }
                             }
 
                             sub_list = packages_get_recommended_list( pm, cur_package->name, cur_package->version );
                             if( sub_list )
                             {
-                                cur_package2 = sub_list;
-                                while( cur_package2->prev )
-                                    cur_package2 = cur_package2->prev;
-                                cur_package2->prev = recommended_list;
-                                recommended_list = sub_list;
+                                if( !recommended_list )
+                                {
+                                    recommended_list = sub_list;
+                                }
+                                else
+                                {
+                                    dlist_cat( sub_list, recommended_list );
+                                    dlist_cleanup( recommended_list, packages_free_change_package );
+                                    recommended_list = sub_list;
+                                }
                             }
 
-                            cur_package = cur_package->prev;
+                            cur_package = dlist_next_data( upgrade_list );
                         }
+
+
                         packages_clist_remove_duplicate_item( depend_list );
                         packages_clist_remove_duplicate_item( recommended_list );
 
+                        cur_package = dlist_head_data( depend_list );
+                        while( cur_package )
+                        {
+                            if( ( i = dlist_search( upgrade_list, cur_package, packages_clist_package_cmp ) ) > 0 )
+                            {
+                                dlist_remove( upgrade_list, i, packages_free_change_package );
+                            }
+
+                            if( ( i = dlist_search( recommended_list, cur_package, packages_clist_package_cmp ) ) > 0 )
+                            {
+                                dlist_remove( recommended_list, i, packages_free_change_package );
+                            }
+
+                            cur_package = dlist_next_data( depend_list );
+                        }
+
+                        cur_package = dlist_head_data( upgrade_list );
+                        while( cur_package )
+                        {
+                            if( ( i = dlist_search( recommended_list, cur_package, packages_clist_package_cmp ) ) > 0 )
+                            {
+                                dlist_remove( recommended_list, i, packages_free_change_package );
+                            }
+
+                            cur_package = dlist_next_data( upgrade_list );
+                        }
+
 
                         printf( "Upgrade:" );
-                        cur_package = upgrade_list;
+                        cur_package = dlist_head_data( upgrade_list );
                         while( cur_package )
                         {
                             if( cur_package->type == 4 )
                                 printf(" %s", cur_package->name );
-                            cur_package = cur_package->prev;
+                            cur_package = dlist_next_data( upgrade_list );
                         }
 
                         printf( "\nDowngrade:" );
-                        cur_package = upgrade_list;
+                        cur_package = dlist_head_data( upgrade_list );
                         while( cur_package )
                         {
                             if( cur_package->type == 5 )
                                 printf(" %s", cur_package->name );
-                            cur_package = cur_package->prev;
+                            cur_package = dlist_next_data( upgrade_list );
                         }
                         putchar( '\n' );
 
 
                         if( depend_list )
                         {
-                            printf( "\nAuto-install: %s", depend_list->name );
-                            cur_package = depend_list->prev;
+                            cur_package = dlist_head_data( depend_list );
+                            printf( "\nAuto-install:" );
                             while( cur_package )
                             {
                                 printf(" %s ", cur_package->name );
-                                cur_package = cur_package->prev;
+                                cur_package = dlist_next_data( depend_list );
                             }
                         }
 
                         if( recommended_list )
                         {
-                            printf( "\nRecommended-install: %s", recommended_list->name );
-                            cur_package = recommended_list->prev;
+                            printf( "\nRecommended-install:" );
+                            cur_package = dlist_head_data( recommended_list );
                             while( cur_package )
                             {
                                 printf(" %s ", cur_package->name );
-                                cur_package = cur_package->prev;
+                                cur_package = dlist_next_data( recommended_list );
                             }
                         }
                         putchar( '\n' );

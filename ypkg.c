@@ -1,10 +1,10 @@
 /* ypkg2
  *
- * Copyright (c) 2011-2012 StartOS
+ * Copyright (c) 2012 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
  * Version: 0.1
- * Date: 2012.3.30
+ * Date: 2012.8.13
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -448,16 +448,20 @@ int main( int argc, char **argv )
                             if( file_type[0] == 'F' ||  file_type[0] == 'D' || file_type[0] == 'S' )
                                 printf( "%s|%10s| %s\n",  file_type, packages_get_package_file_attr( pkg_file, j, "size"), packages_get_package_file_attr( pkg_file, j, "file") );
                         }
-                        packages_free_package_file( pkg_file );
 
                         printf( "\nFile: %d, Dir: %d, Link: %d, Size: %dK\n", pkg_file->cnt_file,  pkg_file->cnt_dir, pkg_file->cnt_link, pkg_file->size );
                         printf( COLOR_YELLO "Contents of %s %s\n" COLOR_RESET, package_name, version );
+
+                        packages_free_package_file( pkg_file );
                     }
                     else if( !err )
                     {
                         printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
                     }
                 }
+
+                if( pkg )
+                    packages_free_package( pkg );
 
                 if( pm )
                     packages_manager_cleanup2( pm );

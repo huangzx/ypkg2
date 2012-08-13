@@ -1,6 +1,6 @@
 /* Libypk
  *
- * Copyright (c) 2011-2012 StartOS
+ * Copyright (c) 2012 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
@@ -53,6 +53,18 @@ typedef struct {
     HashData           *data;
     HashData           *cur_data;
 }HashTableList;
+
+typedef struct _DListNode {
+    struct _DListNode        *prev;
+    struct _DListNode        *next;
+    void                     *data;
+}DListNode;
+
+typedef struct _DList {
+    int            cnt;
+    DListNode      *head;
+    DListNode      *tail;
+}DList;
 #endif
 
 #define CONFIG_FILE "/etc/yget.conf"
@@ -119,14 +131,16 @@ typedef struct {
     HashTableList         *htl;
 }YPackageList;
 
-typedef struct _YPackageChangeList {
+
+
+typedef struct _YPackageChangePackage {
     char                    *name;
     char                    *version;
     int                     size;
     int                     type; //self:1 ,depend:2, recommended:3, upgrade: 4, downgrade: 5
-    struct _YPackageChangeList    *prev;
-}YPackageChangeList;
+}YPackageChangePackage;
 
+typedef DList YPackageChangeList;
 
 /*
 typedef int (*ypk_download_callback)( void *cb_arg, double dltotal, double dlnow );
@@ -266,37 +280,38 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
 int packages_install_package( YPackageManager *pm, char *package_name, char *version, ypk_progress_callback cb, void *cb_arg  );
 //int packages_install_history_package( YPackageManager *pm, char *package_name, char *version );
 
-YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *package_name, char *version );
-
-YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name,char *version );
-
-YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name, char *version );
-
-YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name, char *version );
-
+void packages_free_change_package( void *node );
+int packages_clist_package_cmp( void *pkg1, void *pkg2 );
+int packages_clist_append( YPackageChangeList *list, char *name, char *version, int size, int type );
 YPackageChangeList *packages_clist_remove_duplicate_item( YPackageChangeList *change_list );
-YPackageChangeList *packages_clist_append( YPackageChangeList *list_s, YPackageChangeList *list_d );
+
+
+YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *package_name, char *version );
+YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name,char *version );
+YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name, char *version );
+YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name, char *version );
 
 void packages_free_install_list( YPackageChangeList *list );
 
 
 YPackageChangeList *packages_get_dev_list( YPackageManager *pm, char *package_name, char *version );
-
 void packages_free_dev_list( YPackageChangeList *list );
+
 int packages_install_list( YPackageManager *pm, YPackageChangeList *list, ypk_progress_callback cb, void *cb_arg  );
 
 
 int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progress_callback cb, void *cb_arg  );
 YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package_name, int depth );
-int packages_remove_list( YPackageManager *pm, YPackageChangeList *list, ypk_progress_callback cb, void *cb_arg  );
 void packages_free_remove_list( YPackageChangeList *list );
+int packages_remove_list( YPackageManager *pm, YPackageChangeList *list, ypk_progress_callback cb, void *cb_arg  );
+
 
 YPackageChangeList *packages_get_upgrade_list( YPackageManager *pm );
 int packages_upgrade_list( YPackageManager *pm, YPackageChangeList *list, ypk_progress_callback cb, void *cb_arg   );
 void packages_free_upgrade_list( YPackageChangeList *list );
 
+//auto remove
 int packages_cleanup_package( YPackageManager *pm );
-
 
 /*
  * log

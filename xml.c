@@ -249,6 +249,7 @@ int reader_fetch_fields( XMLReaderHandle *handle, int node_depth, char *prefix, 
             {
                 strcat( full_key, "|" );
                 strncat( full_key, (char *)attr_value, XML_HASH_FULL_KEY_LEN - strlen( full_key ) );
+                xmlFree( attr_value );
             }
         }
     }

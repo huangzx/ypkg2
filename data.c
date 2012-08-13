@@ -1,6 +1,16 @@
+/* Libypk data structure functions
+ *
+ * Copyright (c) 2012 StartOS
+ *
+ * Written by: 0o0<0o0zzyz@gmail.com>
+ * Version: 0.1
+ * Date: 2012.8.13
+ */
 #include "data.h"
 
-
+/*
+ * hash table
+ */
 HashTable *hash_table_init()
 {
     int                 buf_size;
@@ -336,3 +346,387 @@ HashData *hash_table_malloc_data( HashData *cur_data, int new_size )
     return new_data;
 }
 
+//Double linked list
+DList *dlist_init()
+{
+    DList          *list;
+
+    list = (DList *)malloc( sizeof( DList ) );
+    if( !list )
+        return NULL;
+
+    list->cnt = 0;
+    list->head = NULL;
+    list->tail = NULL;
+    list->cur = NULL;
+
+    return list;
+}
+
+int dlist_append( DList *list, void *data )
+{
+    DListNode   *new;
+
+    if( !list || !data )
+        return -1;
+
+    new = (DListNode *)malloc( sizeof( DListNode ) );
+    if( !new )
+        return -2;
+
+    new->data = data;
+    new->prev = list->tail;
+    new->next = NULL;
+    if( list->tail )
+        list->tail->next = new;
+    list->tail = new;
+    if( !list->head )
+        list->head = new;
+
+    list->cnt++;
+
+    return 0;
+}
+
+int dlist_insert( DList *list, int index, void *data )
+{
+    int         i;
+    DListNode   *new, *cur;
+
+    if( !list || index < 1 || index > list->cnt + 1 )
+        return -1;
+
+    new = (DListNode *)malloc( sizeof( DListNode ) );
+    if( !new )
+        return -2;
+
+
+    i = 1;
+    cur = list->head;
+    while( i < index && cur )
+    {
+        cur = cur->next;
+        i++;
+    }
+
+    new->data = data;
+
+    if( cur )
+    {
+        new->prev = cur->prev;
+        new->next = cur;
+
+        if( cur->prev )
+            cur->prev->next = new;
+
+        cur->prev = new;
+    }
+    else
+    {
+        new->next = NULL;
+        new->prev = list->tail ? list->tail : NULL;
+    }
+
+    if( index == 1 )
+        list->head = new;
+
+    if( index == list->cnt + 1 )
+    {
+        if( list->tail )
+            list->tail->next = new;
+
+        list->tail = new;
+    }
+
+    list->cnt++;
+
+    return 0;
+}
+
+DListNode *dlist_get( DList *list, int index )
+{
+    int         i;
+
+    if( !list || index < 1 || index > list->cnt )
+        return NULL;
+
+    i = 1;
+    list->cur = list->head;
+    while( i < index && list->cur )
+    {
+        list->cur = list->cur->next;
+        i++;
+    }
+
+    return list->cur;
+}
+
+DListNode *dlist_next( DList *list )
+{
+    if( !list || !list->cur )
+        return NULL;
+
+    list->cur = list->cur->next;
+    return list->cur;
+}
+
+DListNode *dlist_prev( DList *list )
+{
+    if( !list || !list->cur )
+        return NULL;
+
+    list->cur = list->cur->prev;
+    return list->cur;
+}
+
+DListNode *dlist_head( DList *list )
+{
+    if( !list )
+        return NULL;
+
+    list->cur = list->head;
+    return list->cur;
+}
+
+DListNode *dlist_tail( DList *list )
+{
+    if( !list )
+        return NULL;
+
+    list->cur = list->tail;
+    return list->cur;
+}
+
+void *dlist_get_data( DList *list, int index )
+{
+    DListNode   *tmp;
+
+    tmp = dlist_get( list, index );
+    return tmp ? tmp->data : NULL;
+}
+
+void *dlist_head_data( DList *list )
+{
+    DListNode   *tmp;
+
+    tmp = dlist_head( list );
+    return tmp ? tmp->data : NULL;
+}
+
+void *dlist_tail_data( DList *list )
+{
+    DListNode   *tmp;
+
+    tmp = dlist_tail( list );
+    return tmp ? tmp->data : NULL;
+}
+
+void *dlist_next_data( DList *list )
+{
+    DListNode   *tmp;
+
+    tmp = dlist_next( list );
+    return tmp ? tmp->data : NULL;
+}
+
+void *dlist_prev_data( DList *list )
+{
+    DListNode   *tmp;
+
+    tmp = dlist_prev( list );
+    return tmp ? tmp->data : NULL;
+}
+
+int dlist_remove( DList *list, int index, void (*node_cleanup)(void *) )
+{
+    int         i;
+    DListNode   *cur;
+
+    if( !list || index < 1 || index > list->cnt )
+        return -1;
+
+    i = 1;
+    cur = list->head;
+    while( i < index && cur )
+    {
+        cur = cur->next;
+        i++;
+    }
+
+    if( cur->prev )
+        cur->prev->next = cur->next;
+
+    if( cur->next )
+        cur->next->prev = cur->prev;
+
+    if( index == 1 )
+        list->head = cur->next;
+
+    if( index == list->cnt )
+        list->tail = cur->prev;
+
+    if( node_cleanup )
+        node_cleanup( cur->data );
+
+    free( cur );
+
+    list->cnt--;
+
+    return 0;
+}
+
+int dlist_remove2( DList *list, DListNode *node, void (*node_cleanup)(void *) )
+{
+    DListNode   *cur;
+
+    if( !list || !node )
+        return -1;
+
+    cur = list->head;
+    while( cur )
+    {
+        if( cur == node )
+            break;
+
+        cur = cur->next;
+    }
+
+    if( cur )
+    {
+        if( cur->prev )
+            cur->prev->next = cur->next;
+
+        if( cur->next )
+            cur->next->prev = cur->prev;
+
+        if( cur == list->head )
+            list->head = cur->next;
+
+        if( cur == list->tail )
+            list->tail = cur->prev;
+
+        if( node_cleanup )
+            node_cleanup( cur->data );
+
+        free( cur );
+        list->cnt--;
+    }
+
+    return 0;
+}
+
+int dlist_search( DList *list, void *data,  int (*node_cmp_func)(void *, void *) )
+{
+    int         i;
+    DListNode   *cur;
+
+    if( !list || !node_cmp_func )
+        return -1;
+    
+    i = 1;
+    cur = list->head;
+    while( cur )
+    {
+        if( !node_cmp_func( cur->data, data ) )
+            return i;
+
+        cur = cur->next;
+        i++;
+    }
+
+    return 0;
+}
+
+DListNode *dlist_search2( DList *list, void *data,  int (*node_cmp_func)(void *, void *) )
+{
+    DListNode   *cur;
+
+    if( !list || !node_cmp_func )
+        return NULL;
+    
+    cur = list->head;
+    while( cur )
+    {
+        if( !node_cmp_func( cur->data, data ) )
+            return cur;
+
+        cur = cur->next;
+    }
+
+    return NULL;
+}
+
+void dlist_cleanup( DList *list, void (*node_cleanup)(void *) )
+{
+    DListNode *cur, *tmp;
+
+    if( list )
+    {
+        cur = list->head;
+        while( cur )
+        {
+            tmp = cur;
+            cur = cur->next;
+
+            if( tmp->next )
+                tmp->next->prev = tmp->prev;
+
+            if( tmp->prev )
+                tmp->prev->next = tmp->next;
+
+            if( node_cleanup )
+                node_cleanup( tmp->data );
+
+            free( tmp );
+        }
+
+        free( list );
+        list = NULL;
+    }
+}
+
+DList *dlist_cat( DList *lista, DList *listb )
+{
+    if( !lista || !listb )
+        return NULL;
+
+    if( lista->cnt == 0 || listb->cnt == 0 )
+        return NULL;
+
+    lista->tail->next = listb->head;
+    listb->head->prev = lista->tail;
+
+    lista->tail = listb->tail;
+    lista->cnt += listb->cnt;
+
+    listb->head = listb->tail = NULL;
+    listb->cnt = 0;
+
+    return lista;
+}
+
+DList *dlist_strip_duplicate( DList *list, int (*node_cmp_func)(void *, void *), void (*node_cleanup)(void *) )
+{
+    DListNode *src, *dest, *tmp;
+
+    if( !list || !node_cmp_func )
+        return NULL;
+
+    src = list->head;
+    while( src )
+    {
+        dest = src->next;
+        while( dest )
+        {
+            tmp = dest;
+            dest = dest->next;
+            if( !node_cmp_func( src->data, tmp->data ) )
+            {
+                dlist_remove2( list, tmp, node_cleanup );
+            }
+        }
+        src = src->next;
+    }
+
+    return list;
+}
