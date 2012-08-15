@@ -832,11 +832,10 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
  */
 YPackageChangeList *packages_get_upgrade_list( YPackageManager *pm )
 {    
-    int             pkg_count, len, i, wildcards[] = { 2, 0 };
+    int             pkg_count, i, wildcards[] = { 2, 0 };
     char            *package_name, *version, *can_upgrade;
     char            *keys[] = { "can_update", NULL }, *keywords[] = { "%1", NULL };
     YPackageList    *pkg_list;
-    YPackageChangePackage  *cur_pkg;
     YPackageChangeList     *list;
 
     list = NULL;
@@ -854,34 +853,16 @@ YPackageChangeList *packages_get_upgrade_list( YPackageManager *pm )
                 package_name = packages_get_list_attr( pkg_list, i, "name" );
                 version = packages_get_list_attr( pkg_list, i, "version" );
                 can_upgrade = packages_get_list_attr( pkg_list, i, "can_update" );
-                cur_pkg =  (YPackageChangePackage *)malloc( sizeof( YPackageChangePackage ) );
-                len = strlen( package_name );
-                cur_pkg->name = (char *)malloc( len + 1 );
-                strncpy( cur_pkg->name, package_name, len );
-                cur_pkg->name[len] = 0;
-
-                if( version)
-                {
-                    len = strlen( version );
-                    cur_pkg->version = (char *)malloc( len + 1 );
-                    strncpy( cur_pkg->version, version, len );
-                    cur_pkg->version[len] = 0;
-                }
-                else
-                {
-                    version = NULL;
-                }
 
                 if( can_upgrade && can_upgrade[0] )
                 {
-                    cur_pkg->type = can_upgrade[0] == '1' ? 4 : 5;
+                    packages_clist_append( list, package_name, version, 0, can_upgrade[0] == '1' ? 4 : 5 );
                 }
                 else
                 {
-                    cur_pkg->type = 4;
+                    packages_clist_append( list, package_name, version, 0, 4 );
                 }
 
-                dlist_append( list, (void *)cur_pkg );
             }
             packages_free_list( pkg_list );
         }
@@ -3078,10 +3059,9 @@ exception_handler:
 
 YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name, char *version )
 {
-    int             i, len;
+    int             i;
     char            *token, *saveptr, *depend, *version2, *tmp, *tmp2;
     YPackageData    *pkg_data;
-    YPackageChangePackage *cur_pkg;
     YPackageChangeList    *list, *sub_list;
 
     /*
@@ -3122,28 +3102,9 @@ YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package
                         if( !list )
                             list = dlist_init();
 
-                        cur_pkg =  (YPackageChangePackage *)malloc( sizeof( YPackageChangePackage ) );
-                        len = strlen( tmp );
-                        cur_pkg->name = (char *)malloc( len + 1 );
-                        strncpy( cur_pkg->name, tmp, len );
-                        cur_pkg->name[len] = 0;
-                        
-                        if( version2 )
-                        {
-                            len = strlen( version2 );
-                            cur_pkg->version = (char *)malloc( len + 1 );
-                            strncpy( cur_pkg->version, version2, len );
-                            cur_pkg->version[len] = 0;
-                        }
-                        else
-                        {
-                            cur_pkg->version = NULL;
-                        }
+                        packages_clist_append( list, tmp, version2, 0, 2 );
 
-                        cur_pkg->type = 2;
-                        dlist_append( list, cur_pkg );
-
-                        sub_list = packages_get_depend_list( pm, cur_pkg->name, cur_pkg->version );
+                        sub_list = packages_get_depend_list( pm, tmp, version2 );
                         if( sub_list )
                         {
                             dlist_cat( sub_list, list );
@@ -3168,10 +3129,9 @@ YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package
 
 YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name, char *version )
 {
-    int             i, len;
+    int             i;
     char            *token, *saveptr, *recommended, *version2, *tmp, *tmp2;
     YPackageData    *pkg_data;
-    YPackageChangePackage *cur_pkg;
     YPackageChangeList    *list, *sub_list;
 
     /*
@@ -3212,29 +3172,9 @@ YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *pa
                         if( !list )
                             list = dlist_init();
 
-                        cur_pkg =  (YPackageChangePackage *)malloc( sizeof( YPackageChangePackage ) );
-                        len = strlen( tmp );
-                        cur_pkg->name = (char *)malloc( len + 1 );
-                        strncpy( cur_pkg->name, tmp, len );
-                        cur_pkg->name[len] = 0;
+                        packages_clist_append( list, tmp, version2, 0, 3 );
 
-                        if( version2 )
-                        {
-                            len = strlen( version2 );
-                            cur_pkg->version = (char *)malloc( len + 1 );
-                            strncpy( cur_pkg->version, version2, len );
-                            cur_pkg->version[len] = 0;
-                        }
-                        else
-                        {
-                            cur_pkg->version = NULL;
-                        }
-
-                        cur_pkg->type = 3;
-                        dlist_append( list, cur_pkg );
-
-
-                        sub_list = packages_get_recommended_list( pm, cur_pkg->name, cur_pkg->version );
+                        sub_list = packages_get_recommended_list( pm, tmp, version2 );
                         if( sub_list )
                         {
                             dlist_cat( sub_list, list );
@@ -3318,10 +3258,9 @@ YPackageChangeList *packages_clist_remove_duplicate_item( YPackageChangeList *li
 
 YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name, char *version )
 {
-    int                     i, len;
+    int                     i;
     char                    *token, *version2, *saveptr, *depend, *dev, *bdepend, *tmp;
     YPackageData            *pkg_data;
-    YPackageChangePackage   *cur_pkg;
     YPackageChangeList      *list;
 
     list = NULL;
@@ -3334,8 +3273,6 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
             depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
             if( depend )
             {
-                if( !list )
-                    list = dlist_init();
 
                 token = strtok_r( depend, " ,", &saveptr );
                 while( token )
@@ -3358,14 +3295,10 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
 
                     if( !packages_has_installed( pm, dev, NULL ) )
                     {
-                        cur_pkg =  (YPackageChangePackage *)malloc( sizeof( YPackageChangePackage ) );
-                        len = strlen( dev );
-                        cur_pkg->name = (char *)malloc( len + 1 );
-                        strncpy( cur_pkg->name, dev, len );
-                        cur_pkg->name[len] = 0;
-                        cur_pkg->version = NULL;
-                        cur_pkg->type = 2;
-                        dlist_append( list, cur_pkg );
+                        if( !list )
+                            list = dlist_init();
+
+                        packages_clist_append( list, dev, NULL, 0, 2 );
                     }
                     free( dev );
                     token = strtok_r( NULL, " ,", &saveptr );
@@ -3375,22 +3308,15 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
             bdepend = packages_get_package_data_attr( pkg_data, i, "data_bdepend");
             if( bdepend )
             {
-                if( !list )
-                    list = dlist_init();
-
                 token = strtok_r( bdepend, " ,", &saveptr );
                 while( token )
                 {
                     if( !packages_has_installed( pm, token, NULL ) )
                     {
-                        cur_pkg =  (YPackageChangePackage *)malloc( sizeof( YPackageChangePackage ) );
-                        len = strlen( token );
-                        cur_pkg->name = (char *)malloc( len + 1 );
-                        strncpy( cur_pkg->name, token, len );
-                        cur_pkg->name[len] = 0;
-                        cur_pkg->version = NULL;
-                        cur_pkg->type = 2;
-                        dlist_append( list, cur_pkg );
+                        if( !list )
+                            list = dlist_init();
+
+                        packages_clist_append( list, token, NULL, 0, 2 );
                     }
                     token = strtok_r( NULL, " ,", &saveptr );
                 }
@@ -3406,14 +3332,7 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
         if( !list )
             list = dlist_init();
 
-        cur_pkg =  (YPackageChangePackage *)malloc( sizeof( YPackageChangePackage ) );
-        len = 15;
-        cur_pkg->name = (char *)malloc( len + 1 );
-        strncpy( cur_pkg->name, "build-essential", len );
-        cur_pkg->name[len] = 0;
-        cur_pkg->version = NULL;
-        cur_pkg->type = 2;
-        dlist_append( list, cur_pkg );
+        packages_clist_append( list, "build-essential", NULL, 0, 2 );
     }
 
     packages_clist_remove_duplicate_item( list );
@@ -3450,8 +3369,6 @@ void packages_free_change_list( YPackageChangeList *list )
  */
 YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *package_name, char *version )
 {
-    int             len;
-    YPackageChangePackage *cur_pkg;
     YPackageChangeList    *list, *depend;
 
     if( packages_has_installed( pm, package_name, version ) )
@@ -3466,27 +3383,8 @@ YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *packag
     {
         list = depend;
     }
-    
-    cur_pkg =  (YPackageChangePackage *)malloc( sizeof( YPackageChangePackage ) );
-    len = strlen( package_name );
-    cur_pkg->name = (char *)malloc( len + 1 );
-    strncpy( cur_pkg->name, package_name, len );
-    cur_pkg->name[len] = 0;
 
-    if( version )
-    {
-        len = strlen( version );
-        cur_pkg->version = (char *)malloc( len + 1 );
-        strncpy( cur_pkg->version, version, len );
-        cur_pkg->version[len] = 0;
-    }
-    else
-    {
-        cur_pkg->version = NULL;
-    }
-
-    cur_pkg->type = 1;
-    dlist_append( list, cur_pkg );
+    packages_clist_append( list, package_name, version, 0, 1 );
 
     depend = packages_get_recommended_list( pm, package_name, version );
     if( depend )
