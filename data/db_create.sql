@@ -40,3 +40,5 @@ CREATE INDEX universe_language_language ON universe_language ( language );
 CREATE INDEX world_data_name ON world_data ( name );
 CREATE INDEX world_language_language ON world_language ( language );
 CREATE INDEX world_language_name ON world_language ( name );
+CREATE INDEX world_file_name ON world_file ( name );
+CREATE INDEX world_file_file ON world_file ( file );

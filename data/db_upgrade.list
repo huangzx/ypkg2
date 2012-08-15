@@ -17,3 +17,8 @@ ALTER TABLE universe_data ADD COLUMN data_replace TEXT;
 ALTER TABLE universe_history_data ADD COLUMN data_replace TEXT;
 ALTER TABLE universe_testing_data ADD COLUMN data_replace TEXT;
 End
+
+Version:2012081501
+CREATE INDEX IF NOT EXISTS world_file_name ON world_file ( name );
+CREATE INDEX IF NOT EXISTS world_file_file ON world_file ( file );
+End

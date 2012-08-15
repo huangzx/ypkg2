@@ -5063,7 +5063,6 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
 
                 if( delete_file )
                 {
-                    printf( "remove %s\n", file_file );
                     remove( file_file );
                 }
             }
