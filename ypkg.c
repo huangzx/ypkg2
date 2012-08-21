@@ -216,7 +216,10 @@ int main( int argc, char **argv )
                     {
                         packages_log( pm, argv[i], "Remove" );
                         ret = packages_remove_package( pm, argv[i], ypkg_progress_callback, pm );
-                        printf( "%s\n", ret < 0 ? "failed" : "successed" );
+                        printf( "%s\n", ret < 0 ? COLOR_RED "failed." COLOR_RESET : COLOR_GREEN "successed."  COLOR_RESET );
+
+                        if( ret < 0 )
+                            err = 3;
                     }
                     packages_manager_cleanup2( pm );
                 }
@@ -302,6 +305,8 @@ int main( int argc, char **argv )
                                 printf( COLOR_RED "Error: an error occurred while updating database.\n" COLOR_RESET );
                                 break;
                         }
+                        if( ret != 0 )
+                            err = 3;
                     }
                         packages_manager_cleanup2( pm );
                 }
@@ -1000,13 +1005,13 @@ int main( int argc, char **argv )
     if( err == 1 )
         usage();
     else if( err == 2 )
-        fprintf( stderr, "Permission Denied!\n" );
+        fprintf( stderr, COLOR_RED "Permission Denied!\n" COLOR_RESET );
     else if( err == 3 )
-        fprintf( stderr, "Failed!\n" );
+        fprintf( stderr, COLOR_RED "Failed!\n" COLOR_RESET );
     else if( err == 4 )
-        fprintf( stderr, "Error: open database failed.\n" );
+        fprintf( stderr, COLOR_RED "Error: open database failed.\n" COLOR_RESET );
     else if( err == 5 )
-        fprintf( stderr, "Error: database is locked.\n" );
+        fprintf( stderr, COLOR_RED "Error: database is locked.\n" COLOR_RESET );
 
     if( err )
         exit_code = err;
