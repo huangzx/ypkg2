@@ -375,7 +375,8 @@ int main( int argc, char **argv )
                                 printf( COLOR_RED "Error: unknown error.\n" COLOR_RESET );
                         }
 
-
+                        if( ret != 0 )
+                            err = 3;
                     }
                 }
             }
@@ -462,6 +463,7 @@ int main( int argc, char **argv )
                     else if( !err )
                     {
                         printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                        err = 3;
                     }
                 }
 
@@ -513,6 +515,7 @@ int main( int argc, char **argv )
                     else
                     {
                         printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                        err = 3;
                         break;
                     }
 
@@ -699,6 +702,7 @@ int main( int argc, char **argv )
                     if( !flag )
                     {
                         printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
+                        err = 3;
                     }
 
                     packages_manager_cleanup2( pm );
@@ -764,6 +768,7 @@ int main( int argc, char **argv )
                         else
                         {
                             printf( COLOR_RED "%s not owned by any packages.\n" COLOR_RESET,  file_name );
+                            err = 3;
                         }
                         printf( "\n" );
                     }
@@ -792,12 +797,14 @@ int main( int argc, char **argv )
                 if( access( ypk_path, R_OK ) )
                 {
                     printf( COLOR_RED "%s not found\n" COLOR_RESET,  ypk_path );
+                    err = 3;
                     break;
                 }
 
                 if( packages_check_package( pm, ypk_path, NULL, 0 ) == -1 )
                 {
                     printf( COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
+                    err = 3;
                     break;
                 }
 
@@ -806,6 +813,7 @@ int main( int argc, char **argv )
                     if( packages_get_package_from_ypk( ypk_path, &pkg, NULL ) )
                     {
                         printf( COLOR_RED "Error: Invalid format[%s]\n" COLOR_RESET, ypk_path );
+                        err = 3;
                         break;
                     }
                     else
@@ -844,12 +852,14 @@ int main( int argc, char **argv )
                 if( access( ypk_path, R_OK ) )
                 {
                     printf( COLOR_RED "%s not found\n" COLOR_RESET,  ypk_path );
+                    err = 3;
                     break;
                 }
 
                 if( packages_check_package( pm, ypk_path, NULL, 0 ) == -1 )
                 {
                     printf( COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
+                    err = 3;
                     break;
                 }
 
@@ -858,6 +868,7 @@ int main( int argc, char **argv )
                     if( packages_get_package_from_ypk( ypk_path, &pkg, NULL ) )
                     {
                         printf( COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
+                        err = 3;
                         break;
                     }
                     else
@@ -983,11 +994,13 @@ int main( int argc, char **argv )
                     else
                     {
                         printf( COLOR_RED "Error: invalid format or file not found[%s]\n" COLOR_RESET, argv[optind + 1] );
+                        err = 3;
                     }
                 }
                 else
                 {
                     printf( COLOR_RED "Error: invalid format or file not found[%s]\n" COLOR_RESET, argv[optind] );
+                    err = 3;
                 }
 
 
@@ -1006,8 +1019,8 @@ int main( int argc, char **argv )
         usage();
     else if( err == 2 )
         fprintf( stderr, COLOR_RED "Permission Denied!\n" COLOR_RESET );
-    else if( err == 3 )
-        fprintf( stderr, COLOR_RED "Failed!\n" COLOR_RESET );
+    //else if( err == 3 )
+        //fprintf( stderr, COLOR_RED "Failed!\n" COLOR_RESET );
     else if( err == 4 )
         fprintf( stderr, COLOR_RED "Error: open database failed.\n" COLOR_RESET );
     else if( err == 5 )
