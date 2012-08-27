@@ -1,10 +1,10 @@
 /* Libypk utility functions
  *
- * Copyright (c) 2011-2012 Ylmf OS
+ * Copyright (c) 2012 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.2.12
+ * Date: 2012.3.6
  */
 
 #include "util.h"
@@ -17,27 +17,27 @@ char *util_get_config(char *config_file, char *keyword)
     char            *pos, *result;
     char            line[MAXCFGLINE], keybuf[MAXKWLEN], pattern[MAXFMTLEN], valbuf[MAXCFGLINE];
 
-    if ((fp = fopen(config_file, "r")) == NULL)
+    if( ( fp = fopen( config_file, "r" ) ) == NULL )
         return NULL;
     match = 0;
-    while (fgets(line, MAXCFGLINE, fp) != NULL) 
+    while( fgets( line, MAXCFGLINE, fp ) != NULL ) 
     {
-        pos = strchr(line, '=');
-        sprintf(pattern, "%%%ds%%*2s%%%ds", pos-line, MAXCFGLINE-1);
-        n = sscanf(line, pattern, keybuf, valbuf);
-        if (n == 2 && strcmp(keyword, keybuf) == 0) 
+        pos = strchr( line, '=' );
+        sprintf( pattern, "%%%ds%%*2s%%%ds", (int)(pos - line), MAXCFGLINE-1 );
+        n = sscanf( line, pattern, keybuf, valbuf );
+        if( n == 2 && strcmp(keyword, keybuf) == 0 )
         {
             match = 1;
             break;
         }
     }
-    fclose(fp);
-    if (match != 0)
+    fclose( fp );
+    if( match != 0 )
     {
-        len = strlen(valbuf);
+        len = strlen( valbuf );
         valbuf[len - 1] = '\0';
-        result = malloc(len);
-        strncpy(result, valbuf, len);
+        result = malloc( len );
+        strncpy( result, valbuf, len );
         return result;
     }
     else 
@@ -128,11 +128,19 @@ char *util_chr_replace( char *str, char chr_s, char chr_d )
 {
     char *p;
 
-    while( p = strchr( str, chr_s ) )
+    if( !str )
+        return NULL;
+
+    while( ( p = strchr( str, chr_s ) ) )
     {
         *p = chr_d;
     }
     return str;
+}
+
+char *util_null2empty( char *str )
+{
+    return str ? str : "";
 }
 
 char *util_strcat( char *first, ... )
@@ -188,7 +196,7 @@ char *util_strcat2( char *dest, int size, char *first, ...)
         return NULL;
 
     result = dest;
-    memset( result, '\0', len + 1);
+    memset( result, '\0', size );
     strncpy( result, first, strlen( first ) );
 
     va_start( ap, first );
@@ -205,12 +213,12 @@ char *util_strcat2( char *dest, int size, char *first, ...)
 
 char *util_int_to_str( int i )
 {
-    char *result;
+    char    *result;
 
     result = malloc( 11 );
     if( !result )
         return NULL;
-    snprintf( result, 11, "%ld", i );
+    snprintf( result, 11, "%d", i );
     result[10] = '\0';
 
     return result;
@@ -223,7 +231,9 @@ int util_log( char *log, char *msg )
     fp = fopen( log, "a" );
     if( !fp )
         return -1;
-    fprintf( fp, msg );
+
+    fputs( msg,  fp );
+
     fclose( fp );
 
     return 0;
@@ -249,7 +259,11 @@ int util_mkdir( char *dir )
     {
         if( !access( parent_dir, W_OK | X_OK ) )
         {
-            mkdir( dir, 0755 );
+            if( mkdir( dir, 0755 ) )
+            {
+                free( tmp );
+                return -1;
+            }
         }
         else
         {
@@ -261,7 +275,16 @@ int util_mkdir( char *dir )
     {
         if( !util_mkdir( parent_dir ) )
         {
-            mkdir( dir, 0755 );
+            if( mkdir( dir, 0755 ) )
+            {
+                free( tmp );
+                return -1;
+            }
+        }
+        else
+        {
+            free( tmp );
+            return -1;
         }
     }
 
@@ -282,7 +305,7 @@ int util_remove_dir( char *dir_path )
     if( !dir )
         return -1;
 
-    while( entry = readdir( dir ) )
+    while( ( entry = readdir( dir ) ) )
     {
         if( !strcmp( entry->d_name, "." ) || !strcmp( entry->d_name, ".." ) )
         {
@@ -327,7 +350,7 @@ int util_remove_files( char *dir_path, char *suffix )
     if( !dir )
         return -1;
 
-    while( entry = readdir( dir ) )
+    while( (entry = readdir( dir )) )
     {
         if( !strcmp( entry->d_name, "." ) || !strcmp( entry->d_name, ".." ) )
         {
@@ -361,6 +384,64 @@ int util_remove_files( char *dir_path, char *suffix )
     return 0;
 }
 
+int util_copy_file( char *src, char *dest )
+{
+    size_t  cnt_r, cnt_w;
+    FILE    *fp_r, *fp_w;
+    char    buf[4096];
+
+    fp_r = fopen( src, "r" );
+    if( !fp_r )
+        return -1;
+
+    fp_w = fopen( dest, "w" );
+    if( !fp_w )
+    {
+        fclose( fp_r );
+        return -1;
+    }
+
+    while( (cnt_r = fread( buf, 1, 4096, fp_r )) )
+    {
+        if( cnt_r < 4096 )
+        {
+            if( ferror( fp_r ) )
+            {
+                fclose( fp_r );
+                fclose( fp_w );
+                return -1;
+            }
+        }
+
+        cnt_w = fwrite( buf, 1, cnt_r, fp_w );
+        if( cnt_w < cnt_r )
+        {
+            fclose( fp_r );
+            fclose( fp_w );
+            return -1;
+        }
+    }
+
+    fclose( fp_w );
+    fclose( fp_r );
+    return 0;
+}
+
+int util_file_size( char *file )
+{
+    struct stat     statbuf;
+
+    if( !file )
+        return -1;
+
+    if( !stat( file, &statbuf ) )
+    {
+        return statbuf.st_size;
+    }
+    return -1;
+}
+
+
 char *util_time_to_str( time_t time )
 {
     char        *result;
@@ -374,7 +455,7 @@ char *util_time_to_str( time_t time )
     if( !result )
         return NULL;
     memset( result, '\0', 20 );
-    if( strftime( result, 20, "%Y-%m-%d %H:%M:%S", tmp) == 0 ) 
+    if( strftime( result, 20, "%Y-%m-%d,%H:%M:%S", tmp) == 0 ) 
     {
         free( result );
         return NULL;
@@ -386,7 +467,7 @@ char *util_time_to_str( time_t time )
 
 char *util_sha1( char *file )
 {
-    char            c;
+    unsigned char   c;
     char            *result;
     FILE            *fp;
     SHA1Context     sha;
@@ -399,7 +480,7 @@ char *util_sha1( char *file )
 
     SHA1Reset( &sha );
 
-    c = fgetc( fp );
+    c = (unsigned char)fgetc( fp );
     while( !feof( fp ) )
     {
         SHA1Input( &sha, &c, 1 );

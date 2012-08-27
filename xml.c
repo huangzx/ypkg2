@@ -1,6 +1,6 @@
 /* XML parser
  *
- * Copyright (c) 2011-2012 Ylmf OS
+ * Copyright (c) 2012 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
@@ -148,7 +148,8 @@ int reader_fetch_a_row( XMLReaderHandle *handle, int node_depth, char **attr_lis
 {
     int         ret, in_a_row = 0, end_a_row =0, current_depth, current_type;
     //char        **local_attr_list, *current_attr, *attr_value,prefix[XML_HASH_FULL_KEY_LEN];
-    char        **local_attr_list, *current_attr, *attr_value;
+    char        **local_attr_list, *current_attr;
+    xmlChar     *attr_value;
 
     reader_hash_cleanup( handle );
     while( ( ret = xmlTextReaderRead( handle->reader ) ) == 1 )
@@ -178,16 +179,16 @@ int reader_fetch_a_row( XMLReaderHandle *handle, int node_depth, char **attr_lis
                     {
                         //memset( prefix, '\0', XML_HASH_FULL_KEY_LEN );
                         local_attr_list = attr_list;
-                        while( current_attr = *local_attr_list++ )
+                        while( (current_attr = *local_attr_list++) )
                         {
-                            if( attr_value = xmlTextReaderGetAttribute( handle->reader, current_attr ) )
+                            if( (attr_value = xmlTextReaderGetAttribute( handle->reader, (const xmlChar *)current_attr )) )
                             {
                                 /*
                                 if( prefix[0] )
                                     strcat( prefix, "|" );
                                 strncat( prefix, attr_value, XML_HASH_FULL_KEY_LEN - strlen( prefix ) );
                                 */
-                                xmlHashAddEntry( handle->ht, current_attr, (void *)attr_value );
+                                xmlHashAddEntry( handle->ht, (const xmlChar *)current_attr, (void *)attr_value );
                             }
                         }
                     }
@@ -221,13 +222,13 @@ int reader_fetch_a_row( XMLReaderHandle *handle, int node_depth, char **attr_lis
 }
 
 
-static int reader_fetch_fields( XMLReaderHandle *handle, int node_depth, char *prefix, char **attr_list )
+int reader_fetch_fields( XMLReaderHandle *handle, int node_depth, char *prefix, char **attr_list )
 {
     int         ret, current_depth, current_type;
     char        *key, *value, **local_attr_list, *current_attr, *attr_value, full_key[XML_HASH_FULL_KEY_LEN];
 
 
-    key = xmlTextReaderName( handle->reader );
+    key = (char *)xmlTextReaderName( handle->reader );
     memset( full_key, '\0', XML_HASH_FULL_KEY_LEN );
 
     if( prefix )
@@ -242,12 +243,13 @@ static int reader_fetch_fields( XMLReaderHandle *handle, int node_depth, char *p
     if( attr_list )
     {
         local_attr_list = attr_list;
-        while( current_attr = *local_attr_list++ )
+        while( (current_attr = *local_attr_list++) )
         {
-            if( attr_value = xmlTextReaderGetAttribute( handle->reader, current_attr ) )
+            if( (attr_value = (char *)xmlTextReaderGetAttribute( handle->reader, (const xmlChar *)current_attr )) )
             {
                 strcat( full_key, "|" );
-                strncat( full_key, attr_value, XML_HASH_FULL_KEY_LEN - strlen( full_key ) );
+                strncat( full_key, (char *)attr_value, XML_HASH_FULL_KEY_LEN - strlen( full_key ) );
+                xmlFree( attr_value );
             }
         }
     }
@@ -264,8 +266,8 @@ static int reader_fetch_fields( XMLReaderHandle *handle, int node_depth, char *p
         }
         else if( current_type == XML_READER_TYPE_TEXT && current_depth == node_depth + 1 )
         {
-            value = xmlTextReaderValue( handle->reader );
-            xmlHashAddEntry( handle->ht, full_key, (void *)value );
+            value = (char *)xmlTextReaderValue( handle->reader );
+            xmlHashAddEntry( handle->ht, (const xmlChar *)full_key, (void *)value );
             value = NULL;
         }
         else if( current_type == XML_READER_TYPE_END_ELEMENT && current_depth == node_depth )
@@ -278,12 +280,12 @@ static int reader_fetch_fields( XMLReaderHandle *handle, int node_depth, char *p
     return ret;
 }
 
-static void hash_data_cleanup( void *data, xmlChar *key )
+void hash_data_cleanup( void *data, xmlChar *key )
 {
     xmlFree( (xmlChar *)data );
 }
 
-static void reader_hash_cleanup( XMLReaderHandle *handle )
+void reader_hash_cleanup( XMLReaderHandle *handle )
 {
     xmlHashFree( handle->ht, hash_data_cleanup );
     handle->ht = xmlHashCreate(XML_HashTable_SIZE);
@@ -297,7 +299,7 @@ void reader_cleanup( XMLReaderHandle *handle )
 
 char *reader_get_value( XMLReaderHandle *handle, char *key )
 {
-    return (char *)xmlHashLookup( handle->ht, key );
+    return (char *)xmlHashLookup( handle->ht, (const xmlChar *)key );
 }
 
 
@@ -305,6 +307,6 @@ char *reader_get_value2( XMLReaderHandle *handle, char *key )
 {
     char *result;
 
-    result = (char *)xmlHashLookup( handle->ht, key );
+    result = (char *)xmlHashLookup( handle->ht, (const xmlChar *)key );
     return result ? result : "";
 }

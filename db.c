@@ -1,10 +1,10 @@
 /* Database operating functions
  *
- * Copyright (c) 2011-2012 Ylmf OS
+ * Copyright (c) 2012 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2011.11.23
+ * Date: 2012.4.12
  */
 #include "db.h"
 
@@ -61,7 +61,8 @@ int db_exec(DB *db, char *sql, ...)
 {
     va_list ap;
     char *arg;
-    int i = 1, ret;
+    int i = 1;
+    int ret;
 
 
     sqlite3_prepare_v2 ( db->handle, sql, strlen(sql), &(db->stmt), NULL );
@@ -87,10 +88,10 @@ int db_query(DB *db, char *sql, ...)
 {
     va_list ap;
     char *arg;
-    int i = 1, ret;
+    int i = 1;
 
 
-    ret = sqlite3_prepare_v2 ( db->handle, sql, strlen(sql), &(db->stmt), NULL );
+    sqlite3_prepare_v2 ( db->handle, sql, strlen(sql), &(db->stmt), NULL );
 
     va_start(ap, sql);
     while((arg = va_arg(ap, char *)) != NULL)
@@ -102,14 +103,14 @@ int db_query(DB *db, char *sql, ...)
     return 0;
 }
 
-static int db_create_hash_table( DB *db )
+int db_create_hash_table( DB *db )
 {
     db->ht = malloc( sizeof( struct hsearch_data ) );
     memset(db->ht, '\0',  sizeof( struct hsearch_data ) );
     return hcreate_r( DB_HashTable_SIZE, db->ht );
 }
 
-static void db_destory_hash_table( DB *db )
+void db_destory_hash_table( DB *db )
 {
     if(db->ht)
     {

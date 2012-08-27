@@ -1,10 +1,10 @@
 /* Libypk download functions
  *
- * Copyright (c) 2011-2012 Ylmf OS
+ * Copyright (c) 2012 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2011.11.25
+ * Date: 2012.04.18
  */
 #include "download.h"
 
@@ -76,6 +76,7 @@ int download_file(char *url, DownloadFile *file)
 
     curl_easy_setopt(curl_handle, CURLOPT_URL, url);
     curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2)");
+    curl_easy_setopt(curl_handle, CURLOPT_FAILONERROR, 1L);
     curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 0L);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, file_callback);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)file);
