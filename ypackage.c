@@ -4948,7 +4948,8 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
                 for( j = 0; j < pkg_file->cnt; j++ )
                 {
                     file_type2 = packages_get_package_file_attr( pkg_file, j, "type");
-                    if( !file_type2 || file_type2[0] != file_type[0] )
+                    //if( !file_type2 || file_type2[0] != file_type[0] )
+                    if( !file_type2 || file_type2[0] == 'D' )
                         continue;
 
                     if( !strcmp( file_file, packages_get_package_file_attr( pkg_file, j, "file" ) ) )
