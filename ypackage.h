@@ -68,6 +68,7 @@ typedef struct _DList {
 #endif
 
 #define CONFIG_FILE "/etc/yget.conf"
+#define CONFIG_DIR "/etc/yget.conf.d"
 #define DEFAULT_REPO "stable"
 #define DEFAULT_URI "http://pkg.ylmf.com/proposed"
 #define DEFAULT_PKGDEST "/var/ypkg/packages"
@@ -76,6 +77,7 @@ typedef struct _DList {
 #define PACKAGE_DB_DIR  "/var/ypkg/db"
 #define DB_NAME "/var/ypkg/db/package.db"
 #define DB_UPGRADE "/usr/share/ypkg/db_upgrade.list"
+#define DB_SOURCE_TEMPLATE "/usr/share/ypkg/db_source_template.sql"
 #define LOCK_FILE "/tmp/libypk.lock"
 #define UPDATE_DIR "updates"
 #define LIST_FILE "updates.list"
@@ -92,13 +94,24 @@ typedef struct _DList {
 #define LOCK_ERROR -5
 #define OTHER_FAILURES -6
 
+
 typedef struct {
-    int     lock_fd;
+    char    *source_name;
     char    *source_uri;
     char    *accept_repo;
     char    *package_dest;
+}YPackageSource;
+
+typedef DList YPackageSourceList;
+
+typedef struct {
+    int     lock_fd;
+    //char    *source_uri;
+    //char    *accept_repo;
+    //char    *package_dest;
     char    *db_name;
     char    *log;
+    YPackageSourceList   *source_list;
 }YPackageManager;
 
 typedef struct {
@@ -173,6 +186,9 @@ void packages_manager_cleanup( YPackageManager *pm );
 YPackageManager *packages_manager_init2( int type );
 void packages_manager_cleanup2( YPackageManager *pm );
 
+int packages_manager_add_source( YPackageSourceList *list, char *source_name, char *source_uri, char *accept_repo, char *package_dest );
+
+void packages_manager_free_source( void *node );
 /*
  * lock
  */
@@ -186,9 +202,11 @@ int packages_unlock();
  */
 int packages_check_update( YPackageManager *pm );
 
+int packages_add_source( YPackageManager *pm, char *source_name, char *repo );
+
 int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg );
 
-int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum,  ypk_progress_callback cb, void *cb_arg  );
+int packages_update_single_xml( YPackageManager *pm, YPackageSource *source, char *xml_file, char *sum,  ypk_progress_callback cb, void *cb_arg  );
 
 int packages_import_local_data( YPackageManager *pm );
 
@@ -239,7 +257,8 @@ YPackageList *packages_get_list2( YPackageManager *pm, int page_size, int page_n
 
 //YPackageList *packages_get_history_list( YPackageManager *pm, char *name );
 
-YPackageList *packages_get_list_with_data( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int installed );
+//YPackageList *packages_get_list_with_data( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int installed );
+YPackageList *packages_search_world_data( YPackageManager *pm, int limit, int offset, char *key, char *keyword );
 
 YPackageList *packages_get_list_by_depend( YPackageManager *pm, int limit, int offset, char *depend, int installed );
 
@@ -260,6 +279,7 @@ void packages_free_list( YPackageList *pkg_list );
  * compare version
  */
 int packages_compare_version( char *version1, char *version2 );
+int packages_compare_version_collate( void *arg, int len1, const void *version1, int len2, const void *version2 );
 
 /*
  * package install & remove & upgrade
@@ -327,11 +347,11 @@ int packages_compare_sub_version( char *version1, char *version2 );
 YPackageManager *packages_manager_clone(  YPackageManager *pm );
 
 
-int packages_get_last_check_timestamp( YPackageManager *pm );
-int packages_set_last_check_timestamp( YPackageManager *pm, int last_check );
+int packages_get_last_check_timestamp( YPackageManager *pm, char *source_name, char *repo );
+int packages_set_last_check_timestamp( YPackageManager *pm, char *source_name, char *repo, int last_check );
 
-int packages_get_last_update_timestamp( YPackageManager *pm );
-int packages_set_last_update_timestamp( YPackageManager *pm, int last_update );
+int packages_get_last_update_timestamp( YPackageManager *pm, char *source_name, char *repo );
+int packages_set_last_update_timestamp( YPackageManager *pm, char *source_name, char *repo, int last_check );
 
 
 void packages_free_change_list( YPackageChangeList *list );

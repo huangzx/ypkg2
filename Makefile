@@ -96,6 +96,7 @@ install: all
 	#cp po/zh_CN.mo $(LANGDIR)/ypkg.mo
 	cp data/db_create.sql $(DATADIR)
 	cp data/db_upgrade.list $(DATADIR)
+	cp data/db_source_template.sql $(DATADIR)
 	#sqlite3 $(DBDIR)/package.db ".read $(DATADIR)/db_create.sql"
 	cd  $(LIBDIR) && ln -sf $(LIBYPK).$(VERSION) ./$(LIBYPK)
 	#$(BINDIR)/$(YPKGIMPORT)
@@ -116,5 +117,6 @@ remove:
 	rm -f $(INCDIR)/$(YPACKAGEH) 
 	rm -f $(DATADIR)/db_create.sql
 	rm -f $(DATADIR)/db_upgrade.list
+	rm -f $(DATADIR)/db_source_template.sql
 	#rm -f $(DBDIR)/package.db
 	#rm -f $(LANGDIR)/ypkg.mo

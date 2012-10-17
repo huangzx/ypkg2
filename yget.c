@@ -250,7 +250,7 @@ failed:
 int yget_install_package( YPackageManager *pm, char *package_name, char *version, int download_only, int upgrade_self, int force )
 {
     int                 ret, return_code;
-    char                *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
+    char                *source_uri = NULL, *package_dest = NULL, *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
     YPackage            *pkg;
     //YPackageDCB         dcb;
     DownloadStat        dl_stat;
@@ -283,11 +283,25 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
         goto return_point;
     }
 
-    package_path = util_strcat( pm->package_dest, "/", basename( package_url ), NULL );
-    target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
+    package_dest = packages_get_package_attr( pkg, "package_dest" );
+    if( !package_dest )
+    {
+        return_code = -3;
+        goto return_point;
+    }
+
+    source_uri = packages_get_package_attr( pkg, "source_uri" );
+    if( !source_uri )
+    {
+        return_code = -3;
+        goto return_point;
+    }
+
+    package_path = util_strcat( package_dest, "/", basename( package_url ), NULL );
+    target_url = util_strcat( source_uri, "/", package_url, NULL );
 
     packages_log( pm, package_name, "Downloading" );
-    printf( "Downloading %s to %s/\n", target_url, pm->package_dest  );
+    printf( "Downloading %s to %s/\n", target_url, package_dest  );
     dl_stat.progress = 0;
     dl_stat.cnt = 0;
     dl_stat.st.tv_sec = 0;
@@ -419,7 +433,7 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
     while( cur_pkg )
     {
         printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
-        ret = yget_install_package( pm, cur_pkg->name, cur_pkg->version, download_only, 0, force );
+        ret = yget_install_package( pm, cur_pkg->name, NULL, download_only, 0, force );
         if( !ret )
         {
             printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
@@ -901,7 +915,7 @@ int main( int argc, char **argv )
                     install_list = packages_get_dev_list( pm, package_name, NULL );
                     confirm = 'N';
 
-                    if( install_list )
+                    if( install_list && install_list->cnt > 0 )
                     {
                         cur_package = dlist_head_data( install_list );
                         printf( "Install list: %s", cur_package->name );
@@ -927,12 +941,14 @@ int main( int argc, char **argv )
                             yget_install_list( pm, install_list, 0, force );
                         }
 
-                        packages_free_dev_list( install_list );
                     }
                     else
                     {
                         printf( "Build-dependencies for %s installed.\n", package_name );
                     }
+
+                    if( install_list )
+                        packages_free_dev_list( install_list );
                 }
             }
             break;
@@ -984,8 +1000,10 @@ int main( int argc, char **argv )
                         {
                             for( j = 0; j < pkg_list->cnt; j++ )
                             {
+                                /*
                                 installed = packages_get_list_attr( pkg_list, j, "installed" );
                                 can_update = packages_get_list_attr( pkg_list, j, "can_update" );
+
                                 if( installed && installed[0] == '0' )
                                 {
                                     installed = "[*]";
@@ -1002,12 +1020,14 @@ int main( int argc, char **argv )
                                 {
                                     installed = "[I]";
                                 }
+                                */
 
                                 repo = packages_get_list_attr( pkg_list, j, "repo" );
 
                                 printf( 
-                                        COLOR_GREEN "%-s "  COLOR_RESET  "\t%-s \t%-8s \t%-s\n",
-                                        installed, 
+                                        "%-s \t%-8s \t%-s\n",
+                                        //COLOR_GREEN "%-s "  COLOR_RESET  "\t%-s \t%-8s \t%-s\n",
+                                        //installed, 
                                         packages_get_list_attr( pkg_list, j, "name"), 
                                         repo, 
                                         packages_get_list_attr( pkg_list, j, "description") 
@@ -1089,79 +1109,6 @@ int main( int argc, char **argv )
 
                 if( pkg )
                 {
-                    if( i )
-                    {
-                        installed = packages_get_package_attr( pkg, "installed" );
-                        can_update = packages_get_package_attr( pkg, "can_update" );
-                        if( installed )
-                        {
-                            if( installed[0] != '0' )
-                            {
-                                pkg2 = packages_get_package( pm, package_name, 1 );
-                            }
-
-                            if( installed[0] == '0' )
-                            {
-                                installed = "*";
-                            }
-                            else if( can_update[0] == '1' )
-                            {
-                                installed = "U";
-                            }
-                            else if( can_update[0] == '-' &&  can_update[1] == '1' )
-                            {
-                                installed = "D";
-                            }
-                            else
-                            {
-                                installed = "I";
-                            }
-                        }
-                        else
-                        {
-                            installed = "*";
-                        }
-                    }
-                    else
-                    {
-                        package_name = packages_get_package_attr( pkg, "name");
-
-                        if( pm )
-                        {
-                            if( packages_has_installed( pm, package_name, NULL ) )
-                            {
-                                pkg2 = packages_get_package( pm, package_name, 1 );
-                                if( pkg2 )
-                                {
-                                    ret = packages_compare_version( packages_get_package_attr( pkg2, "version"), packages_get_package_attr( pkg, "version") ); 
-                                    if( ret > 0 )
-                                    {
-                                        installed = "D";
-                                    }
-                                    else if( ret < 0 )
-                                    {
-                                        installed = "U";
-                                    }
-                                    else
-                                    {
-                                        installed = "I";
-                                    }
-                                }
-                                else
-                                {
-                                    installed = "*";
-                                }
-                            }
-                            else
-                            {
-                                installed = "*";
-                            }
-                        }
-                        else
-                        {
-                            installed = "*";
-                        }
-                    }
 
                     tmp = packages_get_package_attr( pkg, "build_date");
                     if( tmp )
@@ -1169,14 +1116,6 @@ int main( int argc, char **argv )
                     else
                         build_date = NULL;
 
-                    if( pkg2 )
-                    {
-                        tmp = packages_get_package_attr( pkg2, "install_time");
-                        if( tmp )
-                            install_date = util_time_to_str( atoi( tmp ) );
-                        else
-                            install_date = NULL;
-                    }
 
                     tmp = packages_get_package_attr( pkg, "size");
                     size = tmp ? atoi( tmp ) : 0;
@@ -1198,16 +1137,13 @@ int main( int argc, char **argv )
                         }
 
                         printf( 
-                                "Name: %s\nVersion: %s\nArch: %s\nRepo: %s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nExec: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nReplace: %s\nDescription: %s\nHomepage: %s\n", 
+                                "Name: %s\nVersion: %s\nArch: %s\nRepo: %s\nCategory: %s\nPriority: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nExec: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nReplace: %s\nDescription: %s\nHomepage: %s\n", 
                                 package_name,
                                 pkg2 ? packages_get_package_attr( pkg2, "version") : packages_get_package_attr( pkg, "version"), 
                                 packages_get_package_attr( pkg, "arch"), 
                                 repo,
                                 util_null2empty( packages_get_package_attr( pkg, "category") ), 
                                 util_null2empty( packages_get_package_attr( pkg, "priority") ), 
-                                installed,
-                                util_null2empty( install_date ),  //install date
-                                packages_get_package_attr( pkg, "version"),  //available
                                 util_null2empty( packages_get_package_attr( pkg, "license") ), 
                                 util_null2empty( packages_get_package_attr( pkg, "packager") ), 
                                 util_null2empty( packages_get_package_attr( pkg, "install") ), 
@@ -1237,7 +1173,6 @@ int main( int argc, char **argv )
 
                     packages_free_package_data( pkg_data );
                     packages_free_package( pkg );
-                    packages_free_package( pkg2 );
                 }
                 else
                 {
@@ -1259,42 +1194,83 @@ int main( int argc, char **argv )
             else
             {
                 package_name = argv[optind];
-                if( (pkg = packages_get_package( pm, package_name, 0 )) )
+                if( (pkg = packages_get_package( pm, package_name, 1 )) )
                 {
-                    pkg2 = NULL;
-                    installed = packages_get_package_attr( pkg, "installed" );
-                    can_update = packages_get_package_attr( pkg, "can_update" );
-                    if( installed[0] != '0' )
-                    {
-                        pkg2 = packages_get_package( pm, package_name, 1 );
-                    }
+                    pkg_data = packages_get_package_data( pm, package_name, 0 );
 
-                    if( installed[0] == '0' )
-                    {
-                        installed = "*";
-                    }
-                    else if( can_update[0] == '1' )
+                    can_update = packages_get_package_attr( pkg, "can_update" );
+
+                    tmp = packages_get_package_attr( pkg, "install_time");
+                    if( tmp )
+                        install_date = util_time_to_str( atoi( tmp ) );
+                    else
+                        install_date = NULL;
+
+
+                    if( can_update[0] == '1' )
                     {
                         installed = "U";
-                    }
-                    else if( can_update[0] == '-' &&  can_update[1] == '1' )
-                    {
-                        installed = "D";
                     }
                     else
                     {
                         installed = "I";
                     }
+
+                    repo = packages_get_package_attr( pkg, "repo");
+                    if(repo == NULL)
+                    {
+                        repo = "stable";
+                    }
+
+                    tmp = packages_get_package_attr( pkg, "build_date");
+                    if( tmp )
+                        build_date = util_time_to_str( atoi( tmp ) );
+                    else
+                        build_date = NULL;
+
+                    tmp = packages_get_package_attr( pkg, "size");
+                    size = tmp ? atoi( tmp ) : 0;
+
+                    tmp = packages_get_package_data_attr( pkg_data, 0, "data_install_size");
+                    install_size = tmp ? atoi( tmp ) : 0;
+
                     printf( 
-                            "Name: %s\nStatus: %s\nVersion: %s\nDescription: %s\n", 
+                            "Name: %s\nVersion: %s\nArch: %s\nRepo: %s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nExec: %s\nSize: %d%c\nBuild_date: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nReplace: %s\nDescription: %s\nHomepage: %s\n", 
                             package_name,
+                            packages_get_package_attr( pkg, "version"),
+                            packages_get_package_attr( pkg, "arch"), 
+                            repo,
+                            util_null2empty( packages_get_package_attr( pkg, "category") ), 
+                            util_null2empty( packages_get_package_attr( pkg, "priority") ), 
                             installed,
-                            packages_get_package_attr( pkg, "version"), 
-                            packages_get_package_attr( pkg, "description") 
+                            util_null2empty( install_date ),  //install date
+                            util_null2empty( packages_get_package_attr( pkg, "version_available") ), 
+                            util_null2empty( packages_get_package_attr( pkg, "license") ), 
+                            util_null2empty( packages_get_package_attr( pkg, "packager") ), 
+                            util_null2empty( packages_get_package_attr( pkg, "install") ), 
+                            util_null2empty( packages_get_package_attr2( pkg, "exec") ), 
+                            size > 1000000 ? size / 1000000 : (size > 1000 ? size / 1000 : size), 
+                            size > 1000000 ? 'M' : (size > 1000 ? 'K' : 'B'), 
+                            util_null2empty( build_date ),
+                            install_size > 1000000 ? install_size / 1000000 : (install_size > 1000 ? install_size / 1000 : install_size), 
+                            install_size > 1000000 ? 'M' : (install_size > 1000 ? 'K' : 'B'), 
+                            util_null2empty( util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_depend"), ',', ' ' ) ),  //depend
+                            util_null2empty( util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_bdepend"), ',', ' ' ) ),  //bdepend
+                            util_null2empty( util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_recommended"), ',', ' ' ) ),  //recommended
+                            util_null2empty( packages_get_package_data_attr( pkg_data, 0, "data_conflict") ),  //conflict
+                            util_null2empty( packages_get_package_data_attr( pkg_data, 0, "data_replace") ),  //replace
+                            util_null2empty( packages_get_package_attr( pkg, "description") ),
+                            util_null2empty( packages_get_package_attr( pkg, "homepage") )
                             );
 
+                    if( build_date )
+                        free( build_date );
+
+                    if( install_date )
+                        free( install_date );
+
                     packages_free_package( pkg );
-                    packages_free_package( pkg2 );
+                    packages_free_package_data( pkg_data );
                 }
                 else
                 {
@@ -1407,6 +1383,7 @@ int main( int argc, char **argv )
                             cur_package = dlist_next_data( upgrade_list );
                         }
 
+                        /*
                         printf( "\nDowngrade:" );
                         cur_package = dlist_head_data( upgrade_list );
                         while( cur_package )
@@ -1416,6 +1393,7 @@ int main( int argc, char **argv )
                             cur_package = dlist_next_data( upgrade_list );
                         }
                         putchar( '\n' );
+                        */
 
 
                         if( depend_list )
