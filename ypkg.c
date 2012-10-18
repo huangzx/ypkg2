@@ -113,6 +113,73 @@ int ypkg_progress_callback( void *cb_arg, char *package_name, int action, double
     return 0;
 }
 
+
+int ypkg_upgrade_self( char *package_path, int force )
+{
+    pid_t           pid;
+    struct stat     sb;
+    char            lib_path[32];
+
+    if( !package_path )
+        return -1;
+
+    if( util_mkdir( "/tmp/ypkg2_backup" ) != 0 )
+        return -1;
+
+    lstat( "/usr/lib/libypk.so", &sb );
+    if( sb.st_mode & S_IFLNK )
+    {
+        memset( lib_path, 0, 32 );
+        strncpy( lib_path, "/usr/lib/", 9 );
+        if( readlink( "/usr/lib/libypk.so", lib_path+9, 23 ) == -1 )
+            goto failed;
+
+        if( util_copy_file( lib_path, "/tmp/ypkg2_backup/libypk.so" ) != 0 )
+            goto failed;
+        else
+            chmod( "/tmp/ypkg2_backup/libypk.so", 0755 );
+    }
+    else
+    {
+        if( util_copy_file( "/usr/lib/libypk.so", "/tmp/ypkg2_backup/libypk.so" ) != 0 )
+            goto failed;
+        else
+            chmod( "/tmp/ypkg2_backup/libypk.so", 0755 );
+    }
+
+    if( util_copy_file( "/usr/bin/ypkg2", "/tmp/ypkg2_backup/ypkg2" ) != 0 )
+        goto failed;
+    else
+        chmod( "/tmp/ypkg2_backup/ypkg2", 0755 );
+
+    if( util_copy_file( "/usr/bin/yget2", "/tmp/ypkg2_backup/yget2" ) != 0 )
+        goto failed;
+    else
+        chmod( "/tmp/ypkg2_backup/yget2", 0755 );
+
+    if( util_copy_file( "/usr/bin/ypkg2-upgrade", "/tmp/ypkg2_backup/ypkg2-upgrade" ) != 0 )
+        goto failed;
+    else
+        chmod( "/tmp/ypkg2_backup/ypkg2-upgrade", 0755 );
+
+    if( (pid = fork()) < 0 )
+    {
+        goto failed;
+    }
+    else if( pid == 0 )
+    {
+        if( execl( "/tmp/ypkg2_backup/ypkg2-upgrade", "ypkg2-upgrade", "/tmp/ypkg2_backup", package_path, force ? "1" : "0", NULL ) < 0 )
+            printf( "execl failed!\n");
+            goto failed;
+    }
+
+    return 0;
+
+failed:
+    util_remove_dir( "/tmp/ypkg2_backup" );
+    return -1;
+}
+
 int main( int argc, char **argv )
 {
     int             c, force, i, j, action, ret, err, flag, len, exit_code;
@@ -264,6 +331,17 @@ int main( int argc, char **argv )
                         package_name = argv[i];
                         packages_log( pm, package_name, "Install" );
                         printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", package_name );
+
+                        if( !packages_get_info_from_ypk( package_name, &pkg, NULL, NULL, NULL, NULL ) )
+                        {
+                            if( !strcmp( packages_get_package_attr( pkg, "name" ), "ypkg2" ) )
+                            {
+                                packages_free_package( pkg );
+                                ypkg_upgrade_self( package_name, force );
+                            }
+                            continue;
+                        }
+
 
                         ret = packages_install_local_package( pm, package_name, "/", force, ypkg_progress_callback, pm );
 

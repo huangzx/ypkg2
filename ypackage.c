@@ -14,7 +14,7 @@ int libypk_errno;
 YPackageManager *packages_manager_init()
 {
     int                 len;
-    char                *source_name, *source_uri, *config_file;
+    char                *source_name, *source_uri, *use, *config_file;
     DIR                 *dir;
     struct dirent       *entry;
     YPackageManager     *pm;
@@ -80,7 +80,8 @@ YPackageManager *packages_manager_init()
             config_file = util_strcat( CONFIG_DIR, "/", entry->d_name, NULL );
 
             source_uri = util_get_config( config_file, "YPPATH_URI" );
-            if( source_uri )
+            use = util_get_config( config_file, "USE" );
+            if( source_uri && use && ( use[0] == 'Y' || use[0] == 'y' ) )
             {
                 source_name = strdup( entry->d_name );
                 source_name[len-5] = 0;
@@ -155,7 +156,7 @@ void packages_manager_free_source( void *node )
 YPackageManager *packages_manager_init2( int type )
 {
     int                 ret, len;
-    char                *source_name, *source_uri, *config_file;
+    char                *source_name, *source_uri, *use, *config_file;
     DIR                 *dir;
     struct dirent       *entry;
     YPackageManager     *pm;
@@ -249,7 +250,8 @@ YPackageManager *packages_manager_init2( int type )
             config_file = util_strcat( CONFIG_DIR, "/", entry->d_name, NULL );
 
             source_uri = util_get_config( config_file, "YPPATH_URI" );
-            if( source_uri )
+            use = util_get_config( config_file, "USE" );
+            if( source_uri && use && ( use[0] == 'Y' || use[0] == 'y' ) )
             {
                 source_name = strdup( entry->d_name );
                 source_name[len-5] = 0;
@@ -310,6 +312,7 @@ int packages_upgrade_db( YPackageManager *pm )
     if( db_fetch_assoc( &db ) )
     {
         cur_version = atoi( db_get_value_by_key( &db, "db_version" ) );
+        db_close( &db );
     }
     else
     {
@@ -317,8 +320,10 @@ int packages_upgrade_db( YPackageManager *pm )
         {
             goto exception_handler;
         }
+        db_close( &db );
     }
 
+    db_init( &db, pm->db_name, OPEN_WRITE );
     db_exec( &db, "begin", NULL );  
 
     line = NULL;
