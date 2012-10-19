@@ -40,26 +40,6 @@ YPackageManager *packages_manager_init()
         return NULL;
     }
 
-    //yget.conf
-    if( !access( CONFIG_FILE, R_OK ) )
-    {
-        config_file = CONFIG_FILE;
-        source_uri = util_get_config( config_file, "YPPATH_URI" );
-        if( !source_uri )
-            source_uri = strdup( DEFAULT_URI );
-
-        packages_manager_add_source( pm->source_list, strdup( "universe" ), source_uri, util_get_config( config_file, "ACCEPT_REPO" ), util_get_config( config_file, "YPPATH_PKGDEST" ) );
-
-        pm->log = util_get_config( config_file, "LOG" );
-        if( !pm->log )
-            pm->log = strdup( LOG_FILE );
-    }
-    else
-    {
-        source_uri = strdup( DEFAULT_URI );
-        packages_manager_add_source( pm->source_list, strdup( "universe" ), source_uri, NULL, NULL );
-        pm->log = strdup( LOG_FILE );
-    }
 
     //yget.conf.d
     dir = opendir( CONFIG_DIR );
@@ -91,6 +71,27 @@ YPackageManager *packages_manager_init()
 
         closedir( dir );
     }
+
+    //yget.conf
+    if( !access( CONFIG_FILE, R_OK ) )
+    {
+        config_file = CONFIG_FILE;
+        source_uri = util_get_config( config_file, "YPPATH_URI" );
+        use = util_get_config( config_file, "USE" );
+        if( source_uri && use && ( use[0] == 'Y' || use[0] == 'y' ) )
+        {
+            packages_manager_add_source( pm->source_list, strdup( "universe" ), source_uri, util_get_config( config_file, "ACCEPT_REPO" ), util_get_config( config_file, "YPPATH_PKGDEST" ) );
+        }
+
+        pm->log = util_get_config( config_file, "LOG" );
+    }
+
+    //default config
+    if( pm->source_list->cnt == 0 )
+        packages_manager_add_source( pm->source_list, strdup( "universe" ), strdup( DEFAULT_URI ), NULL, NULL );
+
+    if( !pm->log )
+        pm->log = strdup( LOG_FILE );
 
     return pm;
 }
@@ -210,26 +211,6 @@ YPackageManager *packages_manager_init2( int type )
         return NULL;
     }
 
-    //yget.conf
-    if( !access( CONFIG_FILE, R_OK ) )
-    {
-        config_file = CONFIG_FILE;
-        source_uri = util_get_config( config_file, "YPPATH_URI" );
-        if( !source_uri )
-            source_uri = strdup( DEFAULT_URI );
-
-        packages_manager_add_source( pm->source_list, strdup( "universe" ), source_uri, util_get_config( config_file, "ACCEPT_REPO" ), util_get_config( config_file, "YPPATH_PKGDEST" ) );
-
-        pm->log = util_get_config( config_file, "LOG" );
-        if( !pm->log )
-            pm->log = strdup( LOG_FILE );
-    }
-    else
-    {
-        source_uri = strdup( DEFAULT_URI );
-        packages_manager_add_source( pm->source_list, strdup( "universe" ), source_uri, NULL, NULL );
-        pm->log = strdup( LOG_FILE );
-    }
 
     //yget.conf.d
     dir = opendir( CONFIG_DIR );
@@ -261,6 +242,27 @@ YPackageManager *packages_manager_init2( int type )
 
         closedir( dir );
     }
+
+    //yget.conf
+    if( !access( CONFIG_FILE, R_OK ) )
+    {
+        config_file = CONFIG_FILE;
+        source_uri = util_get_config( config_file, "YPPATH_URI" );
+        use = util_get_config( config_file, "USE" );
+        if( source_uri && use && ( use[0] == 'Y' || use[0] == 'y' ) )
+        {
+            packages_manager_add_source( pm->source_list, strdup( "universe" ), source_uri, util_get_config( config_file, "ACCEPT_REPO" ), util_get_config( config_file, "YPPATH_PKGDEST" ) );
+        }
+
+        pm->log = util_get_config( config_file, "LOG" );
+    }
+
+    //default config
+    if( pm->source_list->cnt == 0 )
+        packages_manager_add_source( pm->source_list, strdup( "universe" ), strdup( DEFAULT_URI ), NULL, NULL );
+
+    if( !pm->log )
+        pm->log = strdup( LOG_FILE );
 
     return pm;
 }
@@ -893,8 +895,8 @@ int packages_check_update( YPackageManager *pm )
 
 int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg )
 {
-    int             timestamp, last_update, len, cnt;
-    char            *sub_sql, *tmp, *sql, *package_name, *version_installed, *version, *target_url, *list_line, update_file[32], sum[48], buf[256];
+    int             timestamp, len, cnt;
+    char            *sub_sql, *tmp, *sql, *package_name, *version_installed, *version, *target_url, *list_line, *last_checksum, update_file[32], sum[48], buf[256];
     char            tmp_sql[] = "/tmp/tmp_sql.XXXXXX";
     FILE            *fp;
     DownloadContent content;
@@ -913,8 +915,8 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
     {
         //printf( "update source: %s, repo:%s\n", source->source_name, source->accept_repo );
 
-        last_update = packages_get_last_update_timestamp( pm, source->source_name, source->accept_repo );
-        if( last_update == -1 )
+        last_checksum = packages_get_source_checksum( pm, source->source_name, source->accept_repo );
+        if( !last_checksum )
         {
             if( packages_add_source( pm, source->source_name, source->accept_repo ) == -1 )
             {
@@ -945,12 +947,12 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
             if( sscanf( list_line, "%s %d %s", update_file, &timestamp, sum ) == 3 )
             {
                 len = strlen( source->accept_repo );
-                if( !strncmp( source->accept_repo, update_file, len ) && timestamp > last_update )
+                if( !strncmp( source->accept_repo, update_file, len ) && strcmp( sum, last_checksum ) )
                 {
-                    printf( "updating %s\n", update_file);
+                    printf( "updating %s\n", update_file );
                     if( !packages_update_single_xml( pm, source, update_file, sum, cb, cb_arg  ) )
                     {
-                        packages_set_last_update_timestamp( pm, source->source_name, source->accept_repo, timestamp );
+                        packages_set_source_checksum( pm, source->source_name, source->accept_repo, sum );
                     }
                     cnt++;
                 }
@@ -959,6 +961,8 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
             list_line = util_mem_gets( NULL );
         }
 
+        if( last_checksum )
+            free( last_checksum );
         free( content.text );
         free( target_url );
         target_url = NULL;
@@ -1526,6 +1530,53 @@ int packages_set_last_update_timestamp( YPackageManager *pm, char *source_name, 
     }
 
     free( timestamp );
+    db_close( &db );
+    return ret;
+}
+
+char *packages_get_source_checksum( YPackageManager *pm, char *source_name, char *repo )
+{
+    char    *checksum, *tmp;
+    DB      db;
+
+    if( !pm )
+        return NULL;
+
+    if( !source_name )
+        source_name = "universe";
+
+    if( !repo )
+        repo = "stable";
+
+    db_init( &db, pm->db_name, OPEN_READ );
+    db_query( &db, "select checksum from source where name=? and repo=?", source_name, repo, NULL );
+    if( db_fetch_num( &db ) == 0 )
+    {
+        db_close( &db );
+        return NULL;
+    }
+
+    tmp =  db_get_value_by_index( &db, 0 );
+    checksum = tmp ? strdup( tmp ) : NULL;
+
+    db_close( &db );
+    return checksum;
+}
+
+int packages_set_source_checksum( YPackageManager *pm, char *source_name, char *repo, char *checksum )
+{
+    int     ret = -1;
+    DB      db;
+
+    if( !pm || !source_name || !repo || !checksum )
+        return -1;
+
+    db_init( &db, pm->db_name, OPEN_WRITE );
+    if( db_exec( &db, "update source set checksum = ? where name=? and repo=?", checksum, source_name, repo, NULL ) )
+    {
+        ret = 0;
+    }
+
     db_close( &db );
     return ret;
 }

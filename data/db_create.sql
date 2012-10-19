@@ -28,9 +28,9 @@ CREATE TABLE world_language (name TEXT, version TEXT, language TEXT,  generic_na
 
 CREATE TABLE keywords (name TEXT, language TEXT, kw_name TEXT, kw_generic_name TEXT, kw_fullname TEXT, kw_comment , PRIMARY KEY(name,language) );
 
-CREATE TABLE source ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, repo TEXT, last_update INTEGER, last_check INTEGER,  has_new INTEGER );
-INSERT INTO source (name, repo, last_update, last_check, has_new) VALUES ('universe', 'stable', 0, 0, 0);
-INSERT INTO source (name, repo, last_update, last_check, has_new) VALUES ('universe', 'testing', 0, 0, 0);
+CREATE TABLE source ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, repo TEXT, last_update INTEGER, last_check INTEGER, has_new INTEGER, checksum TEXT );
+INSERT INTO source (name, repo, last_update, last_check, has_new) VALUES ('universe', 'stable', 0, 0, 0, 'a' );
+INSERT INTO source (name, repo, last_update, last_check, has_new) VALUES ('universe', 'testing', 0, 0, 0, 'a' );
 
 CREATE INDEX universe_data_name ON universe_data ( name );
 CREATE INDEX universe_testing_data_name ON universe_testing_data ( name );

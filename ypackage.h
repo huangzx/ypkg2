@@ -70,7 +70,7 @@ typedef struct _DList {
 #define CONFIG_FILE "/etc/yget.conf"
 #define CONFIG_DIR "/etc/yget.conf.d"
 #define DEFAULT_REPO "stable"
-#define DEFAULT_URI "http://pkg.ylmf.com/proposed"
+#define DEFAULT_URI "http://pkg.startos.org/packages"
 #define DEFAULT_PKGDEST "/var/ypkg/packages"
 #define LOG_FILE "/var/log/ypkg2.log"
 
@@ -352,6 +352,9 @@ int packages_set_last_check_timestamp( YPackageManager *pm, char *source_name, c
 
 int packages_get_last_update_timestamp( YPackageManager *pm, char *source_name, char *repo );
 int packages_set_last_update_timestamp( YPackageManager *pm, char *source_name, char *repo, int last_check );
+
+char *packages_get_source_checksum( YPackageManager *pm, char *source_name, char *repo );
+int packages_set_source_checksum( YPackageManager *pm, char *source_name, char *repo, char *checksum );
 
 
 void packages_free_change_list( YPackageChangeList *list );

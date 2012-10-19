@@ -4,4 +4,4 @@ CREATE TABLE  IF NOT EXISTS additional_xxx_yyy_data (name TEXT, version TEXT, da
 
 CREATE INDEX  IF NOT EXISTS additional_xxx_yyy_data_name  ON additional_xxx_yyy_data ( name );
 
-REPLACE INTO source VALUES( NULL, 'xxx', 'yyy', 0, 0, 1 );
+REPLACE INTO source( id, name, repo, last_update, last_check, has_new, checksum ) VALUES( NULL, 'xxx', 'yyy', 0, 0, 1, 'a' );
