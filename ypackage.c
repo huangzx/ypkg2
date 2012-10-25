@@ -361,7 +361,8 @@ int packages_upgrade_db( YPackageManager *pm )
                 //printf( "debug: exec %s\n", line );
                 if( db_exec( &db, line, NULL ) != SQLITE_DONE )
                 {
-                    goto exception_handler;
+                    //goto exception_handler;
+                    ;
                 }
             }
         }

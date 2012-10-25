@@ -332,6 +332,7 @@ int main( int argc, char **argv )
                         packages_log( pm, package_name, "Install" );
                         printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", package_name );
 
+                        /*
                         if( !packages_get_info_from_ypk( package_name, &pkg, NULL, NULL, NULL, NULL ) )
                         {
                             if( !strcmp( packages_get_package_attr( pkg, "name" ), "ypkg2" ) )
@@ -341,6 +342,7 @@ int main( int argc, char **argv )
                             }
                             continue;
                         }
+                        */
 
 
                         ret = packages_install_local_package( pm, package_name, "/", force, ypkg_progress_callback, pm );
