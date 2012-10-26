@@ -948,7 +948,7 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
             if( sscanf( list_line, "%s %d %s", update_file, &timestamp, sum ) == 3 )
             {
                 len = strlen( source->accept_repo );
-                if( !strncmp( source->accept_repo, update_file, len ) && strcmp( sum, last_checksum ) )
+                if( !strncmp( source->accept_repo, update_file, len ) && (!last_checksum  || strcmp( sum, last_checksum ) ) )
                 {
                     printf( "updating %s\n", update_file );
                     if( !packages_update_single_xml( pm, source, update_file, sum, cb, cb_arg  ) )
