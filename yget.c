@@ -418,6 +418,7 @@ return_point:
         free( ypk_sha );
 
     packages_free_package( pkg );
+    pkg = NULL;
     return return_code;
 }
 
@@ -695,6 +696,7 @@ int main( int argc, char **argv )
                                     dlist_append( remove_list, cur_package );
                                 }
                                 packages_free_package_data( pkg_data );
+                                pkg_data = NULL;
                             }
                         }
                         packages_free_list( pkg_list );
@@ -787,6 +789,7 @@ int main( int argc, char **argv )
                             {
                                 printf( "%s_%s is already the newest version.\n", package_name, version );
                                 packages_free_package( pkg );
+                                pkg = NULL;
                                 continue;
                             }
                         }
@@ -886,7 +889,10 @@ int main( int argc, char **argv )
                     }
 
                     if( pkg )
+                    {
                         packages_free_package( pkg );
+                        pkg = NULL;
+                    }
 
                     packages_free_install_list( install_list );
                     packages_free_install_list( depend_list );
@@ -981,7 +987,8 @@ int main( int argc, char **argv )
             }
             else
             {
-                printf( "Status \tName  \tChannel  \tDescription\n====================================================================\n" );
+                //printf( "Status \tName  \tChannel  \tDescription\n====================================================================\n" );
+                printf( "Name  \tChannel  \tDescription\n====================================================================\n" );
 
                 for( i = optind; i < argc; i++)
                 {
@@ -1172,7 +1179,9 @@ int main( int argc, char **argv )
                         free( install_date );
 
                     packages_free_package_data( pkg_data );
+                    pkg_data = NULL;
                     packages_free_package( pkg );
+                    pkg = NULL;
                 }
                 else
                 {
@@ -1270,7 +1279,9 @@ int main( int argc, char **argv )
                         free( install_date );
 
                     packages_free_package( pkg );
+                    pkg = NULL;
                     packages_free_package_data( pkg_data );
+                    pkg_data = NULL;
                 }
                 else
                 {
