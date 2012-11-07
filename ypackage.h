@@ -221,7 +221,7 @@ int packages_get_count( YPackageManager *pm, char *keys[], char *keywords[], int
 int packages_has_installed( YPackageManager *pm, char *name, char *version );
 int packages_exists( YPackageManager *pm, char *name, char *version );
 
-int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data, YPackageFile **package_file, char *install_script, char *desktop_file );
+int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data, YPackageFile **package_file, char *install_script, char *desktop_file, char *icon );
 
 int packages_get_package_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data );
 

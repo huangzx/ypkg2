@@ -2206,14 +2206,14 @@ YPackage *packages_get_package( YPackageManager *pm, char *name, int installed )
  */
 int packages_get_package_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data )
 {
-    return packages_get_info_from_ypk( ypk_path, package, package_data, NULL, NULL, NULL );
+    return packages_get_info_from_ypk( ypk_path, package, package_data, NULL, NULL, NULL, NULL );
 }
 
 
 /*
  * packages_get_info_from_ypk
  */
-int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data, YPackageFile **package_file, char *install_script, char *desktop_file )
+int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data, YPackageFile **package_file, char *install_script, char *desktop_file, char *icon )
 {
     int                 i, ret, return_code = 0, cur_data_index, data_count;
     void                *pkginfo = NULL, *control = NULL, *filelist = NULL;
@@ -2259,7 +2259,7 @@ int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData
         control = NULL;
     }
 
-    if( package || install_script || desktop_file )
+    if( package || install_script || desktop_file || icon )
     {
         pkg = (YPackage *)malloc( sizeof( YPackage ) );
         pkg->ht = hash_table_init( );
@@ -2401,6 +2401,38 @@ int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData
             {
                 return_code = -6;
                 goto exception_handler;
+            }
+        }
+    }
+
+    //extract icon
+    if( icon )
+    {
+        package_name = packages_get_package_attr( (*package), "name");
+
+        tmp = util_strcat( package_name, ".png", NULL );
+        ret = archive_extract_file3( pkginfo, pkginfo_len, tmp, icon );
+        free( tmp );
+        tmp = NULL;
+        if( ret == -1 )
+        {
+            tmp = util_strcat( package_name, ".svg", NULL );
+            ret = archive_extract_file3( pkginfo, pkginfo_len, tmp, icon );
+            free( tmp );
+            tmp = NULL;
+            if( ret == -1 )
+            {
+                tmp = util_strcat( package_name, ".jpg", NULL );
+                ret = archive_extract_file3( pkginfo, pkginfo_len, tmp, icon );
+                free( tmp );
+                tmp = NULL;
+                if( ret == -1 )
+                {
+                    tmp = util_strcat( package_name, ".xpm", NULL );
+                    ret = archive_extract_file3( pkginfo, pkginfo_len, tmp, icon );
+                    free( tmp );
+                    tmp = NULL;
+                }
             }
         }
     }
@@ -4428,7 +4460,7 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
         return -1;
 
     //get ypk's infomations
-    if( packages_get_info_from_ypk( ypk_path, &pkg, &pkg_data, &pkg_file, NULL, NULL ) != 0 )
+    if( packages_get_info_from_ypk( ypk_path, &pkg, &pkg_data, &pkg_file, NULL, NULL, NULL ) != 0 )
     {
         return -1;
     }
@@ -5149,7 +5181,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     }
 
     mkstemp( tmp_ypk_install );
-    ret = packages_get_info_from_ypk( ypk_path, &pkg, &pkg_data, &pkg_file, tmp_ypk_install, NULL );
+    ret = packages_get_info_from_ypk( ypk_path, &pkg, &pkg_data, &pkg_file, tmp_ypk_install, NULL, NULL );
     if( ret != 0 )
     {
         msg = util_strcat( "Error: invalid format or file not found.\n", NULL );
