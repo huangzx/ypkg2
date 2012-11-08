@@ -3414,8 +3414,10 @@ YPackageList *packages_search_world_data( YPackageManager *pm, int limit, int of
 
     //sql = util_strcat( "select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " = ? ", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like ?||',%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?||',%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like ?||'(%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?||'(%'", " limit ? offset ?", NULL );
 
-    sql = util_strcat( "select name, version from world where ", key, " = ? ", " limit ? offset ?", NULL );
-    db_query( &db, sql, keyword, limit_str, offset_str, NULL);
+    //sql = util_strcat( "select name, version from world where ", key, " = ? ", " union select name, version from world where ", key, " like ?||',%'", " union select name, version from world where ", key, " like '%,'||?", " union select name, version from world where ", key, " like '%,'||?||',%'", " union select name, version from world where ", key, " like ?||'(%'", " union select name, version from world where ", key, " like '%,'||?||'(%'", " limit ? offset ?", NULL );
+    sql = util_strcat( "select name, version from world_data where ", key, " = '", keyword, "' union select name, version from world_data where ", key, " like '", keyword, ",%' union select name, version from world_data where ", key, " like '%,", keyword, "' union select name, version from world_data where ", key, " like '%,", keyword, ",%' union select name, version from world_data where ", key, " like '", keyword, "(%' union select name, version from world_data where ", key, " like '%,", keyword, "(%' limit ? offset ?", NULL );
+    //db_query( &db, sql, keyword, keyword, keyword, keyword, keyword, keyword, limit_str, offset_str, NULL);
+    db_query( &db, sql, limit_str, offset_str, NULL);
     free( sql );
     free( limit_str );
     free( offset_str );
