@@ -218,6 +218,7 @@ int packages_upgrade_db( YPackageManager *pm )
     if( db_fetch_assoc( &db ) )
     {
         cur_version = atoi( db_get_value_by_key( &db, "db_version" ) );
+        db_close( &db );
     }
     else
     {
@@ -225,8 +226,10 @@ int packages_upgrade_db( YPackageManager *pm )
         {
             goto exception_handler;
         }
+        db_close( &db );
     }
 
+    db_init( &db, pm->db_name, OPEN_WRITE );
     db_exec( &db, "begin", NULL );  
 
     line = NULL;
@@ -262,7 +265,8 @@ int packages_upgrade_db( YPackageManager *pm )
                 //printf( "debug: exec %s\n", line );
                 if( db_exec( &db, line, NULL ) != SQLITE_DONE )
                 {
-                    goto exception_handler;
+                    //goto exception_handler;
+                    ;
                 }
             }
         }

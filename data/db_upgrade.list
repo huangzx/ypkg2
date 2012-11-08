@@ -1,0 +1,24 @@
+Version:2012041901
+ALTER TABLE universe ADD COLUMN rir INTEGER DEFAULT 0
+ALTER TABLE universe_testing ADD COLUMN rir INTEGER DEFAULT 0
+ALTER TABLE universe_history ADD COLUMN rir INTEGER DEFAULT 0
+ALTER TABLE world ADD COLUMN rir INTEGER DEFAULT 0
+End
+
+Version:2012062001
+CREATE TABLE keywords (name TEXT, language TEXT, kw_name TEXT, kw_generic_name TEXT, kw_fullname TEXT, kw_comment , PRIMARY KEY(name,language) );
+End
+
+Version:2012072001
+ALTER TABLE world_file ADD COLUMN replace TEXT;
+ALTER TABLE world_file ADD COLUMN replace_with TEXT;
+ALTER TABLE world_data ADD COLUMN data_replace TEXT;
+ALTER TABLE universe_data ADD COLUMN data_replace TEXT;
+ALTER TABLE universe_history_data ADD COLUMN data_replace TEXT;
+ALTER TABLE universe_testing_data ADD COLUMN data_replace TEXT;
+End
+
+Version:2012081501
+CREATE INDEX IF NOT EXISTS world_file_name ON world_file ( name );
+CREATE INDEX IF NOT EXISTS world_file_file ON world_file ( file );
+End
