@@ -14,7 +14,7 @@ int libypk_errno;
 YPackageManager *packages_manager_init()
 {
     int                 len;
-    char                *source_name, *source_uri, *use, *config_file;
+    char                *source_name, *source_uri, *accept_repo, *desc, *use, *config_file, *token, *saveptr;
     DIR                 *dir;
     struct dirent       *entry;
     YPackageManager     *pm;
@@ -61,12 +61,32 @@ YPackageManager *packages_manager_init()
 
             source_uri = util_get_config( config_file, "YPPATH_URI" );
             use = util_get_config( config_file, "USE" );
-            if( source_uri && use && ( use[0] == 'Y' || use[0] == 'y' ) )
+            if( use && ( use[0] == 'N' || use[0] == 'n' ) )
+            {
+                ;
+            }
+            else if( source_uri )
             {
                 source_name = strdup( entry->d_name );
                 source_name[len-5] = 0;
-                packages_manager_add_source( pm->source_list, source_name, source_uri, util_get_config( config_file, "ACCEPT_REPO" ), util_get_config( config_file, "YPPATH_PKGDEST" ) );
+                accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
+                desc = util_get_config( config_file, "YPPATH_PKGDEST" );
+
+                token = strtok_r( accept_repo, " ", &saveptr );
+                while( token )
+                {
+                    packages_manager_add_source( pm->source_list, source_name, source_uri, token, desc );
+                    token = strtok_r( NULL, " ,", &saveptr );
+                }
+
+                free( source_name );
+                free( accept_repo );
+                free( desc );
             }
+            free( source_uri );
+            free( use );
+            free( config_file );
+            config_file = NULL;
         }
 
         closedir( dir );
@@ -78,17 +98,33 @@ YPackageManager *packages_manager_init()
         config_file = CONFIG_FILE;
         source_uri = util_get_config( config_file, "YPPATH_URI" );
         use = util_get_config( config_file, "USE" );
-        if( source_uri && use && ( use[0] == 'Y' || use[0] == 'y' ) )
+        if( use && ( use[0] == 'N' || use[0] == 'n' ) )
         {
-            packages_manager_add_source( pm->source_list, strdup( "universe" ), source_uri, util_get_config( config_file, "ACCEPT_REPO" ), util_get_config( config_file, "YPPATH_PKGDEST" ) );
+            ;
         }
+        else if( source_uri )
+        {
+            desc = util_get_config( config_file, "YPPATH_PKGDEST" );
+            accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
+            token = strtok_r( accept_repo, " ", &saveptr );
+            while( token )
+            {
+                packages_manager_add_source( pm->source_list, "universe", source_uri, token, desc );
+                token = strtok_r( NULL, " ,", &saveptr );
+            }
+
+            free( accept_repo );
+            free( desc );
+        }
+        free( source_uri );
+        free( use );
 
         pm->log = util_get_config( config_file, "LOG" );
     }
 
     //default config
     if( pm->source_list->cnt == 0 )
-        packages_manager_add_source( pm->source_list, strdup( "universe" ), strdup( DEFAULT_URI ), NULL, NULL );
+        packages_manager_add_source( pm->source_list, "universe", DEFAULT_URI, NULL, NULL );
 
     if( !pm->log )
         pm->log = strdup( LOG_FILE );
@@ -125,10 +161,10 @@ int packages_manager_add_source( YPackageSourceList *list, char *source_name, ch
     if( !source )
         return -2;
 
-    source->source_name = source_name;
-    source->source_uri = source_uri;
-    source->accept_repo = accept_repo ? accept_repo : strdup( DEFAULT_REPO );
-    source->package_dest = package_dest ? package_dest : strdup( DEFAULT_PKGDEST );
+    source->source_name = strdup( source_name );
+    source->source_uri = strdup( source_uri );
+    source->accept_repo = accept_repo ? strdup( accept_repo ) : strdup( DEFAULT_REPO );
+    source->package_dest = package_dest ? strdup( package_dest ) : strdup( DEFAULT_PKGDEST );
     dlist_append( list, source );
 
     return 0;
@@ -143,13 +179,29 @@ void packages_manager_free_source( void *node )
 
     source = (YPackageSource *)node;
 
-    free( source->source_uri );
+    if( source->source_uri )
+    {
+        free( source->source_uri );
+        source->source_uri  = NULL;
+    }
 
     if( source->accept_repo )
+    {
         free( source->accept_repo );
+        source->accept_repo  = NULL;
+    }
 
     if( source->package_dest )
+    {
         free( source->package_dest );
+        source->package_dest  = NULL;
+    }
+
+    if( source->source_name )
+    {
+        free( source->source_name );
+        source->source_name  = NULL;
+    }
 
     free( source );
 }
@@ -157,7 +209,7 @@ void packages_manager_free_source( void *node )
 YPackageManager *packages_manager_init2( int type )
 {
     int                 ret, len;
-    char                *source_name, *source_uri, *use, *config_file;
+    char                *source_name, *source_uri, *accept_repo, *desc, *use, *config_file, *token, *saveptr;
     DIR                 *dir;
     struct dirent       *entry;
     YPackageManager     *pm;
@@ -232,12 +284,32 @@ YPackageManager *packages_manager_init2( int type )
 
             source_uri = util_get_config( config_file, "YPPATH_URI" );
             use = util_get_config( config_file, "USE" );
-            if( source_uri && use && ( use[0] == 'Y' || use[0] == 'y' ) )
+            if( use && ( use[0] == 'N' || use[0] == 'n' ) )
+            {
+                ;
+            }
+            else if( source_uri )
             {
                 source_name = strdup( entry->d_name );
                 source_name[len-5] = 0;
-                packages_manager_add_source( pm->source_list, source_name, source_uri, util_get_config( config_file, "ACCEPT_REPO" ), util_get_config( config_file, "YPPATH_PKGDEST" ) );
+                accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
+                desc = util_get_config( config_file, "YPPATH_PKGDEST" );
+
+                token = strtok_r( accept_repo, " ", &saveptr );
+                while( token )
+                {
+                    packages_manager_add_source( pm->source_list, source_name, source_uri, token, desc );
+                    token = strtok_r( NULL, " ,", &saveptr );
+                }
+
+                free( source_name );
+                free( accept_repo );
+                free( desc );
             }
+            free( source_uri );
+            free( use );
+            free( config_file );
+            config_file = NULL;
         }
 
         closedir( dir );
@@ -249,17 +321,32 @@ YPackageManager *packages_manager_init2( int type )
         config_file = CONFIG_FILE;
         source_uri = util_get_config( config_file, "YPPATH_URI" );
         use = util_get_config( config_file, "USE" );
-        if( source_uri && use && ( use[0] == 'Y' || use[0] == 'y' ) )
+        if( use && ( use[0] == 'N' || use[0] == 'n' ) )
         {
-            packages_manager_add_source( pm->source_list, strdup( "universe" ), source_uri, util_get_config( config_file, "ACCEPT_REPO" ), util_get_config( config_file, "YPPATH_PKGDEST" ) );
+            ;
         }
+        else if( source_uri )
+        {
+            desc = util_get_config( config_file, "YPPATH_PKGDEST" );
+            accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
+            token = strtok_r( accept_repo, " ", &saveptr );
+            while( token )
+            {
+                packages_manager_add_source( pm->source_list, "universe", source_uri, token, desc );
+                token = strtok_r( NULL, " ,", &saveptr );
+            }
+            free( accept_repo );
+            free( desc );
+        }
+        free( source_uri );
+        free( use );
 
         pm->log = util_get_config( config_file, "LOG" );
     }
 
     //default config
     if( pm->source_list->cnt == 0 )
-        packages_manager_add_source( pm->source_list, strdup( "universe" ), strdup( DEFAULT_URI ), NULL, NULL );
+        packages_manager_add_source( pm->source_list, "universe", DEFAULT_URI, NULL, NULL );
 
     if( !pm->log )
         pm->log = strdup( LOG_FILE );
@@ -1821,7 +1908,7 @@ int packages_get_count( YPackageManager *pm, char *keys[], char *keywords[], int
         {
             sql = util_strcat( "select count(distinct name) from ", sub_sql, " left join keywords using (name)  where ", where_str, NULL );
             db_query( &db, sql, NULL );
-            //printf( "%s\n", sql);
+            //puts( sql);
 
             free( where_str );
             free( sql );
@@ -3255,6 +3342,7 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
     if( !keys || !keywords || !wildcards || !(*keys) || !(*keywords) || !(*wildcards) )
     {
         sql = util_strcat( " select * from ", sub_sql, "  left join keywords using (name) group by name limit ? offset ?", NULL );
+        //puts(sql);
         free( sub_sql );
         sub_sql = NULL;
 
@@ -3324,7 +3412,7 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
         if( where_str )
         {
             sql = util_strcat( "select * from ", sub_sql, " left join keywords using (name) where ", where_str, " group by name limit ? offset ?", NULL );
-            //printf( "%s\n", sql );
+            //puts(sql);
             db_query( &db, sql, limit_str, offset_str, NULL );
 
             free( where_str );
