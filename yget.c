@@ -466,7 +466,8 @@ int main( int argc, char **argv )
     YPackageData    *pkg_data;
     YPackageList    *pkg_list;
     YPackageChangePackage  *cur_package;       
-    YPackageChangeList     *depend_list, *recommended_list, *sub_list, *install_list, *remove_list, *upgrade_list;
+    YPackageChangeList     *depend_list,  *sub_list, *install_list, *remove_list, *upgrade_list;
+    //YPackageChangeList     *depend_list, *recommended_list, *sub_list, *install_list, *remove_list, *upgrade_list;
 
     if( argc == 1 )
     {
@@ -754,7 +755,7 @@ int main( int argc, char **argv )
             {
                 install_list = NULL;
                 depend_list = NULL;
-                recommended_list = NULL;
+                //recommended_list = NULL;
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
@@ -804,7 +805,7 @@ int main( int argc, char **argv )
 
                     packages_clist_append( install_list, package_name, version, 0, 1 );
 
-                    sub_list = packages_get_depend_list( pm, package_name, version );
+                    sub_list = packages_get_depend_list( pm, package_name, version, NULL );
                     if( sub_list )
                     {
                         dlist_cat( sub_list, depend_list );
@@ -812,6 +813,7 @@ int main( int argc, char **argv )
                         depend_list = sub_list;
                     }
 
+                    /*
                     sub_list = packages_get_recommended_list( pm, package_name, version );
                     if( sub_list )
                     {
@@ -819,6 +821,7 @@ int main( int argc, char **argv )
                         dlist_cleanup( recommended_list, packages_free_change_package );
                         recommended_list = sub_list;
                     }
+                    */
 
                 }
 
@@ -848,6 +851,7 @@ int main( int argc, char **argv )
                         }
                     }
 
+                    /*
                     if( recommended_list )
                     {
                         cur_package = dlist_head_data( recommended_list );
@@ -859,6 +863,7 @@ int main( int argc, char **argv )
                             cur_package = dlist_next_data( recommended_list );
                         }
                     }
+                    */
                     putchar( '\n' );
 
                     if( !simulation )
@@ -878,7 +883,8 @@ int main( int argc, char **argv )
                             {
                                 if( !yget_install_list( pm, install_list, download_only, force ) )
                                 {
-                                    yget_install_list( pm, recommended_list, download_only, force );
+                                    ;
+                                    //yget_install_list( pm, recommended_list, download_only, force );
                                 }
                             }
                             else
@@ -896,7 +902,7 @@ int main( int argc, char **argv )
 
                     packages_free_install_list( install_list );
                     packages_free_install_list( depend_list );
-                    packages_free_install_list( recommended_list );
+                    //packages_free_install_list( recommended_list );
                 }
             }
             break;
@@ -1302,7 +1308,7 @@ int main( int argc, char **argv )
             else
             {
                     depend_list = NULL;
-                    recommended_list = NULL;
+                    //recommended_list = NULL;
                     confirm = 'N';
 
                     upgrade_list = packages_get_upgrade_list( pm );
@@ -1319,7 +1325,7 @@ int main( int argc, char **argv )
                                 upgrade_ypkg = 1;
                             }
 
-                            sub_list = packages_get_depend_list( pm, cur_package->name, cur_package->version );
+                            sub_list = packages_get_depend_list( pm, cur_package->name, cur_package->version, NULL );
 
                             if( sub_list )
                             {
@@ -1335,6 +1341,7 @@ int main( int argc, char **argv )
                                 }
                             }
 
+                            /*
                             sub_list = packages_get_recommended_list( pm, cur_package->name, cur_package->version );
                             if( sub_list )
                             {
@@ -1349,13 +1356,14 @@ int main( int argc, char **argv )
                                     recommended_list = sub_list;
                                 }
                             }
+                            */
 
                             cur_package = dlist_next_data( upgrade_list );
                         }
 
 
                         packages_clist_remove_duplicate_item( depend_list );
-                        packages_clist_remove_duplicate_item( recommended_list );
+                        //packages_clist_remove_duplicate_item( recommended_list );
 
                         cur_package = dlist_head_data( depend_list );
                         while( cur_package )
@@ -1365,14 +1373,17 @@ int main( int argc, char **argv )
                                 dlist_remove( upgrade_list, i, packages_free_change_package );
                             }
 
+                            /*
                             if( ( i = dlist_search( recommended_list, cur_package, packages_clist_package_cmp ) ) > 0 )
                             {
                                 dlist_remove( recommended_list, i, packages_free_change_package );
                             }
+                            */
 
                             cur_package = dlist_next_data( depend_list );
                         }
 
+                        /*
                         cur_package = dlist_head_data( upgrade_list );
                         while( cur_package )
                         {
@@ -1383,6 +1394,7 @@ int main( int argc, char **argv )
 
                             cur_package = dlist_next_data( upgrade_list );
                         }
+                        */
 
 
                         printf( "Upgrade:" );
@@ -1418,6 +1430,7 @@ int main( int argc, char **argv )
                             }
                         }
 
+                        /*
                         if( recommended_list )
                         {
                             printf( "\nRecommended-install:" );
@@ -1428,6 +1441,7 @@ int main( int argc, char **argv )
                                 cur_package = dlist_next_data( recommended_list );
                             }
                         }
+                        */
                         putchar( '\n' );
 
                         if( yes )
@@ -1455,7 +1469,8 @@ int main( int argc, char **argv )
                                 {
                                     if( !yget_install_list( pm, upgrade_list, download_only, force ) )
                                     {
-                                        yget_install_list( pm, recommended_list, download_only, force );
+                                        ;
+                                        //yget_install_list( pm, recommended_list, download_only, force );
                                     }
                                     else
                                     {

@@ -3832,10 +3832,10 @@ exception_handler:
 }
 
 
-YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name, char *version )
+YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name, char *version, char *skip )
 {
     int             i;
-    char            *token, *saveptr, *depend, *version2, *tmp, *tmp2;
+    char            *token, *saveptr, *depend, *recommended, *version2, *tmp, *tmp2;
     YPackageData    *pkg_data;
     YPackageChangeList    *list, *sub_list;
 
@@ -3855,7 +3855,6 @@ YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package
             depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
             if( depend )
             {
-
                 version2 = NULL;
                 token = strtok_r( depend, " ,", &saveptr );
                 while( token )
@@ -3872,14 +3871,18 @@ YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package
                             *tmp2 = 0;
                     }
 
-                    if( !packages_has_installed( pm, tmp, version2 ) )
+                    if( skip && tmp && !strcmp( skip, tmp ) )
+                    {
+                        ;
+                    }
+                    else if( !packages_has_installed( pm, tmp, version2 ) )
                     {
                         if( !list )
                             list = dlist_init();
 
                         packages_clist_append( list, tmp, version2, 0, 2 );
 
-                        sub_list = packages_get_depend_list( pm, tmp, version2 );
+                        sub_list = packages_get_depend_list( pm, tmp, version2, package_name );
                         if( sub_list )
                         {
                             dlist_cat( sub_list, list );
@@ -3888,6 +3891,51 @@ YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package
                         }
                     }
 
+                    free( tmp );
+                    version2 = NULL;
+                    token = strtok_r( NULL, " ,", &saveptr );
+                }
+            }
+
+            recommended = packages_get_package_data_attr( pkg_data, i, "data_recommended");
+            if( recommended )
+            {
+
+                version2 = NULL;
+                token = strtok_r( recommended, " ,", &saveptr );
+                while( token )
+                {
+                    tmp = util_strcat( token, NULL );
+                    if( (version2 = strchr( tmp, '(' )) )
+                    {
+                        *version2++ = 0;
+
+                        while( *version2 == ' ' )
+                            version2++;
+
+                        if( (tmp2 = strchr( version2, ')' )) )
+                            *tmp2 = 0;
+                    }
+
+                    if( skip && tmp && !strcmp( skip, tmp ) )
+                    {
+                        ;
+                    }
+                    else if( !packages_has_installed( pm, tmp, version2 ) )
+                    {
+                        if( !list )
+                            list = dlist_init();
+
+                        packages_clist_append( list, tmp, version2, 0, 3 );
+
+                        sub_list = packages_get_depend_list( pm, tmp, version2, package_name );
+                        if( sub_list )
+                        {
+                            dlist_cat( sub_list, list );
+                            dlist_cleanup( list, packages_free_change_package );
+                            list = sub_list;
+                        }
+                    }
                     free( tmp );
                     version2 = NULL;
                     token = strtok_r( NULL, " ,", &saveptr );
@@ -4026,12 +4074,12 @@ YPackageChangeList *packages_clist_remove_duplicate_item( YPackageChangeList *li
 YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name, char *version )
 {
     int                     i;
-    char                    *token, *version2, *saveptr, *depend, *dev, *bdepend, *tmp;
+    char                    *token, *version2, *saveptr, *depend, *dev, *bdepend, *tmp, *tmp2;
     YPackageData            *pkg_data;
-    YPackageChangeList      *list;
+    YPackageChangeList      *list, *sub_list;
 
     list = NULL;
-
+    sub_list = NULL;
 
     if( (pkg_data = packages_get_package_data( pm, package_name, 0 )) )
     {
@@ -4040,16 +4088,21 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
             depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
             if( depend )
             {
-
+                version2 = NULL;
                 token = strtok_r( depend, " ,", &saveptr );
                 while( token )
                 {
-                    tmp = util_strcat( token, NULL );
+                    tmp = strdup( token );
                     if( (version2 = strchr( tmp, '(' )) )
                     {
-                        *version2 = 0;
+                        *version2++ = 0;
+
+                        while( (*version2 == ' ') )
+                            version2++;
+
+                        if( (tmp2 = strchr( version2, ')' )) )
+                            *tmp2 = 0;
                     }
-                    
 
                     dev = util_strcat( tmp, "-dev", NULL );
                     free( tmp );
@@ -4060,14 +4113,24 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
                         continue;
                     }
 
-                    if( !packages_has_installed( pm, dev, NULL ) )
+                    if( !packages_has_installed( pm, dev, version2 ) )
                     {
                         if( !list )
                             list = dlist_init();
 
-                        packages_clist_append( list, dev, NULL, 0, 2 );
+                        packages_clist_append( list, dev, version2, 0, 2 );
+
+                        sub_list = packages_get_depend_list( pm, dev, version2, NULL );
+                        if( sub_list )
+                        {
+                            dlist_cat( sub_list, list );
+                            dlist_cleanup( list, packages_free_change_package );
+                            list = sub_list;
+                        }
+
                     }
                     free( dev );
+                    version2 = NULL;
                     token = strtok_r( NULL, " ,", &saveptr );
                 }
             }
@@ -4075,15 +4138,36 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
             bdepend = packages_get_package_data_attr( pkg_data, i, "data_bdepend");
             if( bdepend )
             {
+                version2 = NULL;
                 token = strtok_r( bdepend, " ,", &saveptr );
                 while( token )
                 {
-                    if( !packages_has_installed( pm, token, NULL ) )
+                    tmp = strdup( token );
+                    if( (version2 = strchr( tmp, '(' )) )
+                    {
+                        *version2++ = 0;
+
+                        while( (*version2 == ' ') )
+                            version2++;
+
+                        if( (tmp2 = strchr( version2, ')' )) )
+                            *tmp2 = 0;
+                    }
+
+                    if( !packages_has_installed( pm, tmp, version2 ) )
                     {
                         if( !list )
                             list = dlist_init();
 
-                        packages_clist_append( list, token, NULL, 0, 2 );
+                        packages_clist_append( list, token, version2, 0, 2 );
+
+                        sub_list = packages_get_depend_list( pm, tmp, version2, NULL );
+                        if( sub_list )
+                        {
+                            dlist_cat( sub_list, list );
+                            dlist_cleanup( list, packages_free_change_package );
+                            list = sub_list;
+                        }
                     }
                     token = strtok_r( NULL, " ,", &saveptr );
                 }
@@ -4100,6 +4184,14 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
             list = dlist_init();
 
         packages_clist_append( list, "build-essential", NULL, 0, 2 );
+
+        sub_list = packages_get_depend_list( pm, "build-essential", NULL, NULL );
+        if( sub_list )
+        {
+            dlist_cat( sub_list, list );
+            dlist_cleanup( list, packages_free_change_package );
+            list = sub_list;
+        }
     }
 
     packages_clist_remove_duplicate_item( list );
@@ -4145,7 +4237,7 @@ YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *packag
     
     list = NULL;
 
-    depend = packages_get_depend_list( pm, package_name, version );
+    depend = packages_get_depend_list( pm, package_name, version, NULL );
     if( depend )
     {
         list = depend;

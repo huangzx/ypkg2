@@ -307,7 +307,7 @@ YPackageChangeList *packages_clist_remove_duplicate_item( YPackageChangeList *ch
 
 
 YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *package_name, char *version );
-YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name,char *version );
+YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name, char *version, char *skip );
 YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name, char *version );
 YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name, char *version );
 
