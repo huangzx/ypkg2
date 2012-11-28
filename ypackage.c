@@ -3969,7 +3969,7 @@ YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, c
                         if( !list )
                         {
                             list = dlist_init();
-                            packages_clist_append( list, NULL, NULL, 0, 7 );
+                            packages_clist_append( list, util_strcat( "{", package_name, NULL ), NULL, 0, 7 );
                         }
 
                         sub_list = packages_get_depend_list_recursively( pm, tmp, version2, package_name, 2 );
@@ -3992,7 +3992,7 @@ YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, c
                 if( !list )
                 {
                     list = dlist_init();
-                    packages_clist_append( list, NULL, NULL, 0, 7 );
+                    packages_clist_append( list, util_strcat( "{", package_name, NULL ), NULL, 0, 7 );
                 }
                 else if( self_type == 2 )
                 {
@@ -4036,9 +4036,8 @@ YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, c
                         sub_list = packages_get_depend_list_recursively( pm, tmp, version2, package_name, 3 );
                         if( sub_list )
                         {
-                            dlist_cat( sub_list, list );
-                            dlist_cleanup( list, packages_free_change_package );
-                            list = sub_list;
+                            dlist_cat( list, sub_list );
+                            dlist_cleanup( sub_list, packages_free_change_package );
                         }
                     }
                     free( tmp );
@@ -4048,13 +4047,13 @@ YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, c
             }
 
         }
+        packages_clist_append( list, util_strcat( package_name, "}", NULL ), NULL, 0, 8 );
         packages_free_package_data( pkg_data );
     }
 
     if( list )
     {
         packages_clist_remove_duplicate_item( list );
-        packages_clist_append( list, NULL, NULL, 0, 8 );
     }
     return list;
 }

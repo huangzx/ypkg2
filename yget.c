@@ -442,7 +442,7 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
         {
             if( skip_list )
                 skip_list--;
-            else
+            else if( skip )
                 skip--;
         }
         else if( skip )
@@ -499,8 +499,7 @@ int main( int argc, char **argv )
     YPackageData    *pkg_data;
     YPackageList    *pkg_list;
     YPackageChangePackage  *cur_package;       
-    YPackageChangeList     *depend_list,  *sub_list, *install_list, *remove_list, *upgrade_list;
-    //YPackageChangeList     *depend_list, *recommended_list, *sub_list, *install_list, *remove_list, *upgrade_list;
+    YPackageChangeList     *sub_list, *install_list, *remove_list, *upgrade_list;
 
     if( argc == 1 )
     {
@@ -787,8 +786,6 @@ int main( int argc, char **argv )
             else
             {
                 install_list = NULL;
-                depend_list = NULL;
-                //recommended_list = NULL;
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
@@ -849,6 +846,7 @@ int main( int argc, char **argv )
                         install_list = sub_list;
                     }
 
+
                     /*
                     sub_list = packages_get_recommended_list( pm, package_name, version );
                     if( sub_list )
@@ -865,6 +863,7 @@ int main( int argc, char **argv )
 
                 if( install_list )
                 {
+                    
                     printf( "Install: " );
                     cur_package = dlist_head_data( install_list );
                     while( cur_package )
@@ -911,25 +910,14 @@ int main( int argc, char **argv )
                             printf( "Do you want to continue [Y/n]?" );
                             confirm = getchar();
                         }
+
                         if( confirm != 'n' && confirm != 'N' )
                         {
-                                /*
-                            if( !yget_install_list( pm, depend_list, download_only, force ) || force )
-                            {
-                                ;
-                                if( !yget_install_list( pm, install_list, download_only, force ) )
-                                {
-                                    yget_install_list( pm, recommended_list, download_only, force );
-                                }
-                            }
-                                */
                             if( yget_install_list( pm, install_list, download_only, force ) )
                             {
                                 err = 3;
                             }
                         }
-                        else
-                            err = 3;
                     }
 
                     if( pkg )
@@ -939,8 +927,6 @@ int main( int argc, char **argv )
                     }
 
                     packages_free_install_list( install_list );
-                    packages_free_install_list( depend_list );
-                    //packages_free_install_list( recommended_list );
                 }
             }
             break;
