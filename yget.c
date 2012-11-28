@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
  * Version: 0.1
- * Date: 2012.8.13
+ * Date: 2012.11.28
  */
 
 #define LIBYPK 1
@@ -424,7 +424,7 @@ return_point:
 
 int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int download_only, int force )
 {
-    int                     ret, return_code = 0;
+    int                     skip = 0, skip_list = 0, ret, return_code = 0;
     YPackageChangePackage   *cur_pkg;
 
     if( !list )
@@ -433,22 +433,55 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
     cur_pkg = dlist_head_data( list );
     while( cur_pkg )
     {
-        printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
-        ret = yget_install_package( pm, cur_pkg->name, NULL, download_only, 0, force );
-        if( !ret )
+        if( cur_pkg->type == 7 )
         {
-            printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+            if( skip )
+                skip_list++;
+        }
+        else if( cur_pkg->type == 8 )
+        {
+            if( skip_list )
+                skip_list--;
+            else
+                skip--;
+        }
+        else if( skip )
+        {
+            if( cur_pkg->type == 6 && !skip_list )
+            {
+                skip++;
+            }
+            printf( "skip " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
         }
         else
         {
-            printf( COLOR_RED "Error: installation failed.\n" COLOR_RESET );
-            return_code = -1;
+            printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
+            ret = yget_install_package( pm, cur_pkg->name, NULL, download_only, 0, force );
+            if( !ret )
+            {
+                printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+            }
+            else
+            {
+                printf( COLOR_RED "Error: installation failed.\n" COLOR_RESET );
+                return_code = -1;
+                if( cur_pkg->type != 3 )
+                {
+                    skip++;
 
-            /*
-            if( force != 1 )
-                return ret;
-                */
+                    if( cur_pkg->type == 6 )
+                    {
+                        skip++;
+                    }
+                }
+
+                /*
+                if( force != 1 )
+                    return ret;
+                    */
+            }
         }
+
         cur_pkg = dlist_next_data( list );
     }
 
@@ -800,17 +833,20 @@ int main( int argc, char **argv )
                         printf( "Error: %s not found.\n",  package_name );
                         continue;
                     }
+
+                    /*
                     if( !install_list )
                         install_list = dlist_init();
+                        */
 
-                    packages_clist_append( install_list, package_name, version, 0, 1 );
+                    //packages_clist_append( install_list, package_name, version, 0, 1 );
 
-                    sub_list = packages_get_depend_list( pm, package_name, version, NULL );
+                    sub_list = packages_get_depend_list_recursively( pm, package_name, version, NULL, 1 );
                     if( sub_list )
                     {
-                        dlist_cat( sub_list, depend_list );
-                        dlist_cleanup( depend_list, packages_free_change_package );
-                        depend_list = sub_list;
+                        dlist_cat( sub_list, install_list );
+                        dlist_cleanup( install_list, packages_free_change_package );
+                        install_list = sub_list;
                     }
 
                     /*
@@ -829,26 +865,24 @@ int main( int argc, char **argv )
 
                 if( install_list )
                 {
+                    printf( "Install: " );
                     cur_package = dlist_head_data( install_list );
-                    printf( "Install: %s", cur_package->name );
-
-                    cur_package = dlist_next_data( install_list );
                     while( cur_package )
                     {
-                        printf(" %s ", cur_package->name );
+                        if( cur_package->type == 1 )
+                            printf(" %s ", cur_package->name );
+
                         cur_package = dlist_next_data( install_list );
                     }
 
-                    if( depend_list )
+                    printf( "\nAuto-install: " );
+                    cur_package = dlist_head_data( install_list );
+                    while( cur_package )
                     {
-                        cur_package = dlist_head_data( depend_list );
-                        printf( "\nAuto-install: %s", cur_package->name );
-                        cur_package = dlist_next_data( depend_list );
-                        while( cur_package )
-                        {
+                        if( cur_package->type == 2 ||  cur_package->type == 3 || cur_package->type == 6 )
                             printf(" %s ", cur_package->name );
-                            cur_package = dlist_next_data( depend_list );
-                        }
+
+                        cur_package = dlist_next_data( install_list );
                     }
 
                     /*
@@ -879,16 +913,20 @@ int main( int argc, char **argv )
                         }
                         if( confirm != 'n' && confirm != 'N' )
                         {
+                                /*
                             if( !yget_install_list( pm, depend_list, download_only, force ) || force )
                             {
+                                ;
                                 if( !yget_install_list( pm, install_list, download_only, force ) )
                                 {
-                                    ;
-                                    //yget_install_list( pm, recommended_list, download_only, force );
+                                    yget_install_list( pm, recommended_list, download_only, force );
                                 }
                             }
-                            else
+                                */
+                            if( yget_install_list( pm, install_list, download_only, force ) )
+                            {
                                 err = 3;
+                            }
                         }
                         else
                             err = 3;
@@ -1307,7 +1345,7 @@ int main( int argc, char **argv )
             }
             else
             {
-                    depend_list = NULL;
+                    install_list = NULL;
                     //recommended_list = NULL;
                     confirm = 'N';
 
@@ -1325,123 +1363,47 @@ int main( int argc, char **argv )
                                 upgrade_ypkg = 1;
                             }
 
-                            sub_list = packages_get_depend_list( pm, cur_package->name, cur_package->version, NULL );
+                            sub_list = packages_get_depend_list_recursively( pm, cur_package->name, cur_package->version, NULL, 1 );
 
                             if( sub_list )
                             {
-                                if( !depend_list )
+                                if( !install_list )
                                 {
-                                    depend_list = sub_list;
+                                    install_list = sub_list;
                                 }
                                 else
                                 {
-                                    dlist_cat( sub_list, depend_list );
-                                    dlist_cleanup( depend_list, packages_free_change_package );
-                                    depend_list = sub_list;
+                                    dlist_cat( install_list, sub_list );
+                                    dlist_cleanup( sub_list, packages_free_change_package );
                                 }
-                            }
-
-                            /*
-                            sub_list = packages_get_recommended_list( pm, cur_package->name, cur_package->version );
-                            if( sub_list )
-                            {
-                                if( !recommended_list )
-                                {
-                                    recommended_list = sub_list;
-                                }
-                                else
-                                {
-                                    dlist_cat( sub_list, recommended_list );
-                                    dlist_cleanup( recommended_list, packages_free_change_package );
-                                    recommended_list = sub_list;
-                                }
-                            }
-                            */
-
-                            cur_package = dlist_next_data( upgrade_list );
-                        }
-
-
-                        packages_clist_remove_duplicate_item( depend_list );
-                        //packages_clist_remove_duplicate_item( recommended_list );
-
-                        cur_package = dlist_head_data( depend_list );
-                        while( cur_package )
-                        {
-                            if( ( i = dlist_search( upgrade_list, cur_package, packages_clist_package_cmp ) ) > 0 )
-                            {
-                                dlist_remove( upgrade_list, i, packages_free_change_package );
-                            }
-
-                            /*
-                            if( ( i = dlist_search( recommended_list, cur_package, packages_clist_package_cmp ) ) > 0 )
-                            {
-                                dlist_remove( recommended_list, i, packages_free_change_package );
-                            }
-                            */
-
-                            cur_package = dlist_next_data( depend_list );
-                        }
-
-                        /*
-                        cur_package = dlist_head_data( upgrade_list );
-                        while( cur_package )
-                        {
-                            if( ( i = dlist_search( recommended_list, cur_package, packages_clist_package_cmp ) ) > 0 )
-                            {
-                                dlist_remove( recommended_list, i, packages_free_change_package );
                             }
 
                             cur_package = dlist_next_data( upgrade_list );
                         }
-                        */
+                        packages_free_upgrade_list( upgrade_list );
 
+                        packages_clist_remove_duplicate_item( install_list );
 
                         printf( "Upgrade:" );
-                        cur_package = dlist_head_data( upgrade_list );
+                        cur_package = dlist_head_data( install_list );
                         while( cur_package )
                         {
-                            if( cur_package->type == 4 )
-                                printf(" %s", cur_package->name );
-                            cur_package = dlist_next_data( upgrade_list );
+                            if( cur_package->type == 1 )
+                                printf(" %s ", cur_package->name );
+
+                            cur_package = dlist_next_data( install_list );
                         }
 
-                        /*
-                        printf( "\nDowngrade:" );
-                        cur_package = dlist_head_data( upgrade_list );
+                        printf( "\nAuto-install: " );
+                        cur_package = dlist_head_data( install_list );
                         while( cur_package )
                         {
-                            if( cur_package->type == 5 )
-                                printf(" %s", cur_package->name );
-                            cur_package = dlist_next_data( upgrade_list );
-                        }
-                        putchar( '\n' );
-                        */
-
-
-                        if( depend_list )
-                        {
-                            cur_package = dlist_head_data( depend_list );
-                            printf( "\nAuto-install:" );
-                            while( cur_package )
-                            {
+                            if( cur_package->type == 2 ||  cur_package->type == 3 || cur_package->type == 6 )
                                 printf(" %s ", cur_package->name );
-                                cur_package = dlist_next_data( depend_list );
-                            }
+
+                            cur_package = dlist_next_data( install_list );
                         }
 
-                        /*
-                        if( recommended_list )
-                        {
-                            printf( "\nRecommended-install:" );
-                            cur_package = dlist_head_data( recommended_list );
-                            while( cur_package )
-                            {
-                                printf(" %s ", cur_package->name );
-                                cur_package = dlist_next_data( recommended_list );
-                            }
-                        }
-                        */
                         putchar( '\n' );
 
                         if( yes )
@@ -1465,26 +1427,14 @@ int main( int argc, char **argv )
                             }
                             else //normal upgrade
                             {
-                                if( !yget_install_list( pm, depend_list, download_only, force ) || force )
-                                {
-                                    if( !yget_install_list( pm, upgrade_list, download_only, force ) )
-                                    {
-                                        ;
-                                        //yget_install_list( pm, recommended_list, download_only, force );
-                                    }
-                                    else
-                                    {
-                                        err = 3;
-                                    }
-                                }
-                                else
+                                if( yget_install_list( pm, install_list, download_only, force ) )
                                 {
                                     err = 3;
                                 }
                             }
                         }
 
-                        packages_free_upgrade_list( upgrade_list );
+                        packages_free_upgrade_list( install_list );
                     }
                     else
                     {

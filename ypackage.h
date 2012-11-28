@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.7.20
+ * Date: 2012.11.28
  */
 #ifndef PACKAGE_H
 #define PACKAGE_H
@@ -150,7 +150,7 @@ typedef struct _YPackageChangePackage {
     char                    *name;
     char                    *version;
     int                     size;
-    int                     type; //self:1 ,depend:2, recommended:3, upgrade: 4, downgrade: 5
+    int                     type; //self:1 ,depend:2, recommended:3, upgrade: 4, downgrade: 5, recursive_depend: 6, begin_tag: 7, end_tag: 8
 }YPackageChangePackage;
 
 typedef DList YPackageChangeList;
@@ -307,6 +307,7 @@ YPackageChangeList *packages_clist_remove_duplicate_item( YPackageChangeList *ch
 
 
 YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *package_name, char *version );
+YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, char *package_name, char *version, char *skip, int self_type );
 YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name, char *version, char *skip );
 YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name, char *version );
 YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name, char *version );

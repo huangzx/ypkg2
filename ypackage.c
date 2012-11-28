@@ -4,7 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
- * Date: 2012.8.13
+ * Date: 2012.11.28
  */
 #define LIBYPK 1
 #include "ypackage.h"
@@ -3920,7 +3920,7 @@ exception_handler:
 }
 
 
-YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name, char *version, char *skip )
+YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, char *package_name, char *version, char *skip, int self_type )
 {
     int             i;
     char            *token, *saveptr, *depend, *recommended, *version2, *tmp, *tmp2;
@@ -3965,17 +3965,18 @@ YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package
                     }
                     else if( !packages_has_installed( pm, tmp, version2 ) )
                     {
+                        //packages_clist_append( list, tmp, version2, 0, 2 );
                         if( !list )
+                        {
                             list = dlist_init();
+                            packages_clist_append( list, NULL, NULL, 0, 7 );
+                        }
 
-                        packages_clist_append( list, tmp, version2, 0, 2 );
-
-                        sub_list = packages_get_depend_list( pm, tmp, version2, package_name );
+                        sub_list = packages_get_depend_list_recursively( pm, tmp, version2, package_name, 2 );
                         if( sub_list )
                         {
-                            dlist_cat( sub_list, list );
-                            dlist_cleanup( list, packages_free_change_package );
-                            list = sub_list;
+                            dlist_cat( list, sub_list );
+                            dlist_cleanup( sub_list, packages_free_change_package );
                         }
                     }
 
@@ -3983,6 +3984,22 @@ YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package
                     version2 = NULL;
                     token = strtok_r( NULL, " ,", &saveptr );
                 }
+            }
+
+            //depend --> self --> recommended
+            if( self_type )
+            {
+                if( !list )
+                {
+                    list = dlist_init();
+                    packages_clist_append( list, NULL, NULL, 0, 7 );
+                }
+                else if( self_type == 2 )
+                {
+                    self_type = 6;
+                }
+
+                packages_clist_append( list, package_name, version, 0, self_type );
             }
 
             recommended = packages_get_package_data_attr( pkg_data, i, "data_recommended");
@@ -4014,9 +4031,9 @@ YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package
                         if( !list )
                             list = dlist_init();
 
-                        packages_clist_append( list, tmp, version2, 0, 3 );
+                        //packages_clist_append( list, tmp, version2, 0, 3 );
 
-                        sub_list = packages_get_depend_list( pm, tmp, version2, package_name );
+                        sub_list = packages_get_depend_list_recursively( pm, tmp, version2, package_name, 3 );
                         if( sub_list )
                         {
                             dlist_cat( sub_list, list );
@@ -4034,8 +4051,17 @@ YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package
         packages_free_package_data( pkg_data );
     }
 
-    packages_clist_remove_duplicate_item( list );
+    if( list )
+    {
+        packages_clist_remove_duplicate_item( list );
+        packages_clist_append( list, NULL, NULL, 0, 8 );
+    }
     return list;
+}
+
+YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name, char *version, char *skip )
+{
+    return packages_get_depend_list_recursively( pm, package_name, version, skip, 0 );
 }
 
 YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name, char *version )
