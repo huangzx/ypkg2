@@ -4688,8 +4688,9 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
 int packages_check_package2( YPackageManager *pm, YPackage *pkg, YPackageData *pkg_data, char *extra, int extra_max_len )
 {
     int                 ret, return_code = 0;
-    char                *package_name, *arch, *version, *version2, *repo, *repo2;
+    char                *package_name, *arch, *arch2, *version, *version2, *repo, *repo2, line[32];
     struct utsname      buf;
+    FILE                *fp;
     YPackage            *pkg2 = NULL;
 
 
@@ -4704,7 +4705,26 @@ int packages_check_package2( YPackageManager *pm, YPackage *pkg, YPackageData *p
     //check arch
     if( arch && ( arch[0] != 'a' || arch[1] != 'n' || arch[2] != 'y' ) )
     {
-        if( !uname( &buf ) )
+        if( ( fp = fopen( "/var/ypkg/modules/kernel", "r" ) ) != NULL )
+        {
+            if( fgets( line, 32, fp ) != NULL ) 
+            {
+                arch2 = util_rtrim( strrchr( line, ' ' ) + 1, 0 );
+                if( strcmp( arch, arch2 ) )
+                {
+                    return_code = -2;
+
+                    if( extra && extra_max_len > 0 )
+                    {
+                        strncpy( extra, arch2, extra_max_len );
+                    }
+
+                    goto exception_handler;
+                }
+            }
+            fclose( fp );
+        }
+        else if( !uname( &buf ) )
         {
             if( strcmp( buf.machine, arch ) )
             {
