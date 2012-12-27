@@ -40,6 +40,7 @@ YPackageManager *packages_manager_init()
         return NULL;
     }
 
+    pm->log = NULL;
 
     //yget.conf.d
     dir = opendir( CONFIG_DIR );
@@ -263,6 +264,7 @@ YPackageManager *packages_manager_init2( int type )
         return NULL;
     }
 
+    pm->log = NULL;
 
     //yget.conf.d
     dir = opendir( CONFIG_DIR );
