@@ -5034,12 +5034,12 @@ int packages_pack_package( char *source_dir, char *ypk_path, ypk_progress_callba
                     free( tmp );
                 }
 
-                tmp = preg_replace( "<build_date>.*?</build_date>", time_str, control_xml_content, PCRE_CASELESS, 1 );
+                tmp = preg_replace( "<build_date>.*?</build_date>|<build_date/>", time_str, control_xml_content, PCRE_CASELESS, 1 );
                 free( control_xml_content );
                 free( time_str );
                 control_xml_content = tmp;
 
-                tmp = preg_replace( "<size>.*?</size>", data_size_str, control_xml_content, PCRE_CASELESS, 1 );
+                tmp = preg_replace( "<size>.*?</size>|<size/>", data_size_str, control_xml_content, PCRE_CASELESS, 1 );
                 free( control_xml_content );
                 free( data_size_str );
                 control_xml_content = tmp;
@@ -5051,7 +5051,7 @@ int packages_pack_package( char *source_dir, char *ypk_path, ypk_progress_callba
                     tmp[1] = 0;
                     uri_str = util_strcat( "<uri>", tmp, "/", package_name, "_", version, "-", arch, ".ypk</uri>", NULL );
                     free( tmp );
-                    tmp = preg_replace( "<uri>.*?</uri>", uri_str, control_xml_content, PCRE_CASELESS, 1 );
+                    tmp = preg_replace( "<uri>.*?</uri>|<uri/>", uri_str, control_xml_content, PCRE_CASELESS, 1 );
                     if( tmp )
                     {
                         if( strlen( tmp ) > 1000 )
@@ -5137,130 +5137,99 @@ cleanup:
 /*
  * compare version
  */
+#define MAX_VER_STR_LEN 64
 int packages_compare_version( char *version1, char *version2 )
 {
-    int         buf_size = 64, result;
-    char        *pattern = "(?<ver>(.*?)+)(-(?<ver1>.*?))?(-(?<ver2>.*?))?(-(?<ver3>.*?))?$";
-    char        buf1[buf_size], buf2[buf_size], *sub_ver1, *sub_ver2;
-    PREGInfo    pi1, pi2;
+    int         result;
+    char        *sub_ver1, *sub_ver2, *saveptr1, *saveptr2, ver_str1[MAX_VER_STR_LEN], ver_str2[MAX_VER_STR_LEN] ;
 
-    if( preg_match( &pi1, pattern, version1, 0, 1 ) > 0 &&  preg_match( &pi2, pattern, version2, 0, 1 ) > 0 )
+    if( !version1 || !version2 )
+        return -2;
+
+    memset( ver_str1, 0, MAX_VER_STR_LEN );
+    strncpy( ver_str1, version1, MAX_VER_STR_LEN );
+    memset( ver_str2, 0, MAX_VER_STR_LEN );
+    strncpy( ver_str2, version2, MAX_VER_STR_LEN );
+
+    sub_ver1 = strtok_r( ver_str1, "-", &saveptr1 );
+    sub_ver2 = strtok_r( ver_str2, "-", &saveptr2 );
+    if( !sub_ver1 || !sub_ver2 )
+        return -2;
+
+    result = packages_compare_main_version( sub_ver1, sub_ver2 );
+    if( !result )
     {
-        memset( buf1, 0, buf_size );
-        memset( buf2, 0, buf_size );
-        if( preg_result2(&pi1, "ver", buf1, buf_size) > 0 && preg_result2(&pi2, "ver", buf2, buf_size) > 0 )
+        while( 1 )
         {
-            result = packages_compare_main_version( buf1, buf2 );
-            if( !result )
-            {
-                if( preg_result2(&pi1, "ver1", buf1, buf_size) > 0 )
-                    sub_ver1 = buf1;
-                else
-                    sub_ver1 = NULL;
+            sub_ver1 = strtok_r( NULL, "-", &saveptr1 );
+            sub_ver2 = strtok_r( NULL, "-", &saveptr2 );
+            if( !sub_ver1 && !sub_ver2 )
+                break;
 
-
-                if( preg_result2(&pi2, "ver1", buf2, buf_size) > 0 )
-                    sub_ver2 = buf2;
-                else
-                    sub_ver2 = NULL;
-                
-
-                result = packages_compare_sub_version( sub_ver1, sub_ver2 );
-                if( !result )
-                {
-                    if( preg_result2(&pi1, "ver2", buf1, buf_size) > 0 )
-                        sub_ver1 = buf1;
-                    else
-                        sub_ver1 = NULL;
-
-                    if( preg_result2(&pi2, "ver2", buf2, buf_size) > 0 )
-                        sub_ver2 = buf2;
-                    else
-                        sub_ver2 = NULL;
-
-                    result = packages_compare_sub_version( sub_ver1, sub_ver2 );
-                    if( !result )
-                    {
-                        if( preg_result2(&pi1, "ver3", buf1, buf_size) > 0 )
-                            sub_ver1 = buf1;
-                        else
-                            sub_ver1 = NULL;
-
-                        if( preg_result2(&pi2, "ver3", buf2, buf_size) > 0 )
-                            sub_ver2 = buf2;
-                        else
-                            sub_ver2 = NULL;
-
-                        result = packages_compare_sub_version( sub_ver1, sub_ver2 );
-                    }
-                }
-            }
-
-
-            if( result && result != -2 )
-            {
-                result = result > 0 ? 1 : -1;
-            }
-
-        }
-        else
-        {
-            result = -2;
+            result = packages_compare_sub_version( sub_ver1, sub_ver2 );
+            if( result )
+                break;
         }
     }
-    else
+
+    if( result && result != -2 )
     {
-        result = -2;
+        result = result > 0 ? 1 : -1;
     }
-    preg_free( &pi1 );
-    preg_free( &pi2 );
 
     return result;
 }
 
 int packages_compare_main_version( char *version1, char *version2 )
 {
-    int         ver1, ver2, ret1, ret2, result = 0, buf_size = 16;
-    char        *pattern = "(\\d+)";
-    char        buf1[buf_size], buf2[buf_size];
-    PREGInfo    pi1, pi2;
+    int         ver1, ver2, result = 0;
+    char        *sub_ver1, *sub_ver2, *saveptr1, *saveptr2, ver_str1[MAX_VER_STR_LEN], ver_str2[MAX_VER_STR_LEN] ;
 
-    ret1 = preg_match( &pi1, pattern, version1, 0, 1 );
-    ret2 = preg_match( &pi2, pattern, version2, 0, 1 );
+    if( !version1 || !version2 )
+        return -2;
 
-    while( ret1 > 0 &&  ret2 > 0 )
+    memset( ver_str1, 0, MAX_VER_STR_LEN );
+    strncpy( ver_str1, version1, MAX_VER_STR_LEN );
+    memset( ver_str2, 0, MAX_VER_STR_LEN );
+    strncpy( ver_str2, version2, MAX_VER_STR_LEN );
+
+    sub_ver1 = strtok_r( ver_str1, ".", &saveptr1 );
+    sub_ver2 = strtok_r( ver_str2, ".", &saveptr2 );
+    ver1 = atoi( sub_ver1 );
+    ver2 = atoi( sub_ver2 );
+    if( (result =  ver1 - ver2) )
     {
-        memset( buf1, 0, buf_size );
-        memset( buf2, 0, buf_size );
-        preg_result(&pi1, 0, buf1, buf_size); 
-        preg_result(&pi2, 0, buf2, buf_size);
+        result = result > 0 ? 1 : -1;
+        return result;
+    }
 
-        ver1 = atoi( buf1 );
-        ver2 = atoi( buf2 );
-        if( (result =  ver1 - ver2) )
+    while( 1 )
+    {
+        sub_ver1 = strtok_r( NULL, ".", &saveptr1 );
+        sub_ver2 = strtok_r( NULL, ".", &saveptr2 );
+        if( !sub_ver1 && !sub_ver2 )
         {
-            result = result > 0 ? 1 : -1;
-            break;
+            return 0;
         }
-
-        ret1 = preg_match( &pi1, pattern, version1, 0, 0 );
-        ret2 = preg_match( &pi2, pattern, version2, 0, 0 );
+        else if( !sub_ver1 )
+        {
+            return -1;
+        }
+        else if( !sub_ver2 )
+        {
+            return 1;
+        }
+        else
+        {
+            ver1 = atoi( sub_ver1 );
+            ver2 = atoi( sub_ver2 );
+            if( (result =  ver1 - ver2) )
+            {
+                result = result > 0 ? 1 : -1;
+                return result;
+            }
+        }
     }
-
-    if( ret1 > 0 && ret2 < 0 )
-        result = 1;
-    else if( ret1 < 0 && ret2 > 0 )
-        result = -1;
-
-    if( result == 0 )
-    {
-        result = strcmp( version1, version2 );
-    }
-
-    preg_free( &pi1 );
-    preg_free( &pi2 );
-
-    return result;
 }
 
 int packages_compare_sub_version( char *version1, char *version2 )
