@@ -192,7 +192,7 @@ int hash_table_list_extend( HashTableList *htl, int count )
 
 int hash_table_list_add_data( HashTableList *htl, int index, char *key, char *value )
 {
-    int             len, buf_size;
+    int             len, buf_size, ret;
     ENTRY           item, *itemp;
     HashIndex      *cur_index;
     HashData       *new_data;
@@ -247,18 +247,17 @@ int hash_table_list_add_data( HashTableList *htl, int index, char *key, char *va
         htl->cur_data->buf[htl->cur_data->pos + len] = '\0';
         item.key = key;
         item.data = (void *)(htl->cur_data->buf + htl->cur_data->pos);
-        hsearch_r( item, ENTER, &itemp, htl->list[index] );
+        ret = hsearch_r( item, ENTER, &itemp, htl->list[index] );
         htl->cur_data->pos += len + 1;
     }
     else
     {
         item.key = key;
         item.data = NULL;
-        hsearch_r( item, ENTER, &itemp, htl->list[index] );
+        ret = hsearch_r( item, ENTER, &itemp, htl->list[index] );
     }
-    return 0;
+    return ret;
 }
-
 
 char *hash_table_list_get_data( HashTableList *htl, int index, char *key )
 {

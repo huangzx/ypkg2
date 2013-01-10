@@ -25,63 +25,63 @@ LIBS= -lcurl -lsqlite3 -larchive -lxml2 -lpthread -lpcre
 all: $(LIBYPK) $(YPKG) $(YGET) $(YPKGIMPORT) $(YPKGUPGRADE) $(STATIC_LIB)
 
 $(YPKG): ypkg.o 
-	cc $(W) $(DEBUG) -o $(YPKG)  ypkg.o  -L. -lypk
+	$(CC) $(W) $(DEBUG) -o $(YPKG)  ypkg.o  -L. -lypk
 
 ypkg.o: ypkg.c
-	cc $(W) $(DEBUG) $(O) -c ypkg.c -o ypkg.o
+	$(CC) $(W) $(DEBUG) $(O) -c ypkg.c -o ypkg.o
 
 $(YGET): yget.o 
-	cc $(W) $(DEBUG) -o $(YGET) yget.o  -L. -lypk
+	$(CC) $(W) $(DEBUG) -o $(YGET) yget.o  -L. -lypk
 
 yget.o: yget.c
-	cc $(W) $(DEBUG)  $(O) -c yget.c -o yget.o
+	$(CC) $(W) $(DEBUG)  $(O) -c yget.c -o yget.o
 
 $(YPKGIMPORT): ypkg-import.o 
-	cc $(W) $(DEBUG) -o $(YPKGIMPORT)  ypkg-import.o -L. -lypk
+	$(CC) $(W) $(DEBUG) -o $(YPKGIMPORT)  ypkg-import.o -L. -lypk
 
 ypkg-import.o: ypkg-import.c
-	cc $(W) $(DEBUG)  $(O) -c ypkg-import.c -o ypkg-import.o
+	$(CC) $(W) $(DEBUG)  $(O) -c ypkg-import.c -o ypkg-import.o
 
 $(YPKGUPGRADE): ypkg-upgrade.o 
-	cc $(W) $(DEBUG) -o $(YPKGUPGRADE)  ypkg-upgrade.o -ldl
+	$(CC) $(W) $(DEBUG) -o $(YPKGUPGRADE)  ypkg-upgrade.o -ldl
 
 ypkg-upgrade.o: ypkg-upgrade.c
-	cc $(W) $(DEBUG)  $(O) -c ypkg-upgrade.c -o ypkg-upgrade.o
+	$(CC) $(W) $(DEBUG)  $(O) -c ypkg-upgrade.c -o ypkg-upgrade.o
 
 
 $(LIBYPK): $(OBJS)
-	cc $(W) $(DEBUG) -shared -fPIC -o libypk.so $(OBJS) $(LIBS)
+	$(CC) $(W) $(DEBUG) -shared -fPIC -o libypk.so $(OBJS) $(LIBS)
 
 $(STATIC_LIB):$(OBJS)
 	ar -r $(STATIC_LIB) $(OBJS)
 	ranlib $(STATIC_LIB)
 
 download.o: download.c
-	cc -c $(W) $(DEBUG)  $(O) -fPIC download.c -o download.o
+	$(CC) -c $(W) $(DEBUG)  $(O) -fPIC download.c -o download.o
 
 util.o: util.c
-	cc -c $(W) $(DEBUG)  $(O) -fPIC util.c -o util.o
+	$(CC) -c $(W) $(DEBUG)  $(O) -fPIC util.c -o util.o
 
 db.o: db.c
-	cc -c $(W) $(DEBUG)  $(O) -fPIC db.c -o db.o
+	$(CC) -c $(W) $(DEBUG)  $(O) -fPIC db.c -o db.o
 
 data.o: data.c
-	cc -c $(W) $(DEBUG)  $(O) -fPIC data.c -o data.o
+	$(CC) -c $(W) $(DEBUG)  $(O) -fPIC data.c -o data.o
 
 archive.o: archive.c
-	cc -c $(W) $(DEBUG)  $(O) -fPIC -D_FILE_OFFSET_BITS=64 archive.c -o archive.o
+	$(CC) -c $(W) $(DEBUG)  $(O) -fPIC -D_FILE_OFFSET_BITS=64 archive.c -o archive.o
 
 xml.o: xml.c
-	cc -c $(W) $(DEBUG)  $(O) -fPIC xml.c -o xml.o
+	$(CC) -c $(W) $(DEBUG)  $(O) -fPIC xml.c -o xml.o
 
 preg.o: preg.c
-	cc -c $(W) $(DEBUG)  $(O) -fPIC preg.c -o preg.o
+	$(CC) -c $(W) $(DEBUG)  $(O) -fPIC preg.c -o preg.o
 
 sha1.o: sha1.c
-	cc -c $(W) $(DEBUG)  $(O) -fPIC sha1.c -o sha1.o
+	$(CC) -c $(W) $(DEBUG)  $(O) -fPIC sha1.c -o sha1.o
 
 ypackage.o: ypackage.c
-	cc -c $(W) $(DEBUG)  $(O) -fPIC ypackage.c -o ypackage.o
+	$(CC) -c $(W) $(DEBUG)  $(O) -fPIC ypackage.c -o ypackage.o
 
 install: all
 	mkdir -p $(BINDIR) $(LIBDIR) $(INCDIR) $(LANGDIR) $(DBDIR) $(DATADIR) 
@@ -96,6 +96,7 @@ install: all
 	#cp po/zh_CN.mo $(LANGDIR)/ypkg.mo
 	cp data/db_create.sql $(DATADIR)
 	cp data/db_upgrade.list $(DATADIR)
+	cp data/db_source_template.sql $(DATADIR)
 	#sqlite3 $(DBDIR)/package.db ".read $(DATADIR)/db_create.sql"
 	cd  $(LIBDIR) && ln -sf $(LIBYPK).$(VERSION) ./$(LIBYPK)
 	#$(BINDIR)/$(YPKGIMPORT)
@@ -116,5 +117,6 @@ remove:
 	rm -f $(INCDIR)/$(YPACKAGEH) 
 	rm -f $(DATADIR)/db_create.sql
 	rm -f $(DATADIR)/db_upgrade.list
+	rm -f $(DATADIR)/db_source_template.sql
 	#rm -f $(DBDIR)/package.db
 	#rm -f $(LANGDIR)/ypkg.mo

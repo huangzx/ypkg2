@@ -4,7 +4,11 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
  * Version: 0.1
+<<<<<<< HEAD
  * Date: 2012.8.13
+=======
+ * Date: 2012.11.28
+>>>>>>> develop
  */
 
 #define LIBYPK 1
@@ -213,6 +217,7 @@ int yget_upgrade_self( char *package_path )
         else
             chmod( "/tmp/ypkg2_backup/libypk.so", 0755 );
     }
+<<<<<<< HEAD
 
     if( util_copy_file( "/usr/bin/ypkg2", "/tmp/ypkg2_backup/ypkg2" ) != 0 )
         goto failed;
@@ -246,11 +251,50 @@ failed:
     return -1;
 }
 
+=======
+
+    if( util_copy_file( "/usr/bin/ypkg2", "/tmp/ypkg2_backup/ypkg2" ) != 0 )
+        goto failed;
+    else
+        chmod( "/tmp/ypkg2_backup/ypkg2", 0755 );
+
+    if( util_copy_file( "/usr/bin/yget2", "/tmp/ypkg2_backup/yget2" ) != 0 )
+        goto failed;
+    else
+        chmod( "/tmp/ypkg2_backup/yget2", 0755 );
+
+    if( util_copy_file( "/usr/bin/ypkg2-upgrade", "/tmp/ypkg2_backup/ypkg2-upgrade" ) != 0 )
+        goto failed;
+    else
+        chmod( "/tmp/ypkg2_backup/ypkg2-upgrade", 0755 );
+
+    if( (pid = fork()) < 0 )
+    {
+        goto failed;
+    }
+    else if( pid == 0 )
+    {
+        if( execl( "/tmp/ypkg2_backup/ypkg2-upgrade", "ypkg2-upgrade", "/tmp/ypkg2_backup", package_path, NULL ) < 0 )
+            goto failed;
+    }
+
+    return 0;
+
+failed:
+    util_remove_dir( "/tmp/ypkg2_backup" );
+    return -1;
+}
+
+>>>>>>> develop
 
 int yget_install_package( YPackageManager *pm, char *package_name, char *version, int download_only, int upgrade_self, int force )
 {
     int                 ret, return_code;
+<<<<<<< HEAD
     char                *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
+=======
+    char                *source_uri = NULL, *package_dest = NULL, *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
+>>>>>>> develop
     YPackage            *pkg;
     //YPackageDCB         dcb;
     DownloadStat        dl_stat;
@@ -283,11 +327,33 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
         goto return_point;
     }
 
+<<<<<<< HEAD
     package_path = util_strcat( pm->package_dest, "/", basename( package_url ), NULL );
     target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
 
     packages_log( pm, package_name, "Downloading" );
     printf( "Downloading %s to %s/\n", target_url, pm->package_dest  );
+=======
+    package_dest = packages_get_package_attr( pkg, "package_dest" );
+    if( !package_dest )
+    {
+        return_code = -3;
+        goto return_point;
+    }
+
+    source_uri = packages_get_package_attr( pkg, "source_uri" );
+    if( !source_uri )
+    {
+        return_code = -3;
+        goto return_point;
+    }
+
+    package_path = util_strcat( package_dest, "/", basename( package_url ), NULL );
+    target_url = util_strcat( source_uri, "/", package_url, NULL );
+
+    packages_log( pm, package_name, "Downloading" );
+    printf( "Downloading %s to %s/\n", target_url, package_dest  );
+>>>>>>> develop
     dl_stat.progress = 0;
     dl_stat.cnt = 0;
     dl_stat.st.tv_sec = 0;
@@ -404,12 +470,17 @@ return_point:
         free( ypk_sha );
 
     packages_free_package( pkg );
+    pkg = NULL;
     return return_code;
 }
 
 int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int download_only, int force )
 {
+<<<<<<< HEAD
     int                     ret, return_code = 0;
+=======
+    int                     skip = 0, skip_list = 0, ret, return_code = 0;
+>>>>>>> develop
     YPackageChangePackage   *cur_pkg;
 
     if( !list )
@@ -418,14 +489,35 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
     cur_pkg = dlist_head_data( list );
     while( cur_pkg )
     {
+<<<<<<< HEAD
         printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
         ret = yget_install_package( pm, cur_pkg->name, cur_pkg->version, download_only, 0, force );
         if( !ret )
+=======
+        if( cur_pkg->type == 7 )
         {
-            printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+            if( skip )
+                skip_list++;
+        }
+        else if( cur_pkg->type == 8 )
+        {
+            if( skip_list )
+                skip_list--;
+            else if( skip )
+                skip--;
+        }
+        else if( skip )
+>>>>>>> develop
+        {
+            if( cur_pkg->type == 6 && !skip_list )
+            {
+                skip++;
+            }
+            printf( "skip " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
         }
         else
         {
+<<<<<<< HEAD
             printf( COLOR_RED "Error: installation failed.\n" COLOR_RESET );
             return_code = -1;
 
@@ -434,6 +526,35 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
                 return ret;
                 */
         }
+=======
+            printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
+            ret = yget_install_package( pm, cur_pkg->name, NULL, download_only, 0, force );
+            if( !ret )
+            {
+                printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+            }
+            else
+            {
+                printf( COLOR_RED "Error: installation failed.\n" COLOR_RESET );
+                return_code = -1;
+                if( cur_pkg->type != 3 )
+                {
+                    skip++;
+
+                    if( cur_pkg->type == 6 )
+                    {
+                        skip++;
+                    }
+                }
+
+                /*
+                if( force != 1 )
+                    return ret;
+                    */
+            }
+        }
+
+>>>>>>> develop
         cur_pkg = dlist_next_data( list );
     }
 
@@ -451,7 +572,11 @@ int main( int argc, char **argv )
     YPackageData    *pkg_data;
     YPackageList    *pkg_list;
     YPackageChangePackage  *cur_package;       
+<<<<<<< HEAD
     YPackageChangeList     *depend_list, *recommended_list, *sub_list, *install_list, *remove_list, *upgrade_list;
+=======
+    YPackageChangeList     *sub_list, *install_list, *remove_list, *upgrade_list;
+>>>>>>> develop
 
     if( argc == 1 )
     {
@@ -681,6 +806,10 @@ int main( int argc, char **argv )
                                     dlist_append( remove_list, cur_package );
                                 }
                                 packages_free_package_data( pkg_data );
+<<<<<<< HEAD
+=======
+                                pkg_data = NULL;
+>>>>>>> develop
                             }
                         }
                         packages_free_list( pkg_list );
@@ -737,8 +866,6 @@ int main( int argc, char **argv )
             else
             {
                 install_list = NULL;
-                depend_list = NULL;
-                recommended_list = NULL;
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
@@ -773,6 +900,10 @@ int main( int argc, char **argv )
                             {
                                 printf( "%s_%s is already the newest version.\n", package_name, version );
                                 packages_free_package( pkg );
+<<<<<<< HEAD
+=======
+                                pkg = NULL;
+>>>>>>> develop
                                 continue;
                             }
                         }
@@ -785,6 +916,7 @@ int main( int argc, char **argv )
                     if( !install_list )
                         install_list = dlist_init();
 
+<<<<<<< HEAD
                     packages_clist_append( install_list, package_name, version, 0, 1 );
 
                     sub_list = packages_get_depend_list( pm, package_name, version );
@@ -795,6 +927,25 @@ int main( int argc, char **argv )
                         depend_list = sub_list;
                     }
 
+=======
+                    /*
+                    if( !install_list )
+                        install_list = dlist_init();
+                        */
+
+                    //packages_clist_append( install_list, package_name, version, 0, 1 );
+
+                    sub_list = packages_get_depend_list_recursively( pm, package_name, version, NULL, 1 );
+                    if( sub_list )
+                    {
+                        dlist_cat( sub_list, install_list );
+                        dlist_cleanup( install_list, packages_free_change_package );
+                        install_list = sub_list;
+                    }
+
+
+                    /*
+>>>>>>> develop
                     sub_list = packages_get_recommended_list( pm, package_name, version );
                     if( sub_list )
                     {
@@ -802,6 +953,7 @@ int main( int argc, char **argv )
                         dlist_cleanup( recommended_list, packages_free_change_package );
                         recommended_list = sub_list;
                     }
+                    */
 
                 }
 
@@ -809,6 +961,7 @@ int main( int argc, char **argv )
 
                 if( install_list )
                 {
+<<<<<<< HEAD
                     cur_package = dlist_head_data( install_list );
                     printf( "Install: %s", cur_package->name );
 
@@ -816,11 +969,24 @@ int main( int argc, char **argv )
                     while( cur_package )
                     {
                         printf(" %s ", cur_package->name );
+=======
+                    
+                    printf( "Install: " );
+                    cur_package = dlist_head_data( install_list );
+                    while( cur_package )
+                    {
+                        if( cur_package->type == 1 )
+                            printf(" %s ", cur_package->name );
+
+>>>>>>> develop
                         cur_package = dlist_next_data( install_list );
                     }
 
-                    if( depend_list )
+                    printf( "\nAuto-install: " );
+                    cur_package = dlist_head_data( install_list );
+                    while( cur_package )
                     {
+<<<<<<< HEAD
                         cur_package = dlist_head_data( depend_list );
                         printf( "\nAuto-install: %s", cur_package->name );
                         cur_package = dlist_next_data( depend_list );
@@ -829,8 +995,15 @@ int main( int argc, char **argv )
                             printf(" %s ", cur_package->name );
                             cur_package = dlist_next_data( depend_list );
                         }
+=======
+                        if( cur_package->type == 2 ||  cur_package->type == 3 || cur_package->type == 6 )
+                            printf(" %s ", cur_package->name );
+
+                        cur_package = dlist_next_data( install_list );
+>>>>>>> develop
                     }
 
+                    /*
                     if( recommended_list )
                     {
                         cur_package = dlist_head_data( recommended_list );
@@ -842,11 +1015,16 @@ int main( int argc, char **argv )
                             cur_package = dlist_next_data( recommended_list );
                         }
                     }
+<<<<<<< HEAD
+=======
+                    */
+>>>>>>> develop
                     putchar( '\n' );
 
                     if( !simulation )
                     {
                         if( yes )
+<<<<<<< HEAD
                         {
                             confirm = 'Y';
                         }
@@ -863,6 +1041,22 @@ int main( int argc, char **argv )
                                 {
                                     yget_install_list( pm, recommended_list, download_only, force );
                                 }
+=======
+                        {
+                            confirm = 'Y';
+                        }
+                        else
+                        {
+                            printf( "Do you want to continue [Y/n]?" );
+                            confirm = getchar();
+                        }
+
+                        if( confirm != 'n' && confirm != 'N' )
+                        {
+                            if( yget_install_list( pm, install_list, download_only, force ) )
+                            {
+                                err = 3;
+>>>>>>> develop
                             }
                             else
                                 err = 3;
@@ -872,11 +1066,16 @@ int main( int argc, char **argv )
                     }
 
                     if( pkg )
+<<<<<<< HEAD
                         packages_free_package( pkg );
+=======
+                    {
+                        packages_free_package( pkg );
+                        pkg = NULL;
+                    }
+>>>>>>> develop
 
                     packages_free_install_list( install_list );
-                    packages_free_install_list( depend_list );
-                    packages_free_install_list( recommended_list );
                 }
             }
             break;
@@ -901,7 +1100,7 @@ int main( int argc, char **argv )
                     install_list = packages_get_dev_list( pm, package_name, NULL );
                     confirm = 'N';
 
-                    if( install_list )
+                    if( install_list && install_list->cnt > 0 )
                     {
                         cur_package = dlist_head_data( install_list );
                         printf( "Install list: %s", cur_package->name );
@@ -927,12 +1126,14 @@ int main( int argc, char **argv )
                             yget_install_list( pm, install_list, 0, force );
                         }
 
-                        packages_free_dev_list( install_list );
                     }
                     else
                     {
                         printf( "Build-dependencies for %s installed.\n", package_name );
                     }
+
+                    if( install_list )
+                        packages_free_dev_list( install_list );
                 }
             }
             break;
@@ -965,7 +1166,12 @@ int main( int argc, char **argv )
             }
             else
             {
+<<<<<<< HEAD
                 printf( "Status \tName  \tChannel  \tDescription\n====================================================================\n" );
+=======
+                //printf( "Status \tName  \tChannel  \tDescription\n====================================================================\n" );
+                printf( "Name  \tChannel  \tDescription\n====================================================================\n" );
+>>>>>>> develop
 
                 for( i = optind; i < argc; i++)
                 {
@@ -984,8 +1190,15 @@ int main( int argc, char **argv )
                         {
                             for( j = 0; j < pkg_list->cnt; j++ )
                             {
+<<<<<<< HEAD
                                 installed = packages_get_list_attr( pkg_list, j, "installed" );
                                 can_update = packages_get_list_attr( pkg_list, j, "can_update" );
+=======
+                                /*
+                                installed = packages_get_list_attr( pkg_list, j, "installed" );
+                                can_update = packages_get_list_attr( pkg_list, j, "can_update" );
+
+>>>>>>> develop
                                 if( installed && installed[0] == '0' )
                                 {
                                     installed = "[*]";
@@ -1002,12 +1215,22 @@ int main( int argc, char **argv )
                                 {
                                     installed = "[I]";
                                 }
+<<<<<<< HEAD
+=======
+                                */
+>>>>>>> develop
 
                                 repo = packages_get_list_attr( pkg_list, j, "repo" );
 
                                 printf( 
+<<<<<<< HEAD
                                         COLOR_GREEN "%-s "  COLOR_RESET  "\t%-s \t%-8s \t%-s\n",
                                         installed, 
+=======
+                                        "%-s \t%-8s \t%-s\n",
+                                        //COLOR_GREEN "%-s "  COLOR_RESET  "\t%-s \t%-8s \t%-s\n",
+                                        //installed, 
+>>>>>>> develop
                                         packages_get_list_attr( pkg_list, j, "name"), 
                                         repo, 
                                         packages_get_list_attr( pkg_list, j, "description") 
@@ -1051,6 +1274,7 @@ int main( int argc, char **argv )
                 if( strncmp( package_name+len-4, ".ypk", 4 ) || access( package_name, R_OK ) )
                 {
                     if( !pm )
+<<<<<<< HEAD
                     {
                         switch( libypk_errno )
                         {
@@ -1162,6 +1386,46 @@ int main( int argc, char **argv )
                             installed = "*";
                         }
                     }
+=======
+                    {
+                        switch( libypk_errno )
+                        {
+                            case MISSING_DB:
+                                fprintf( stderr, "Error: open database failed.\n" );
+                            break;
+
+                            case LOCK_ERROR:
+                                fprintf( stderr, "Error: database is locked.\n" );
+                            break;
+
+                            default:
+                                fprintf( stderr, "Error: initialize failed.\n" );
+                        }
+                        return 1;
+                    }
+                    i = 1;
+                }
+                else
+                {
+                    i = 0;
+                }
+
+                if( i )
+                {
+                    pkg = packages_get_package( pm, package_name, 0 );
+                }
+                else
+                {
+                    if( packages_get_package_from_ypk( package_name, &pkg, &pkg_data ) < 0 )
+                    {
+                        printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
+                        return 1;
+                    }
+                }
+
+                if( pkg )
+                {
+>>>>>>> develop
 
                     tmp = packages_get_package_attr( pkg, "build_date");
                     if( tmp )
@@ -1169,14 +1433,6 @@ int main( int argc, char **argv )
                     else
                         build_date = NULL;
 
-                    if( pkg2 )
-                    {
-                        tmp = packages_get_package_attr( pkg2, "install_time");
-                        if( tmp )
-                            install_date = util_time_to_str( atoi( tmp ) );
-                        else
-                            install_date = NULL;
-                    }
 
                     tmp = packages_get_package_attr( pkg, "size");
                     size = tmp ? atoi( tmp ) : 0;
@@ -1198,16 +1454,23 @@ int main( int argc, char **argv )
                         }
 
                         printf( 
+<<<<<<< HEAD
                                 "Name: %s\nVersion: %s\nArch: %s\nRepo: %s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nExec: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nReplace: %s\nDescription: %s\nHomepage: %s\n", 
+=======
+                                "Name: %s\nVersion: %s\nArch: %s\nRepo: %s\nCategory: %s\nPriority: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nExec: %s\nSize: %d%c\nSha: %s\nBuild_date: %s\nUri: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nReplace: %s\nDescription: %s\nHomepage: %s\n", 
+>>>>>>> develop
                                 package_name,
                                 pkg2 ? packages_get_package_attr( pkg2, "version") : packages_get_package_attr( pkg, "version"), 
                                 packages_get_package_attr( pkg, "arch"), 
                                 repo,
                                 util_null2empty( packages_get_package_attr( pkg, "category") ), 
                                 util_null2empty( packages_get_package_attr( pkg, "priority") ), 
+<<<<<<< HEAD
                                 installed,
                                 util_null2empty( install_date ),  //install date
                                 packages_get_package_attr( pkg, "version"),  //available
+=======
+>>>>>>> develop
                                 util_null2empty( packages_get_package_attr( pkg, "license") ), 
                                 util_null2empty( packages_get_package_attr( pkg, "packager") ), 
                                 util_null2empty( packages_get_package_attr( pkg, "install") ), 
@@ -1236,8 +1499,9 @@ int main( int argc, char **argv )
                         free( install_date );
 
                     packages_free_package_data( pkg_data );
+                    pkg_data = NULL;
                     packages_free_package( pkg );
-                    packages_free_package( pkg2 );
+                    pkg = NULL;
                 }
                 else
                 {
@@ -1259,6 +1523,7 @@ int main( int argc, char **argv )
             else
             {
                 package_name = argv[optind];
+<<<<<<< HEAD
                 if( (pkg = packages_get_package( pm, package_name, 0 )) )
                 {
                     pkg2 = NULL;
@@ -1281,20 +1546,95 @@ int main( int argc, char **argv )
                     {
                         installed = "D";
                     }
+=======
+                if( (pkg = packages_get_package( pm, package_name, 1 )) )
+                {
+                    pkg_data = packages_get_package_data( pm, package_name, 0 );
+
+                    can_update = packages_get_package_attr( pkg, "can_update" );
+
+                    tmp = packages_get_package_attr( pkg, "install_time");
+                    if( tmp )
+                        install_date = util_time_to_str( atoi( tmp ) );
+                    else
+                        install_date = NULL;
+
+
+                    if( can_update[0] == '1' )
+                    {
+                        installed = "U";
+                    }
+>>>>>>> develop
                     else
                     {
                         installed = "I";
                     }
+<<<<<<< HEAD
+=======
+
+                    repo = packages_get_package_attr( pkg, "repo");
+                    if(repo == NULL)
+                    {
+                        repo = "stable";
+                    }
+
+                    tmp = packages_get_package_attr( pkg, "build_date");
+                    if( tmp )
+                        build_date = util_time_to_str( atoi( tmp ) );
+                    else
+                        build_date = NULL;
+
+                    tmp = packages_get_package_attr( pkg, "size");
+                    size = tmp ? atoi( tmp ) : 0;
+
+                    tmp = packages_get_package_data_attr( pkg_data, 0, "data_install_size");
+                    install_size = tmp ? atoi( tmp ) : 0;
+
+>>>>>>> develop
                     printf( 
-                            "Name: %s\nStatus: %s\nVersion: %s\nDescription: %s\n", 
+                            "Name: %s\nVersion: %s\nArch: %s\nRepo: %s\nCategory: %s\nPriority: %s\nStatus: %s\nInstall_date: %s\nAvailable: %s\nLicense: %s\nPackager: %s\nInstall Script: %s\nExec: %s\nSize: %d%c\nBuild_date: %s\nInstall_size: %d%c\nDepend: %s\nBdepend: %s\nRecommended: %s\nConflict: %s\nReplace: %s\nDescription: %s\nHomepage: %s\n", 
                             package_name,
+                            packages_get_package_attr( pkg, "version"),
+                            packages_get_package_attr( pkg, "arch"), 
+                            repo,
+                            util_null2empty( packages_get_package_attr( pkg, "category") ), 
+                            util_null2empty( packages_get_package_attr( pkg, "priority") ), 
                             installed,
-                            packages_get_package_attr( pkg, "version"), 
-                            packages_get_package_attr( pkg, "description") 
+                            util_null2empty( install_date ),  //install date
+                            util_null2empty( packages_get_package_attr( pkg, "version_available") ), 
+                            util_null2empty( packages_get_package_attr( pkg, "license") ), 
+                            util_null2empty( packages_get_package_attr( pkg, "packager") ), 
+                            util_null2empty( packages_get_package_attr( pkg, "install") ), 
+                            util_null2empty( packages_get_package_attr2( pkg, "exec") ), 
+                            size > 1000000 ? size / 1000000 : (size > 1000 ? size / 1000 : size), 
+                            size > 1000000 ? 'M' : (size > 1000 ? 'K' : 'B'), 
+                            util_null2empty( build_date ),
+                            install_size > 1000000 ? install_size / 1000000 : (install_size > 1000 ? install_size / 1000 : install_size), 
+                            install_size > 1000000 ? 'M' : (install_size > 1000 ? 'K' : 'B'), 
+                            util_null2empty( util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_depend"), ',', ' ' ) ),  //depend
+                            util_null2empty( util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_bdepend"), ',', ' ' ) ),  //bdepend
+                            util_null2empty( util_chr_replace( packages_get_package_data_attr( pkg_data, 0, "data_recommended"), ',', ' ' ) ),  //recommended
+                            util_null2empty( packages_get_package_data_attr( pkg_data, 0, "data_conflict") ),  //conflict
+                            util_null2empty( packages_get_package_data_attr( pkg_data, 0, "data_replace") ),  //replace
+                            util_null2empty( packages_get_package_attr( pkg, "description") ),
+                            util_null2empty( packages_get_package_attr( pkg, "homepage") )
                             );
 
+<<<<<<< HEAD
                     packages_free_package( pkg );
                     packages_free_package( pkg2 );
+=======
+                    if( build_date )
+                        free( build_date );
+
+                    if( install_date )
+                        free( install_date );
+
+                    packages_free_package( pkg );
+                    pkg = NULL;
+                    packages_free_package_data( pkg_data );
+                    pkg_data = NULL;
+>>>>>>> develop
                 }
                 else
                 {
@@ -1314,8 +1654,13 @@ int main( int argc, char **argv )
             }
             else
             {
+<<<<<<< HEAD
                     depend_list = NULL;
                     recommended_list = NULL;
+=======
+                    install_list = NULL;
+                    //recommended_list = NULL;
+>>>>>>> develop
                     confirm = 'N';
 
                     upgrade_list = packages_get_upgrade_list( pm );
@@ -1332,6 +1677,7 @@ int main( int argc, char **argv )
                                 upgrade_ypkg = 1;
                             }
 
+<<<<<<< HEAD
                             sub_list = packages_get_depend_list( pm, cur_package->name, cur_package->version );
 
                             if( sub_list )
@@ -1439,6 +1785,49 @@ int main( int argc, char **argv )
                                 cur_package = dlist_next_data( recommended_list );
                             }
                         }
+=======
+                            sub_list = packages_get_depend_list_recursively( pm, cur_package->name, cur_package->version, NULL, 1 );
+
+                            if( sub_list )
+                            {
+                                if( !install_list )
+                                {
+                                    install_list = sub_list;
+                                }
+                                else
+                                {
+                                    dlist_cat( install_list, sub_list );
+                                    dlist_cleanup( sub_list, packages_free_change_package );
+                                }
+                            }
+
+                            cur_package = dlist_next_data( upgrade_list );
+                        }
+                        packages_free_upgrade_list( upgrade_list );
+
+                        packages_clist_remove_duplicate_item( install_list );
+
+                        printf( "Upgrade:" );
+                        cur_package = dlist_head_data( install_list );
+                        while( cur_package )
+                        {
+                            if( cur_package->type == 1 )
+                                printf(" %s ", cur_package->name );
+
+                            cur_package = dlist_next_data( install_list );
+                        }
+
+                        printf( "\nAuto-install: " );
+                        cur_package = dlist_head_data( install_list );
+                        while( cur_package )
+                        {
+                            if( cur_package->type == 2 ||  cur_package->type == 3 || cur_package->type == 6 )
+                                printf(" %s ", cur_package->name );
+
+                            cur_package = dlist_next_data( install_list );
+                        }
+
+>>>>>>> develop
                         putchar( '\n' );
 
                         if( yes )
@@ -1462,6 +1851,7 @@ int main( int argc, char **argv )
                             }
                             else //normal upgrade
                             {
+<<<<<<< HEAD
                                 if( !yget_install_list( pm, depend_list, download_only, force ) || force )
                                 {
                                     if( !yget_install_list( pm, upgrade_list, download_only, force ) )
@@ -1474,13 +1864,16 @@ int main( int argc, char **argv )
                                     }
                                 }
                                 else
+=======
+                                if( yget_install_list( pm, install_list, download_only, force ) )
+>>>>>>> develop
                                 {
                                     err = 3;
                                 }
                             }
                         }
 
-                        packages_free_upgrade_list( upgrade_list );
+                        packages_free_upgrade_list( install_list );
                     }
                     else
                     {

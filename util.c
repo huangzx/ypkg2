@@ -12,20 +12,49 @@
 
 char *util_get_config(char *config_file, char *keyword)
 {
-    int             n, match, len;
+    int             match, len;
     FILE            *fp;
     char            *pos, *result;
-    char            line[MAXCFGLINE], keybuf[MAXKWLEN], pattern[MAXFMTLEN], valbuf[MAXCFGLINE];
+    char            line[MAXCFGLINE], keybuf[MAXKWLEN], valbuf[MAXCFGLINE];
 
     if( ( fp = fopen( config_file, "r" ) ) == NULL )
         return NULL;
     match = 0;
+<<<<<<< HEAD
     while( fgets( line, MAXCFGLINE, fp ) != NULL ) 
     {
         pos = strchr( line, '=' );
         sprintf( pattern, "%%%ds%%*2s%%%ds", (int)(pos - line), MAXCFGLINE-1 );
         n = sscanf( line, pattern, keybuf, valbuf );
         if( n == 2 && strcmp(keyword, keybuf) == 0 )
+=======
+    while( fgets( line, MAXCFGLINE - 1, fp ) != NULL ) 
+    {
+        if( line[0] == '#' )
+            continue;
+
+        pos = strchr( line, '=' );
+        if( !pos )
+            continue;
+
+        memset( keybuf, 0, MAXKWLEN );
+        len = (int)(pos - line);
+        strncpy( keybuf, line, len < MAXKWLEN - 1 ? len : MAXKWLEN - 1 );
+        util_rtrim( keybuf, 0 );
+
+        memset( valbuf, 0, MAXCFGLINE );
+        pos++;
+        while( pos[0] == ' ' || pos[0] == '\'' || pos[0] == '\"' )
+        {
+            pos++;
+        }
+        strncpy( valbuf, pos, MAXCFGLINE );
+        util_rtrim( valbuf, '\"' );
+        util_rtrim( valbuf, '\'' );
+        util_rtrim( valbuf, 0 );
+
+        if( strcmp(keyword, keybuf) == 0 )
+>>>>>>> develop
         {
             match = 1;
             break;
@@ -35,9 +64,15 @@ char *util_get_config(char *config_file, char *keyword)
     if( match != 0 )
     {
         len = strlen( valbuf );
+<<<<<<< HEAD
         valbuf[len - 1] = '\0';
         result = malloc( len );
         strncpy( result, valbuf, len );
+=======
+        result = malloc( len + 1 );
+        strncpy( result, valbuf, len );
+        result[len] = 0;
+>>>>>>> develop
         return result;
     }
     else 

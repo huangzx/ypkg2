@@ -56,4 +56,6 @@ void db_destory_hash_table( DB *db );
 
 sqlite3_int64 db_last_insert_rowid( DB *db );
 
+int db_create_collation( DB *db, const char *name, int(*cmp_func)(void*,int,const void*,int,const void*), void *arg );
+
 #endif /* !DB_H */
