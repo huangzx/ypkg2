@@ -323,7 +323,7 @@ void packages_manager_cleanup( YPackageManager *pm )
 int packages_upgrade_db( YPackageManager *pm )
 {
     size_t              len, cur_version, new_version, begin;
-    char                *line, tmp[11];
+    char                *line, *ver_str, tmp[11];
     FILE                *fp;
     DB                  db;
 
@@ -346,7 +346,8 @@ int packages_upgrade_db( YPackageManager *pm )
     db_query( &db, "select db_version from config", NULL );
     if( db_fetch_assoc( &db ) )
     {
-        cur_version = atoi( db_get_value_by_key( &db, "db_version" ) );
+        ver_str = db_get_value_by_key( &db, "db_version" );
+        cur_version = ver_str ? atoi( ver_str ) : 0;
         db_close( &db );
     }
     else
