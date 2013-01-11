@@ -113,8 +113,6 @@ int ypkg_progress_callback( void *cb_arg, char *package_name, int action, double
     return 0;
 }
 
-<<<<<<< HEAD
-=======
 
 int ypkg_upgrade_self( char *package_path, int force )
 {
@@ -182,7 +180,6 @@ failed:
     return -1;
 }
 
->>>>>>> develop
 int main( int argc, char **argv )
 {
     int             c, force, i, j, action, ret, err, flag, len, exit_code;
@@ -265,7 +262,6 @@ int main( int argc, char **argv )
             {
                 pm = packages_manager_init2( 2 );
                 if( !pm )
-<<<<<<< HEAD
                 {
                     switch( libypk_errno )
                     {
@@ -283,25 +279,6 @@ int main( int argc, char **argv )
                 }
                 else
                 {
-=======
-                {
-                    switch( libypk_errno )
-                    {
-                        case MISSING_DB:
-                            err = 4;
-                        break;
-
-                        case LOCK_ERROR:
-                            err = 5;
-                        break;
-
-                        default:
-                            err = 3;
-                    }
-                }
-                else
-                {
->>>>>>> develop
                     for( i = optind; i < argc; i++)
                     {
                         packages_log( pm, argv[i], "Remove" );
@@ -338,19 +315,11 @@ int main( int argc, char **argv )
                         case MISSING_DB:
                             err = 4;
                         break;
-<<<<<<< HEAD
 
                         case LOCK_ERROR:
                             err = 5;
                         break;
 
-=======
-
-                        case LOCK_ERROR:
-                            err = 5;
-                        break;
-
->>>>>>> develop
                         default:
                             err = 3;
                     }
@@ -363,8 +332,6 @@ int main( int argc, char **argv )
                         packages_log( pm, package_name, "Install" );
                         printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", package_name );
 
-<<<<<<< HEAD
-=======
                         /*
                         if( !packages_get_info_from_ypk( package_name, &pkg, NULL, NULL, NULL, NULL ) )
                         {
@@ -378,7 +345,6 @@ int main( int argc, char **argv )
                         */
 
 
->>>>>>> develop
                         ret = packages_install_local_package( pm, package_name, "/", force, ypkg_progress_callback, pm );
 
                         switch( ret )
@@ -685,7 +651,6 @@ int main( int argc, char **argv )
                     case MISSING_DB:
                         err = 4;
                     break;
-<<<<<<< HEAD
 
                     case LOCK_ERROR:
                         err = 5;
@@ -710,32 +675,6 @@ int main( int argc, char **argv )
 
                         printf( COLOR_GREEN "[I] "  COLOR_RESET  "%s\t%s\t%s\t%s\n", packages_get_list_attr( pkg_list, i, "name"), packages_get_list_attr( pkg_list, i, "version"), install_time ? install_time : "0", packages_get_list_attr( pkg_list, i, "description") );
 
-=======
-
-                    case LOCK_ERROR:
-                        err = 5;
-                    break;
-
-                    default:
-                        err = 3;
-                }
-            }
-            else
-            {
-                pkg_list = packages_get_list( pm, 50000, 0, NULL, NULL, 0, 1 );
-                if( pkg_list )
-                {
-                    for( i = 0; i < pkg_list->cnt; i++ )
-                    {
-                        tmp = packages_get_list_attr( pkg_list, i, "install_time" );
-                        if( tmp )
-                            install_time = util_time_to_str( atoi( tmp ) );
-                        else
-                            install_time = NULL;
-
-                        printf( COLOR_GREEN "[I] "  COLOR_RESET  "%s\t%s\t%s\t%s\n", packages_get_list_attr( pkg_list, i, "name"), packages_get_list_attr( pkg_list, i, "version"), install_time ? install_time : "0", packages_get_list_attr( pkg_list, i, "description") );
-
->>>>>>> develop
                         if( install_time )
                             free( install_time );
                     }

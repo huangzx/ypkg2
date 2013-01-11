@@ -4,11 +4,7 @@
 
 int main( int argc, char **argv )
 {
-<<<<<<< HEAD
-    int                 i, ret, pid;
-=======
     int                 i, ret, pid, force;
->>>>>>> develop
     char                *exec_path, *package_path, *dl_error;
     void                *dl_handle = NULL;
 
@@ -18,19 +14,12 @@ int main( int argc, char **argv )
     int                 (*packages_install_local_package)( YPackageManager *pm, char *ypk_path, char *dest_dir, int force, ypk_progress_callback cb, void *cb_arg ) = NULL;
     //ssize_t             (*packages_upgrade_db)( YPackageManager *pm ) = NULL;
 
-<<<<<<< HEAD
-    if( argc != 3 )
-=======
     if( argc < 3 || argc > 4 )
->>>>>>> develop
         return 1;
 
     exec_path = argv[1];
     package_path = argv[2];
-<<<<<<< HEAD
-=======
     force = argv[3] && argv[3][0] == '1' ? 1 : 0;
->>>>>>> develop
 
     if( access( exec_path, F_OK ) )
     {
@@ -118,11 +107,7 @@ int main( int argc, char **argv )
 
 
 
-<<<<<<< HEAD
-    if( packages_install_local_package( pm, package_path, "/", 1, NULL, NULL ) != 0 )
-=======
     if( packages_install_local_package( pm, package_path, "/", force, NULL, NULL ) != 0 )
->>>>>>> develop
     {
         ret = 5;
         fprintf( stderr, "Error: upgrade failed.\n" );
@@ -138,11 +123,7 @@ int main( int argc, char **argv )
     }
     */
 
-<<<<<<< HEAD
-    printf( "Upgrade successful.\n" );
-=======
     printf( "Upgrade completed.\n" );
->>>>>>> develop
 
     packages_manager_cleanup2( pm );
     dlclose( dl_handle );

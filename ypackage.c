@@ -4,11 +4,7 @@
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
  * Version: 0.1
-<<<<<<< HEAD
- * Date: 2012.8.13
-=======
  * Date: 2012.11.28
->>>>>>> develop
  */
 #define LIBYPK 1
 #include "ypackage.h"
@@ -28,148 +24,6 @@ YPackageManager *packages_manager_init()
     if( !pm )
         return NULL;
 
-<<<<<<< HEAD
-    if( access( DB_NAME, R_OK ) )
-    {
-        free( pm );
-        return NULL;
-    }
-    pm->db_name = strdup( DB_NAME );
-
-    config_file = CONFIG_FILE;
-
-    if( !access( config_file, R_OK ) )
-    {
-        pm->source_uri = util_get_config( config_file, "YPPATH_URI" );
-        if( !pm->source_uri )
-            pm->source_uri = strdup( DEFAULT_URI );
-
-        pm->accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
-        if( !pm->accept_repo )
-            pm->accept_repo = strdup( DEFAULT_REPO );
-
-        pm->package_dest = util_get_config( config_file, "YPPATH_PKGDEST" );
-        if( !pm->package_dest )
-            pm->package_dest = strdup( DEFAULT_PKGDEST );
-
-        pm->log = util_get_config( config_file, "LOG" );
-        if( !pm->log )
-            pm->log = strdup( LOG_FILE );
-    }
-    else
-    {
-        pm->source_uri = strdup( DEFAULT_URI );
-
-        pm->accept_repo = strdup( DEFAULT_REPO );
-
-        pm->package_dest = strdup( DEFAULT_PKGDEST );
-
-        pm->log = strdup( LOG_FILE );
-    }
-
-
-    return pm;
-}
-
-void packages_manager_cleanup( YPackageManager *pm )
-{
-    if( !pm )
-        return;
-
-    if( pm->source_uri )
-        free( pm->source_uri );
-
-    if( pm->accept_repo )
-        free( pm->accept_repo );
-
-    if( pm->package_dest )
-        free( pm->package_dest );
-
-    if( pm->db_name )
-        free( pm->db_name );
-
-    if( pm->log )
-        free( pm->log );
-
-    free( pm );
-}
-
-YPackageManager *packages_manager_init2( int type )
-{
-    int             ret;
-    char            *config_file;
-    YPackageManager *pm;
-
-
-    if( type == 1 )
-    {
-        ret = packages_read_lock();
-    }
-    else if( type == 2 )
-    {
-        ret = packages_write_lock();
-    }
-    else
-    {
-        libypk_errno = ARGS_INCORRECT;
-        return NULL;
-    }
-
-    if( ret < 0 )
-    {
-        libypk_errno = LOCK_ERROR;
-        return NULL;
-    }
-
-    pm = malloc( sizeof(YPackageManager) );
-
-    if( !pm )
-    {
-        libypk_errno = OTHER_FAILURES;
-        return NULL;
-    }
-
-    pm->lock_fd = ret;
-
-
-    if( access( DB_NAME, R_OK ) )
-    {
-        libypk_errno = MISSING_DB;
-        free( pm );
-        return NULL;
-    }
-    pm->db_name = strdup( DB_NAME );
-
-    config_file = CONFIG_FILE;
-    if( !access( config_file, R_OK ) )
-    {
-        pm->source_uri = util_get_config( config_file, "YPPATH_URI" );
-        if( !pm->source_uri )
-            pm->source_uri = strdup( DEFAULT_URI );
-
-        pm->accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
-        if( !pm->accept_repo )
-            pm->accept_repo = strdup( DEFAULT_REPO );
-
-        pm->package_dest = util_get_config( config_file, "YPPATH_PKGDEST" );
-        if( !pm->package_dest )
-            pm->package_dest = strdup( DEFAULT_PKGDEST );
-
-        pm->log = util_get_config( config_file, "LOG" );
-        if( !pm->log )
-            pm->log = strdup( LOG_FILE );
-    }
-    else
-    {
-        pm->source_uri = strdup( DEFAULT_URI );
-
-        pm->accept_repo = strdup( DEFAULT_REPO );
-
-        pm->package_dest = strdup( DEFAULT_PKGDEST );
-
-        pm->log = strdup( LOG_FILE );
-    }
-=======
     if( access( DB_NAME, R_OK ) )
     {
         free( pm );
@@ -275,49 +129,251 @@ YPackageManager *packages_manager_init2( int type )
 
     if( !pm->log )
         pm->log = strdup( LOG_FILE );
->>>>>>> develop
 
     return pm;
 }
 
-<<<<<<< HEAD
-void packages_manager_cleanup2( YPackageManager *pm )
-=======
 
 void packages_manager_cleanup( YPackageManager *pm )
->>>>>>> develop
 {
     if( !pm )
         return;
 
-<<<<<<< HEAD
-    packages_unlock( pm->lock_fd );
-
-    if( pm->source_uri )
-        free( pm->source_uri );
-
-    if( pm->accept_repo )
-        free( pm->accept_repo );
-
-    if( pm->package_dest )
-        free( pm->package_dest );
-
-=======
->>>>>>> develop
     if( pm->db_name )
         free( pm->db_name );
 
     if( pm->log )
         free( pm->log );
 
-<<<<<<< HEAD
-=======
     if( pm->source_list )
         dlist_cleanup( pm->source_list, packages_manager_free_source );
 
->>>>>>> develop
     free( pm );
+}
 
+int packages_manager_add_source( YPackageSourceList *list, char *source_name, char *source_uri, char *accept_repo, char *package_dest )
+{
+    YPackageSource   *source;
+
+    if( !list || !source_uri )
+        return -1;
+
+    source =  (YPackageSource *)malloc( sizeof( YPackageSource ) );
+    if( !source )
+        return -2;
+
+    source->source_name = strdup( source_name );
+    source->source_uri = strdup( source_uri );
+    source->accept_repo = accept_repo ? strdup( accept_repo ) : strdup( DEFAULT_REPO );
+    source->package_dest = package_dest ? strdup( package_dest ) : strdup( DEFAULT_PKGDEST );
+    dlist_append( list, source );
+
+    return 0;
+}
+
+void packages_manager_free_source( void *node )
+{
+    YPackageSource *source;
+
+    if( !node )
+        return;
+
+    source = (YPackageSource *)node;
+
+    if( source->source_uri )
+    {
+        free( source->source_uri );
+        source->source_uri  = NULL;
+    }
+
+    if( source->accept_repo )
+    {
+        free( source->accept_repo );
+        source->accept_repo  = NULL;
+    }
+
+    if( source->package_dest )
+    {
+        free( source->package_dest );
+        source->package_dest  = NULL;
+    }
+
+    if( source->source_name )
+    {
+        free( source->source_name );
+        source->source_name  = NULL;
+    }
+
+    free( source );
+}
+
+YPackageManager *packages_manager_init2( int type )
+{
+    int                 ret, len;
+    char                *source_name, *source_uri, *accept_repo, *desc, *use, *config_file, *token, *saveptr;
+    DIR                 *dir;
+    struct dirent       *entry;
+    YPackageManager     *pm;
+
+
+    if( type == 1 )
+    {
+        ret = packages_read_lock();
+    }
+    else if( type == 2 )
+    {
+        ret = packages_write_lock();
+    }
+    else
+    {
+        libypk_errno = ARGS_INCORRECT;
+        return NULL;
+    }
+
+    if( ret < 0 )
+    {
+        libypk_errno = LOCK_ERROR;
+        return NULL;
+    }
+
+    pm = malloc( sizeof(YPackageManager) );
+
+    if( !pm )
+    {
+        libypk_errno = OTHER_FAILURES;
+        return NULL;
+    }
+
+    pm->lock_fd = ret;
+
+
+    if( access( DB_NAME, R_OK ) )
+    {
+        libypk_errno = MISSING_DB;
+        free( pm );
+        return NULL;
+    }
+
+    pm->db_name = strdup( DB_NAME );
+
+    pm->source_list =  dlist_init();
+    if( !pm->source_list )
+    {
+        free( pm->db_name );
+        free( pm );
+        return NULL;
+    }
+
+    pm->log = NULL;
+
+    //yget.conf.d
+    dir = opendir( CONFIG_DIR );
+    if( dir )
+    {
+        while( ( entry = readdir( dir ) ) )
+        {
+            if( !strcmp( entry->d_name, "." ) || !strcmp( entry->d_name, ".." ) )
+                continue;
+
+            len = strlen( entry->d_name );
+            if( len < 6 )
+                continue;
+
+            if( strncmp( entry->d_name + len - 5, ".conf", 4 ) )
+                continue;
+
+            config_file = util_strcat( CONFIG_DIR, "/", entry->d_name, NULL );
+
+            source_uri = util_get_config( config_file, "YPPATH_URI" );
+            use = util_get_config( config_file, "USE" );
+            if( use && ( use[0] == 'N' || use[0] == 'n' ) )
+            {
+                ;
+            }
+            else if( source_uri )
+            {
+                source_name = strdup( entry->d_name );
+                source_name[len-5] = 0;
+                accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
+                desc = util_get_config( config_file, "YPPATH_PKGDEST" );
+
+                token = strtok_r( accept_repo, " ", &saveptr );
+                while( token )
+                {
+                    packages_manager_add_source( pm->source_list, source_name, source_uri, token, desc );
+                    token = strtok_r( NULL, " ,", &saveptr );
+                }
+
+                free( source_name );
+                free( accept_repo );
+                free( desc );
+            }
+            free( source_uri );
+            free( use );
+            free( config_file );
+            config_file = NULL;
+        }
+
+        closedir( dir );
+    }
+
+    //yget.conf
+    if( !access( CONFIG_FILE, R_OK ) )
+    {
+        config_file = CONFIG_FILE;
+        source_uri = util_get_config( config_file, "YPPATH_URI" );
+        use = util_get_config( config_file, "USE" );
+        if( use && ( use[0] == 'N' || use[0] == 'n' ) )
+        {
+            ;
+        }
+        else if( source_uri )
+        {
+            desc = util_get_config( config_file, "YPPATH_PKGDEST" );
+            accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
+            token = strtok_r( accept_repo, " ", &saveptr );
+            while( token )
+            {
+                packages_manager_add_source( pm->source_list, "universe", source_uri, token, desc );
+                token = strtok_r( NULL, " ,", &saveptr );
+            }
+            free( accept_repo );
+            free( desc );
+        }
+        free( source_uri );
+        free( use );
+
+        pm->log = util_get_config( config_file, "LOG" );
+    }
+
+    //default config
+    if( pm->source_list->cnt == 0 )
+        packages_manager_add_source( pm->source_list, "universe", DEFAULT_URI, NULL, NULL );
+
+    if( !pm->log )
+        pm->log = strdup( LOG_FILE );
+
+    return pm;
+}
+
+void packages_manager_cleanup2( YPackageManager *pm )
+{
+    if( !pm )
+        return;
+
+    packages_unlock( pm->lock_fd );
+
+
+    if( pm->db_name )
+        free( pm->db_name );
+
+    if( pm->log )
+        free( pm->log );
+
+    if( pm->source_list )
+        dlist_cleanup( pm->source_list, packages_manager_free_source );
+
+    free( pm );
 }
 
 int packages_upgrade_db( YPackageManager *pm )
@@ -446,7 +502,6 @@ int packages_lock( int type )
     return fd;
 }
 
-<<<<<<< HEAD
 int packages_unlock( int fd )
 {
     struct flock    lock;
@@ -470,955 +525,7 @@ int packages_unlock( int fd )
     close( fd );
     return 0;
 }
-=======
-int packages_manager_add_source( YPackageSourceList *list, char *source_name, char *source_uri, char *accept_repo, char *package_dest )
-{
-    YPackageSource   *source;
->>>>>>> develop
 
-    if( !list || !source_uri )
-        return -1;
-
-    source =  (YPackageSource *)malloc( sizeof( YPackageSource ) );
-    if( !source )
-        return -2;
-
-    source->source_name = strdup( source_name );
-    source->source_uri = strdup( source_uri );
-    source->accept_repo = accept_repo ? strdup( accept_repo ) : strdup( DEFAULT_REPO );
-    source->package_dest = package_dest ? strdup( package_dest ) : strdup( DEFAULT_PKGDEST );
-    dlist_append( list, source );
-
-    return 0;
-}
-
-void packages_manager_free_source( void *node )
-{
-    YPackageSource *source;
-
-    if( !node )
-        return;
-
-    source = (YPackageSource *)node;
-
-    if( source->source_uri )
-    {
-        free( source->source_uri );
-        source->source_uri  = NULL;
-    }
-
-    if( source->accept_repo )
-    {
-        free( source->accept_repo );
-        source->accept_repo  = NULL;
-    }
-
-    if( source->package_dest )
-    {
-        free( source->package_dest );
-        source->package_dest  = NULL;
-    }
-
-    if( source->source_name )
-    {
-        free( source->source_name );
-        source->source_name  = NULL;
-    }
-
-    free( source );
-}
-
-YPackageManager *packages_manager_init2( int type )
-{
-<<<<<<< HEAD
-    int                 xml_ret, i;
-    size_t              list_len;
-    char                *sql, *sql_testing, *sql_history, *sql_data, *sql_testing_data, *sql_history_data, *sql_filelist, *idx, *data_key,*data_name, *data_format, *data_size, *data_install_size, *data_depend, *data_bdepend, *data_recommended, *data_conflict, *file_path, *file_path_sub, *list_line;
-    char                 *saveptr, *package_name, *is_desktop, *version, *repo, *install_time, *install_size, *file_type, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *last_update;
-    char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
-    struct stat         statbuf;
-    struct dirent       *entry, *entry_sub;
-    DIR                 *dir, *dir_sub;
-    FILE                *fp;
-    XMLReaderHandle   xml_handle;
-    DB                  db;
-=======
-    int                 ret, len;
-    char                *source_name, *source_uri, *accept_repo, *desc, *use, *config_file, *token, *saveptr;
-    DIR                 *dir;
-    struct dirent       *entry;
-    YPackageManager     *pm;
->>>>>>> develop
-
-
-    if( type == 1 )
-    {
-        ret = packages_read_lock();
-    }
-    else if( type == 2 )
-    {
-        ret = packages_write_lock();
-    }
-    else
-    {
-        libypk_errno = ARGS_INCORRECT;
-        return NULL;
-    }
-
-    if( ret < 0 )
-    {
-        libypk_errno = LOCK_ERROR;
-        return NULL;
-    }
-
-<<<<<<< HEAD
-    printf( "Import universe ...\n" );
-    //import universe
-    reader_open( LOCAL_UNIVERSE,  &xml_handle );
-    sql = "replace into universe (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-
-    sql_testing = "replace into universe_testing (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-
-    sql_history = "replace into universe_history (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-    while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
-    {
-        is_desktop = reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
-        package_name = reader_get_value2( &xml_handle, "name" );
-        version = reader_get_value2( &xml_handle, "version" );
-        repo = reader_get_value( &xml_handle, "repo" );
-
-        //universe
-        if( repo && !strcmp( repo, "stable" ) )
-        {
-            db_exec( &db, sql,  
-                    package_name, //name
-                    is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
-                    is_desktop ? "1" : "0", //desktop
-                    reader_get_value2( &xml_handle, "category" ), //category
-                    reader_get_value2( &xml_handle, "arch" ), //arch
-                    version, //version
-                    reader_get_value2( &xml_handle, "priority" ), //priority
-                    reader_get_value2( &xml_handle, "install" ), //install
-                    reader_get_value2( &xml_handle, "license" ), //license
-                    reader_get_value2( &xml_handle, "homepage" ), //homepage
-                    reader_get_value2( &xml_handle, "repo" ), //repo
-                    reader_get_value2( &xml_handle, "size" ), //size
-                    reader_get_value2( &xml_handle, "sha" ), //sha
-                    reader_get_value2( &xml_handle, "build_date" ), //build_date
-                    reader_get_value2( &xml_handle, "packager" ), //packager
-                    reader_get_value2( &xml_handle, "uri" ), //uri
-                    is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
-                    reader_get_value2( &xml_handle, "data_count" ), //data_count
-                    NULL);
-        }
-
-        db_exec( &db, sql_testing,  
-                package_name, //name
-                is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
-                is_desktop ? "1" : "0", //desktop
-                reader_get_value2( &xml_handle, "category" ), //category
-                reader_get_value2( &xml_handle, "arch" ), //arch
-                version, //version
-                reader_get_value2( &xml_handle, "priority" ), //priority
-                reader_get_value2( &xml_handle, "install" ), //install
-                reader_get_value2( &xml_handle, "license" ), //license
-                reader_get_value2( &xml_handle, "homepage" ), //homepage
-                reader_get_value2( &xml_handle, "repo" ), //repo
-                reader_get_value2( &xml_handle, "size" ), //size
-                reader_get_value2( &xml_handle, "sha" ), //sha
-                reader_get_value2( &xml_handle, "build_date" ), //build_date
-                reader_get_value2( &xml_handle, "packager" ), //packager
-                reader_get_value2( &xml_handle, "uri" ), //uri
-                is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
-                reader_get_value2( &xml_handle, "data_count" ), //data_count
-                NULL);
-
-        //universe_history
-        db_exec( &db, sql_history,  
-                package_name, //name
-                is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
-                is_desktop ? "1" : "0", //desktop
-                reader_get_value2( &xml_handle, "category" ), //category
-                reader_get_value2( &xml_handle, "arch" ), //arch
-                version, //version
-                reader_get_value2( &xml_handle, "priority" ), //priority
-                reader_get_value2( &xml_handle, "install" ), //install
-                reader_get_value2( &xml_handle, "license" ), //license
-                reader_get_value2( &xml_handle, "homepage" ), //homepage
-                reader_get_value2( &xml_handle, "repo" ), //repo
-                reader_get_value2( &xml_handle, "size" ), //size
-                reader_get_value2( &xml_handle, "sha" ), //sha
-                reader_get_value2( &xml_handle, "build_date" ), //build_date
-                reader_get_value2( &xml_handle, "packager" ), //packager
-                reader_get_value2( &xml_handle, "uri" ), //uri
-                is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
-                reader_get_value2( &xml_handle, "data_count" ), //data_count
-                NULL);
-    
-        //universe_data
-        if( repo && !strcmp( repo, "stable" ) )
-        {
-            db_exec( &db, "delete from universe_data where name=?", package_name, NULL );  
-        }
-
-        db_exec( &db, "delete from universe_testing_data where name=?", package_name, NULL );  
-=======
-    pm = malloc( sizeof(YPackageManager) );
-
-    if( !pm )
-    {
-        libypk_errno = OTHER_FAILURES;
-        return NULL;
-    }
-
-    pm->lock_fd = ret;
-
->>>>>>> develop
-
-    if( access( DB_NAME, R_OK ) )
-    {
-        libypk_errno = MISSING_DB;
-        free( pm );
-        return NULL;
-    }
-
-    pm->db_name = strdup( DB_NAME );
-
-<<<<<<< HEAD
-        sql_testing_data = "insert into universe_testing_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-
-        sql_history_data = "insert into universe_history_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-        data_key = (char *)malloc( 32 );
-        for( i = 0; ; i++ )
-=======
-    pm->source_list =  dlist_init();
-    if( !pm->source_list )
-    {
-        free( pm->db_name );
-        free( pm );
-        return NULL;
-    }
-
-    pm->log = NULL;
-
-    //yget.conf.d
-    dir = opendir( CONFIG_DIR );
-    if( dir )
-    {
-        while( ( entry = readdir( dir ) ) )
->>>>>>> develop
-        {
-            if( !strcmp( entry->d_name, "." ) || !strcmp( entry->d_name, ".." ) )
-                continue;
-
-            len = strlen( entry->d_name );
-            if( len < 6 )
-                continue;
-
-            if( strncmp( entry->d_name + len - 5, ".conf", 4 ) )
-                continue;
-
-            config_file = util_strcat( CONFIG_DIR, "/", entry->d_name, NULL );
-
-            source_uri = util_get_config( config_file, "YPPATH_URI" );
-            use = util_get_config( config_file, "USE" );
-            if( use && ( use[0] == 'N' || use[0] == 'n' ) )
-            {
-                ;
-            }
-<<<<<<< HEAD
-
-            data_name = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) );  
-            data_format  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) );   
-            data_size = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) );   
-            data_install_size  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) );
-            data_depend = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) );    
-            data_bdepend = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) );    
-            data_recommended = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) );    
-            data_conflict  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict", NULL ) );   
-
-            if( repo && !strcmp( repo, "stable" ) )
-            {
-                db_exec( &db, sql_data,  
-                        package_name, //name
-                        version, //version
-                        data_name, //data_name
-                        data_format, //data_format
-                        data_size, //data_size
-                        data_install_size, //data_install_size
-                        data_depend, //data_depend
-                        data_bdepend, //data_bdepend
-                        data_recommended, //data_recommended
-                        data_conflict, //data_conflict
-                        NULL);
-            }
-
-            db_exec( &db, sql_testing_data,  
-                    package_name, //name
-                    version, //version
-                    data_name, //data_name
-                    data_format, //data_format
-                    data_size, //data_size
-                    data_install_size, //data_install_size
-                    data_depend, //data_depend
-                    data_bdepend, //data_bdepend
-                    data_recommended, //data_recommended
-                    data_conflict, //data_conflict
-                    NULL);
-
-            db_exec( &db, sql_history_data,  
-                    package_name, //name
-                    version, //version
-                    data_name, //data_name
-                    data_format, //data_format
-                    data_size, //data_size
-                    data_install_size, //data_install_size
-                    data_depend, //data_depend
-                    data_bdepend, //data_bdepend
-                    data_recommended, //data_recommended
-                    data_conflict, //data_conflict
-                    NULL);
-            free( idx );
-=======
-            else if( source_uri )
-            {
-                source_name = strdup( entry->d_name );
-                source_name[len-5] = 0;
-                accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
-                desc = util_get_config( config_file, "YPPATH_PKGDEST" );
-
-                token = strtok_r( accept_repo, " ", &saveptr );
-                while( token )
-                {
-                    packages_manager_add_source( pm->source_list, source_name, source_uri, token, desc );
-                    token = strtok_r( NULL, " ,", &saveptr );
-                }
-
-                free( source_name );
-                free( accept_repo );
-                free( desc );
-            }
-            free( source_uri );
-            free( use );
-            free( config_file );
-            config_file = NULL;
->>>>>>> develop
-        }
-
-<<<<<<< HEAD
-    //world
-    printf( "Import world ...\n" );
-    reader_open( LOCAL_WORLD,  &xml_handle );
-    sql = "replace into world (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-
-    //char * sql_test;
-    //sql_test = "replace into world (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');";
-=======
-        closedir( dir );
-    }
->>>>>>> develop
-
-    //yget.conf
-    if( !access( CONFIG_FILE, R_OK ) )
-    {
-<<<<<<< HEAD
-        is_desktop = reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
-        package_name = reader_get_value2( &xml_handle, "name" );
-        version = reader_get_value2( &xml_handle, "version" );
-
-        //world
-        db_exec( &db, sql,  
-                package_name, //name
-                is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
-                is_desktop ? "1" : "0", //desktop
-                reader_get_value2( &xml_handle, "category" ), //category
-                reader_get_value2( &xml_handle, "arch" ), //arch
-                version, //version
-                reader_get_value2( &xml_handle, "priority" ), //priority
-                reader_get_value2( &xml_handle, "install" ), //install
-                reader_get_value2( &xml_handle, "license" ), //license
-                reader_get_value2( &xml_handle, "homepage" ), //homepage
-                reader_get_value2( &xml_handle, "repo" ), //repo
-                reader_get_value2( &xml_handle, "size" ), //size
-                reader_get_value2( &xml_handle, "sha" ), //sha
-                reader_get_value2( &xml_handle, "build_date" ), //build_date
-                reader_get_value2( &xml_handle, "packager" ), //packager
-                reader_get_value2( &xml_handle, "uri" ), //uri
-                is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
-                reader_get_value2( &xml_handle, "data_count" ), //data_count
-                NULL);
-
-        //world_data
-        db_exec( &db, "delete from world_data where name=?", package_name, NULL );  
-
-        sql_data = "insert into world_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-        data_key = (char *)malloc( 32 );
-        for( i = 0; ; i++ )
-=======
-        config_file = CONFIG_FILE;
-        source_uri = util_get_config( config_file, "YPPATH_URI" );
-        use = util_get_config( config_file, "USE" );
-        if( use && ( use[0] == 'N' || use[0] == 'n' ) )
->>>>>>> develop
-        {
-            ;
-        }
-        else if( source_uri )
-        {
-            desc = util_get_config( config_file, "YPPATH_PKGDEST" );
-            accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
-            token = strtok_r( accept_repo, " ", &saveptr );
-            while( token )
-            {
-                packages_manager_add_source( pm->source_list, "universe", source_uri, token, desc );
-                token = strtok_r( NULL, " ,", &saveptr );
-            }
-<<<<<<< HEAD
-
-            data_name = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) );  
-            data_format  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) );   
-            data_size = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) );   
-            data_install_size  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) );
-            data_depend = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) );    
-            data_bdepend = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) );    
-            data_recommended = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) );    
-            data_conflict  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict", NULL ) );   
-
-            db_exec( &db, sql_data,  
-                    package_name, //name
-                    version, //version
-                    data_name, //data_name
-                    data_format, //data_format
-                    data_size, //data_size
-                    data_install_size, //data_install_size
-                    data_depend, //data_depend
-                    data_bdepend, //data_bdepend
-                    data_recommended, //data_recommended
-                    data_conflict, //data_conflict
-                    NULL);
-            free( idx );
-=======
-            free( accept_repo );
-            free( desc );
->>>>>>> develop
-        }
-        free( source_uri );
-        free( use );
-
-<<<<<<< HEAD
-        //update universe
-        db_exec( &db, "update universe set installed=1  where name=?", package_name, NULL );  
-        db_exec( &db, "update universe_testing set installed=1  where name=?", package_name, NULL );  
-=======
-        pm->log = util_get_config( config_file, "LOG" );
->>>>>>> develop
-    }
-
-    //default config
-    if( pm->source_list->cnt == 0 )
-        packages_manager_add_source( pm->source_list, "universe", DEFAULT_URI, NULL, NULL );
-
-<<<<<<< HEAD
-    //world_file
-    dir = opendir( PACKAGE_DB_DIR );
-    if( !dir )
-        return -1;
-
-    while( (entry = readdir( dir )) )
-    {
-        if( !strcmp( entry->d_name, "." ) || !strcmp( entry->d_name, ".." ) )
-        {
-            continue;
-        }
-
-        package_name = entry->d_name;
-        //printf( "%s\n", package_name );
-        file_path = util_strcat( PACKAGE_DB_DIR, "/", entry->d_name, NULL );
-        if( !stat( file_path, &statbuf ) && S_ISDIR( statbuf.st_mode ) )
-        {
-            //sub dir
-            dir_sub = opendir( file_path );
-            if( dir_sub )
-            {
-                while( (entry_sub = readdir( dir_sub )) )
-                {
-                    if( strstr(entry_sub->d_name, ".desc") )
-                    {
-                        file_path_sub = util_strcat( file_path, "/", entry_sub->d_name, NULL );
-                        install_time = util_get_config( file_path_sub, "INSTALL_TIME" );
-                        install_size = util_get_config( file_path_sub, "INSTALL_SIZE" );
-                        if( install_time )
-                        {
-                            db_exec( &db, "update world set install_time=?, size=? where name=?", install_time, install_size ? install_size : "0", package_name, NULL );  
-                        }
-                        else
-                        {
-                            db_exec( &db, "update world set install_time=strftime('%s','now'), size=? where name=?", package_name,  install_size ? install_size : "0", NULL );  
-                        }
-
-                        if( install_time )
-                            free( install_time );
-
-                        if( install_size )
-                            free( install_size );
-
-                        free( file_path_sub );
-                    }
-
-                    if( strstr(entry_sub->d_name, ".list") )
-                    {
-                        file_path_sub = util_strcat( file_path, "/", entry_sub->d_name, NULL );
-=======
-    if( !pm->log )
-        pm->log = strdup( LOG_FILE );
-
-    return pm;
-}
-
-void packages_manager_cleanup2( YPackageManager *pm )
-{
-    if( !pm )
-        return;
->>>>>>> develop
-
-    packages_unlock( pm->lock_fd );
-
-<<<<<<< HEAD
-                        fp = fopen( file_path_sub, "r" );
-                        list_line = NULL;
-                        while( getline( &list_line, &list_len, fp ) != -1 )
-                        {
-                            if( list_line[0] != 'I' )
-                            {
-                                file_type = strtok_r( list_line, " ,", &saveptr );
-                                file_file = strtok_r( NULL, " ,", &saveptr );
-                                file_size = strtok_r( NULL, " ,", &saveptr );
-                                file_perms = strtok_r( NULL, " ,", &saveptr );
-                                file_uid = strtok_r( NULL, " ,", &saveptr );
-                                file_gid = strtok_r( NULL, " ,", &saveptr );
-                                file_mtime = strtok_r( NULL, " ,", &saveptr );
-                                file_extra = strtok_r( NULL, " ,", &saveptr );
-
-                                db_exec( &db, sql_filelist, 
-                                        package_name,
-                                        file_type ? file_type : "",
-                                        file_file ? file_file : "",
-                                        file_size ? file_size : "",
-                                        file_perms ? file_perms : "",
-                                        file_uid ? file_uid : "",
-                                        file_gid ? file_gid : "",
-                                        file_mtime ? file_mtime : "",
-                                        file_extra ? file_extra : "",
-                                        NULL );
-                            }
-=======
->>>>>>> develop
-
-    if( pm->db_name )
-        free( pm->db_name );
-
-    if( pm->log )
-        free( pm->log );
-
-<<<<<<< HEAD
-    //update config
-    db_query( &db, "select max(build_date) from universe_testing", NULL );
-    db_fetch_num( &db );
-    last_update = db_get_value_by_index( &db, 0 );
-    db_cleanup( &db );
-    db_exec( &db, "update config set last_update=?, last_check=?", last_update, last_update, NULL );  
-=======
-    if( pm->source_list )
-        dlist_cleanup( pm->source_list, packages_manager_free_source );
->>>>>>> develop
-
-    free( pm );
-}
-
-<<<<<<< HEAD
-int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg )
-{
-    int             timestamp, last_update, cnt;
-    char            *target_url, *list_file, *list_line, xml_file[32],  sum[48];
-    DownloadContent content;
-=======
-int packages_upgrade_db( YPackageManager *pm )
-{
-    size_t              len, cur_version, new_version, begin;
-    char                *line, tmp[11];
-    FILE                *fp;
-    DB                  db;
->>>>>>> develop
-
-    if( !pm )
-        return -1;
-
-<<<<<<< HEAD
-
-    //download updates list
-    if( cb )
-    {
-        cb( cb_arg, "", 0, 1, "Synchronizing new packages list ...\n" );
-        cb( cb_arg, "", 1, -1, "Initializing ...\n" );
-    }
-
-    list_file = UPDATE_DIR "/" LIST_FILE;
-    target_url = util_strcat( pm->source_uri, "/", list_file, NULL );
-    content.text = malloc(1);
-    content.size = 0;
-    if( get_content(target_url, &content) != 0 )
-    {
-        free(content.text);
-        free(target_url);
-        target_url = NULL;
-        if( cb )
-        {
-            cb( cb_arg, "", 1, 1, "Connection fails, check your network and configuration.\n" );
-        }
-        return -1; 
-    }
-
-    if( cb )
-    {
-        cb( cb_arg, "", 1, 1, NULL );
-    }
-
-    list_line = util_mem_gets( content.text );
-    last_update = packages_get_last_update_timestamp( pm );
-    cnt = 0;
-    while( list_line )
-=======
-    if( access( DB_UPGRADE, R_OK ) )
-        return -1;
-
-    fp = fopen( DB_UPGRADE, "r" );
-    if( !fp )
-        return -1;
-
-    cur_version = 0;
-    new_version = 0;
-    begin = 0;
-
-
-    db_init( &db, pm->db_name, OPEN_WRITE );
-    db_query( &db, "select db_version from config", NULL );
-    if( db_fetch_assoc( &db ) )
-    {
-        cur_version = atoi( db_get_value_by_key( &db, "db_version" ) );
-        db_close( &db );
-    }
-    else
-    {
-        if( db_exec( &db, "alter table config add column db_version text default '0'", NULL ) != SQLITE_DONE )
-        {
-            goto exception_handler;
-        }
-        db_close( &db );
-    }
-
-    db_init( &db, pm->db_name, OPEN_WRITE );
-    db_exec( &db, "begin", NULL );  
-
-    line = NULL;
-    while( getline( &line, &len, fp ) != -1 )
->>>>>>> develop
-    {
-        if( !strncmp( line, "Version:", 8 ) )
-        {
-            strncpy( tmp, line+8, 10 );
-            tmp[10] = 0;
-            new_version = atoi( tmp );
-            if( new_version > cur_version )
-            {
-<<<<<<< HEAD
-                packages_update_single_xml( pm, xml_file, sum, cb, cb_arg  );
-                last_update = timestamp;
-                cnt++;
-=======
-                cur_version = new_version; 
-                begin = 1;
->>>>>>> develop
-            }
-        }
-        else if( !strncmp( line, "End", 3 ) )
-        {
-            if( begin )
-            {
-                if( db_exec( &db, "update config set db_version=?", tmp, NULL ) != SQLITE_DONE )
-                {
-                    goto exception_handler;
-                }
-
-                begin = 0;
-            }
-        }
-        else
-        {
-            if( begin && strlen( line ) > 3 )
-            {
-                //printf( "debug: exec %s\n", line );
-                if( db_exec( &db, line, NULL ) != SQLITE_DONE )
-                {
-                    //goto exception_handler;
-                    ;
-                }
-            }
-        }
-
-<<<<<<< HEAD
-    if( cb )
-    {
-        cb( cb_arg, "", 9, 1, NULL );
-    }
-
-    return cnt;
-}
-
-/*
- * packages_get_upgrade_list
- */
-YPackageChangeList *packages_get_upgrade_list( YPackageManager *pm )
-{    
-    int             pkg_count, i, wildcards[] = { 2, 0 };
-    char            *package_name, *version, *can_upgrade;
-    char            *keys[] = { "can_update", NULL }, *keywords[] = { "%1", NULL };
-    YPackageList    *pkg_list;
-    YPackageChangeList     *list;
-=======
-    }
-
-    db_exec( &db, "end", NULL );  
->>>>>>> develop
-
-    if( line )
-        free( line );
-
-<<<<<<< HEAD
-    pkg_count = packages_get_count( pm,  keys, keywords, wildcards, 0 );
-
-    if( pkg_count > 0 )
-    {
-        pkg_list = packages_get_list( pm, pkg_count, 0, keys, keywords, wildcards, 0 );
-        if( pkg_list )
-        {
-            list = dlist_init();
-            for( i = 0; i < pkg_list->cnt; i++ )
-            {
-                package_name = packages_get_list_attr( pkg_list, i, "name" );
-                version = packages_get_list_attr( pkg_list, i, "version" );
-                can_upgrade = packages_get_list_attr( pkg_list, i, "can_update" );
-
-                if( can_upgrade && can_upgrade[0] )
-                {
-                    packages_clist_append( list, package_name, version, 0, can_upgrade[0] == '1' ? 4 : 5 );
-                }
-                else
-                {
-                    packages_clist_append( list, package_name, version, 0, 4 );
-                }
-
-            }
-            packages_free_list( pkg_list );
-        }
-    }
-=======
-    fclose( fp );
->>>>>>> develop
-
-    db_close( &db );
-    return 0;
-
-exception_handler:
-    db_exec( &db, "rollback", NULL );  
-    db_close( &db );
-    return -1;
-}
-
-<<<<<<< HEAD
-int packages_upgrade_list( YPackageManager *pm, YPackageChangeList *list, ypk_progress_callback cb, void *cb_arg   )
-{
-    YPackageChangePackage    *cur_pkg;
-
-    if( !list )
-        return -1;
-
-    cur_pkg = dlist_head_data( list );
-    while( cur_pkg )
-    {
-        //printf("upgrading %s ...\n", cur_pkg->name );
-        packages_install_package( pm, cur_pkg->name, cur_pkg->version, cb, cb_arg  );
-        cur_pkg = dlist_next_data( list );
-    }
-    return 0;
-}
-
-void packages_free_upgrade_list( YPackageChangeList *list )
-{
-    packages_free_change_list( list );
-}
-
-int packages_update_single_xml( YPackageManager *pm, char *xml_file, char *sum, ypk_progress_callback cb, void *cb_arg )
-{
-    int                 i, xml_ret, db_ret, cmp_ret, do_replace;
-    char                *xml_sha, *target_url, *msg, *sql, *sql_data, *sql_testing, *sql_testing_data, *sql_history, *sql_history_data, *package_name, *version, *is_desktop, *repo, *delete, *idx, *data_key,*data_name, *data_format, *data_size, *data_install_size, *data_depend, *data_bdepend, *data_recommended, *data_conflict, *data_replace, *installed, *old_version, *old_repo, *can_update, *can_update2;
-    char                tmp_bz2[] = "/tmp/tmp_bz2.XXXXXX";
-    char                tmp_xml[] = "/tmp/tmp_xml.XXXXXX";
-    char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
-    DownloadFile        file;
-    XMLReaderHandle     xml_handle;
-    DB                  db;
-
-                    
-    if( !pm || !xml_file || !sum )
-        return -1;
-
-
-    //donload xml
-    target_url = util_strcat( pm->source_uri, "/", UPDATE_DIR, "/", xml_file, NULL );
-
-    if( cb )
-    {
-        msg = util_strcat( "Get: ", target_url, NULL );
-
-        cb( cb_arg, "*", 2, -1, msg ? msg : NULL );
-
-        if( msg )
-        {
-            free( msg );
-            msg = NULL;
-        }
-    }
-
-    mkstemp(tmp_bz2);
-    file.file = tmp_bz2;
-    file.stream = NULL;
-    file.cb = NULL;
-    file.cb_arg = NULL;
-    if( download_file( target_url, &file ) != 0 )
-    {
-        if( cb )
-        {
-            cb( cb_arg, "Download failed.\n", 2, 1, NULL );
-        }
-        remove(tmp_bz2);
-        return -1; 
-=======
-int packages_lock( int type )
-{
-    int             fd;
-    struct flock    lock;
-
-    umask( 0 );
-    fd = open( LOCK_FILE, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH );
-
-    if( fd < 0 )
-    {
-        return -1;
-    }
-
-    lock.l_type = type == 2 ? F_WRLCK : F_RDLCK; 
-    lock.l_start = 0;
-    lock.l_whence = SEEK_SET;
-    lock.l_len = 0;
-
-    if( fcntl( fd, F_SETLK, &lock ) == -1 )
-    {
-        close( fd );
-        return -2;
-    }
-
-    return fd;
-}
-
-int packages_unlock( int fd )
-{
-    struct flock    lock;
-
-    if( fd < 1 )
-    {
-        return -1;
->>>>>>> develop
-    }
-
-<<<<<<< HEAD
-
-    //compare sum
-    xml_sha = util_sha1( tmp_bz2 );
-    if( xml_sha )
-    {
-        if( strncmp( xml_sha, sum, 41 ) != 0 )
-        {
-            if( cb )
-            {
-                cb( cb_arg, "Checksum mismatched.\n", 2, 1, NULL );
-            }
-            free( xml_sha );
-            return -1;
-        }
-        free( xml_sha );
-    }
-
-    if( cb )
-    {
-        cb( cb_arg, "*", 2, 1, NULL );
-    }
-
-    //unzip
-    if( cb )
-    {
-        msg = strdup( "Extracting information ..." );
-
-        cb( cb_arg, "*", 4, -1, msg ? msg : NULL );
-
-        if( msg )
-        {
-            free( msg );
-            msg = NULL;
-        }
-    }
-
-    mkstemp(tmp_xml);
-    if( archive_extract_file( file.file, "update.xml", tmp_xml ) == -1 )
-    {
-        remove(tmp_bz2);
-        remove(tmp_xml);
-        return -1;
-    }
-=======
-    lock.l_type = F_UNLCK;
-    lock.l_start = 0;
-    lock.l_whence = SEEK_SET;
-    lock.l_len = 0;
-
-    if( fcntl( fd, F_SETLK, &lock ) == -1 )
-    {
-        close( fd );
-        return -2;
-    }
-
-    close( fd );
-    return 0;
-}
->>>>>>> develop
-
-    if( cb )
-    {
-        cb( cb_arg, "*", 4, 1, NULL );
-    }
-
-
-    if( cb )
-    {
-        msg = strdup( "Updating database ..." );
-
-        cb( cb_arg, "*", 8, -1, msg ? msg : NULL );
-
-        if( msg )
-        {
-            free( msg );
-            msg = NULL;
-        }
-    }
 
 int packages_import_local_data( YPackageManager *pm )
 {
@@ -1438,20 +545,6 @@ int packages_import_local_data( YPackageManager *pm )
     db_init( &db, pm->db_name, OPEN_WRITE );
     db_exec( &db, "begin", NULL );  
 
-<<<<<<< HEAD
-    sql = "replace into universe (name, exec, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count, can_update, installed ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-
-    sql_testing = "replace into universe_testing (name, exec, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count, can_update, installed ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-
-
-    sql_history = "replace into universe_history (name, exec, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-
-    sql_data = "insert into universe_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict, data_replace) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-
-    sql_testing_data = "insert into universe_testing_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict, data_replace) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-
-    sql_history_data = "insert into universe_history_data (name, version, data_name, data_format, data_size, data_install_size, data_depend, data_bdepend, data_recommended, data_conflict, data_replace) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
-=======
     printf( "Start ...\n" );
 
 
@@ -1461,261 +554,10 @@ int packages_import_local_data( YPackageManager *pm )
     sql = "replace into universe (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     sql_testing = "replace into universe_testing (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
->>>>>>> develop
 
     sql_history = "replace into universe_history (name, generic_name, is_desktop, category, arch, version, priority, install, license, homepage, repo, size, sha, build_date, packager, uri, description, data_count) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
     while( ( xml_ret = reader_fetch_a_row( &xml_handle, 1, xml_attrs ) ) == 1 )
     {
-<<<<<<< HEAD
-        package_name = reader_get_value2( &xml_handle, "name" );
-        version = reader_get_value2( &xml_handle, "version" );
-        delete = reader_get_value( &xml_handle, "delete" );
-
-        if( delete )
-        {
-            if( strncmp( delete, "all", 3 ) == 0 )
-            {
-                db_exec( &db, "delete from universe where name=?", package_name, NULL );  
-
-                db_exec( &db, "delete from universe_data where name=?", package_name, NULL );  
-
-                db_exec( &db, "delete from universe_testing where name=?", package_name, NULL );  
-
-                db_exec( &db, "delete from universe_testing_data where name=?", package_name, NULL );  
-
-                db_exec( &db, "delete from universe_history where name=?", package_name, NULL );  
-
-                db_exec( &db, "delete from universe_history_data where name=?", package_name, NULL );  
-            }
-            else if( strncmp( delete, "single", 6 ) == 0 )
-            {
-                db_exec( &db, "delete from universe where name=? and version=?", package_name, version, NULL );  
-
-                db_exec( &db, "delete from universe_data where name=? and version=?", package_name, version, NULL );  
-
-                db_exec( &db, "delete from universe_testing where name=? and version=?", package_name, version, NULL );  
-
-                db_exec( &db, "delete from universe_testing_data where name=? and version=?", package_name, version, NULL );  
-
-                db_exec( &db, "delete from universe_history where name=? and version=?", package_name, version, NULL );  
-
-                db_exec( &db, "delete from universe_history_data where name=? and version=?", package_name, version, NULL );  
-            }
-        }
-        else
-        {
-            is_desktop = reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
-            repo = reader_get_value( &xml_handle, "repo" );
-
-            //get original value
-            do_replace = 0;
-            can_update = "0";
-            can_update2 = "0";
-            installed = "0";
-
-            db_query( &db, "select version, repo from world where name=?", package_name, NULL);
-            if( db_fetch_assoc( &db ) )
-            {
-                old_version = db_get_value_by_key( &db, "version" );
-                old_repo = db_get_value_by_key( &db, "repo" );
-
-                if( version && (strlen( version ) > 0) && old_version && (strlen( old_version ) > 0)  )
-                {
-                        cmp_ret = packages_compare_version( version, old_version );
-                        if( cmp_ret == 1 )
-                        {
-                            can_update = "1"; //can upgrade
-                            can_update2 = "1"; //can upgrade
-                        }
-                        else if( cmp_ret == -1 )
-                        {
-                            if( repo && old_repo )
-                            { 
-                                if( old_repo[0] == 't' )
-                                {
-                                    if( repo[0] == 's' )
-                                    {
-                                        can_update = "-1";
-                                    }
-                                }
-                                else
-                                {
-                                    can_update2 = "-1";
-                                }
-
-                            }
-                        }
-                }
-
-                installed = "1";
-                do_replace = 1;
-                db_cleanup( &db );
-            }
-            else
-            {
-                do_replace = 1;
-            }
-
-            //universe
-            if( do_replace )
-            {
-
-                if( repo && !strcmp( repo, "stable" ) )
-                {
-                    db_ret = db_exec( &db, sql,  
-                            package_name, //name
-                            reader_get_value2( &xml_handle, "exec" ), //exec
-                            is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
-                            is_desktop ? "1" : "0", //desktop
-                            reader_get_value2( &xml_handle, "category" ), //category
-                            reader_get_value2( &xml_handle, "arch" ), //arch
-                            version, //version
-                            reader_get_value2( &xml_handle, "priority" ), //priority
-                            reader_get_value2( &xml_handle, "install" ), //install
-                            reader_get_value2( &xml_handle, "license" ), //license
-                            reader_get_value2( &xml_handle, "homepage" ), //homepage
-                            reader_get_value2( &xml_handle, "repo" ), //repo
-                            reader_get_value2( &xml_handle, "size" ), //size
-                            reader_get_value2( &xml_handle, "sha" ), //sha
-                            reader_get_value2( &xml_handle, "build_date" ), //build_date
-                            reader_get_value2( &xml_handle, "packager" ), //packager
-                            reader_get_value2( &xml_handle, "uri" ), //uri
-                            is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
-                            reader_get_value2( &xml_handle, "data_count" ), //data_count
-                            can_update,
-                            installed,
-                            NULL);
-                }
-
-                db_ret = db_exec( &db, sql_testing,  
-                        package_name, //name
-                        reader_get_value2( &xml_handle, "exec" ), //exec
-                        is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
-                        is_desktop ? "1" : "0", //desktop
-                        reader_get_value2( &xml_handle, "category" ), //category
-                        reader_get_value2( &xml_handle, "arch" ), //arch
-                        version, //version
-                        reader_get_value2( &xml_handle, "priority" ), //priority
-                        reader_get_value2( &xml_handle, "install" ), //install
-                        reader_get_value2( &xml_handle, "license" ), //license
-                        reader_get_value2( &xml_handle, "homepage" ), //homepage
-                        reader_get_value2( &xml_handle, "repo" ), //repo
-                        reader_get_value2( &xml_handle, "size" ), //size
-                        reader_get_value2( &xml_handle, "sha" ), //sha
-                        reader_get_value2( &xml_handle, "build_date" ), //build_date
-                        reader_get_value2( &xml_handle, "packager" ), //packager
-                        reader_get_value2( &xml_handle, "uri" ), //uri
-                        is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
-                        reader_get_value2( &xml_handle, "data_count" ), //data_count
-                        can_update2,
-                        installed,
-                        NULL);
-
-                db_ret = db_exec( &db, sql_history,  
-                        package_name, //name
-                        reader_get_value2( &xml_handle, "exec" ), //exec
-                        is_desktop ? reader_get_value2( &xml_handle, "genericname|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "genericname|keyword|en" ), //generic_name
-                        is_desktop ? "1" : "0", //desktop
-                        reader_get_value2( &xml_handle, "category" ), //category
-                        reader_get_value2( &xml_handle, "arch" ), //arch
-                        version, //version
-                        reader_get_value2( &xml_handle, "priority" ), //priority
-                        reader_get_value2( &xml_handle, "install" ), //install
-                        reader_get_value2( &xml_handle, "license" ), //license
-                        reader_get_value2( &xml_handle, "homepage" ), //homepage
-                        reader_get_value2( &xml_handle, "repo" ), //repo
-                        reader_get_value2( &xml_handle, "size" ), //size
-                        reader_get_value2( &xml_handle, "sha" ), //sha
-                        reader_get_value2( &xml_handle, "build_date" ), //build_date
-                        reader_get_value2( &xml_handle, "packager" ), //packager
-                        reader_get_value2( &xml_handle, "uri" ), //uri
-                        is_desktop ? reader_get_value2( &xml_handle, "description|desktop|keyword|en" ) : reader_get_value2( &xml_handle, "description|keyword|en" ), //description
-                        reader_get_value2( &xml_handle, "data_count" ), //data_count
-                        NULL);
-            
-                //universe_data
-                if( repo && !strcmp( repo, "stable" ) )
-                {
-                    db_exec( &db, "delete from universe_data where name=?", package_name, NULL );  
-                }
-
-                db_exec( &db, "delete from universe_testing_data where name=?", package_name, NULL );  
-
-                db_exec( &db, "delete from universe_history_data where name=? and version=?", package_name, version, NULL );  
-
-                data_key = (char *)malloc( 32 );
-                for( i = 0; ; i++ )
-                {
-                    idx = util_int_to_str( i );
-                    if( !reader_get_value( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) ) )
-                    {
-                        free( idx );
-                        break;
-                    }
-
-                    data_name = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|name", NULL ) );  
-                    data_format  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|format", NULL ) );   
-                    data_size = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|size", NULL ) );   
-                    data_install_size  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|install_size", NULL ) );
-                    data_depend = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|depend", NULL ) );    
-                    data_bdepend = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|bdepend", NULL ) );    
-                    data_recommended = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|recommended", NULL ) );    
-                    data_conflict  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|conflict", NULL ) );   
-                    data_replace  = reader_get_value2( &xml_handle, util_strcat2( data_key, 32, "data|", idx, "|replace", NULL ) );   
-
-                    if( repo && !strcmp( repo, "stable" ) )
-                    {
-                        db_exec( &db, sql_data,  
-                                package_name, //name
-                                version, //version
-                                data_name, //data_name
-                                data_format, //data_format
-                                data_size, //data_size
-                                data_install_size, //data_install_size
-                                data_depend, //data_depend
-                                data_bdepend, //data_bdepend
-                                data_recommended, //data_recommended
-                                data_conflict, //data_conflict
-                                data_replace, //data_replace
-                                NULL);
-                    }
-
-                    db_exec( &db, sql_testing_data,  
-                            package_name, //name
-                            version, //version
-                            data_name, //data_name
-                            data_format, //data_format
-                            data_size, //data_size
-                            data_install_size, //data_install_size
-                            data_depend, //data_depend
-                            data_bdepend, //data_bdepend
-                            data_recommended, //data_recommended
-                            data_conflict, //data_conflict
-                            data_replace, //data_replace
-                            NULL);
-
-                    db_exec( &db, sql_history_data,  
-                            package_name, //name
-                            version, //version
-                            data_name, //data_name
-                            data_format, //data_format
-                            data_size, //data_size
-                            data_install_size, //data_install_size
-                            data_depend, //data_depend
-                            data_bdepend, //data_bdepend
-                            data_recommended, //data_recommended
-                            data_conflict, //data_conflict
-                            data_replace, //data_replace
-                            NULL);
-
-                    free( idx );
-                }//for
-                free( data_key );
-            }//if
-
-        }
-    }//while
-=======
         is_desktop = reader_get_value( &xml_handle, "genericname|desktop|keyword|en" );
         package_name = reader_get_value2( &xml_handle, "name" );
         version = reader_get_value2( &xml_handle, "version" );
@@ -2635,7 +1477,6 @@ int packages_update_single_xml( YPackageManager *pm, YPackageSource *source, cha
         }//for
         free( data_key );
     }
->>>>>>> develop
 
     db_ret = db_exec( &db, "commit", NULL );  
     if( db_ret == SQLITE_BUSY )
@@ -2648,8 +1489,6 @@ int packages_update_single_xml( YPackageManager *pm, YPackageSource *source, cha
     {
         db_ret = db_exec( &db, "rollback", NULL );  
         //printf( "rollback, db_ret:%d\n", db_ret );
-<<<<<<< HEAD
-=======
     }
     //clean up
     db_close( &db );
@@ -2911,34 +1750,17 @@ int packages_get_installed_count( YPackageManager *pm, char *keys[], char *keywo
             free( where_str );
             free( sql );
         }
->>>>>>> develop
     }
 
     db_fetch_num( &db );
     tmp =  db_get_value_by_index( &db, 0 );
     count = tmp ? atoi( tmp ) : 0;
     db_close( &db );
-<<<<<<< HEAD
-    reader_cleanup( &xml_handle );
-
-    if( cb )
-    {
-        cb( cb_arg, "*", 8, 1, NULL );
-    }
-
-    remove(tmp_bz2);
-    remove(tmp_xml);
-    return 0;
-}
-
-int packages_get_last_check_timestamp( YPackageManager *pm )
-=======
 
     return count;
 }
 
 int packages_get_count( YPackageManager *pm, char *keys[], char *keywords[], int wildcards[], int installed  )
->>>>>>> develop
 {
     int     count;
     char    *sql, *sub_sql, *where_str, *tmp;
@@ -3055,13 +1877,6 @@ int packages_get_count( YPackageManager *pm, char *keys[], char *keywords[], int
                 if( where_str )
                     tmp = where_str;
 
-<<<<<<< HEAD
-int packages_set_last_check_timestamp( YPackageManager *pm, int last_check )
-{
-    int     ret = -1;
-    char    *timestamp;
-    DB      db;
-=======
                 where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(name = '", *keywords, "' or generic_name = '", *keywords, "' or keywords.kw_name = '", *keywords, "' or keywords.kw_generic_name = '", *keywords, "' or keywords.kw_fullname = '", *keywords, "')", NULL );
                 if( tmp )
                     free( tmp );
@@ -3091,7 +1906,6 @@ int packages_set_last_check_timestamp( YPackageManager *pm, int last_check )
             keywords++;
             wildcards++;
         }
->>>>>>> develop
 
         if( where_str )
         {
@@ -3112,11 +1926,7 @@ int packages_set_last_check_timestamp( YPackageManager *pm, int last_check )
     return count;
 }
 
-<<<<<<< HEAD
-int packages_get_last_update_timestamp( YPackageManager *pm )
-=======
 int packages_has_installed( YPackageManager *pm, char *name, char *version )
->>>>>>> develop
 {
     int     count, ret;
     char    *version_installed, *tmp;
@@ -3133,12 +1943,6 @@ int packages_has_installed( YPackageManager *pm, char *name, char *version )
 
         db_query( &db, "select version from world where name=?", name, NULL);
 
-<<<<<<< HEAD
-int packages_set_last_update_timestamp( YPackageManager *pm, int last_update )
-{
-    DB      db;
-    char    timestamp[11];
-=======
         if( db_fetch_num( &db ) )
         {
             version_installed = db_get_value_by_index( &db, 0 );
@@ -3152,7 +1956,6 @@ int packages_set_last_update_timestamp( YPackageManager *pm, int last_update )
                         case '>':
                             ret = ret != -1;
                             break;
->>>>>>> develop
 
                         case '!':
                             ret = ret != 0;
@@ -3214,105 +2017,16 @@ int packages_set_last_update_timestamp( YPackageManager *pm, int last_update )
     return ret;
 }
 
-<<<<<<< HEAD
-int packages_get_count( YPackageManager *pm, char *keys[], char *keywords[], int wildcards[], int installed  )
-{
-    int     count, repo_testing;
-    char    *sql, *where_str, *table, *tmp;
-    DB      db;
-=======
 int packages_exists( YPackageManager *pm, char *name, char *version )
 {
     int     count, ret;
     char    *sql, *sub_sql, *version_installed, *tmp;
     DB      db;
     YPackageSource *source;
->>>>>>> develop
 
     if( !pm || !name )
         return -1;
 
-<<<<<<< HEAD
-    if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
-        repo_testing =1;
-    else
-        repo_testing =0;
-
-    table = installed ? "world" : repo_testing ? "universe_testing" : "universe";
-
-    db_init( &db, pm->db_name, OPEN_READ );
-    if( !keys || !keywords || !wildcards || !(*keys) || !(*keywords) || !(*wildcards) )
-    {
-        sql = util_strcat( "select count(*) from ", table, NULL );
-        db_query( &db, sql, NULL);
-        free( sql );
-    }
-    else
-    {
-        where_str = NULL;
-
-        while( *keys && *keywords && *wildcards )
-        {
-            tmp = NULL;
-            if( (*keywords) && ((*keys)[0] == '*') && (*wildcards == 2) )
-            {
-                if( where_str )
-                    tmp = where_str;
-
-                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(", table, ".name like '%", *keywords, "%' or ", table, ".generic_name like  '%", *keywords, "%' or ", table, ".description like  '%", *keywords, "%' or keywords.kw_name like  '%", *keywords, "%' or keywords.kw_generic_name like  '%", *keywords, "%' or keywords.kw_fullname like  '%", *keywords, "%' or keywords.kw_comment like '%", *keywords, "%')", NULL );
-                if( tmp )
-                    free( tmp );
-            }
-            else if( (*keywords) && ((*keys)[0] == '*') && (*wildcards == 1) )
-            {
-                if( where_str )
-                    tmp = where_str;
-
-                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(" , table, ".name = '", *keywords, "' or ", table, ".generic_name = '", *keywords, "' or keywords.kw_name = '", *keywords, "' or keywords.kw_generic_name = '", *keywords, "' or keywords.kw_fullname = '", *keywords, "')", NULL );
-                if( tmp )
-                    free( tmp );
-            }
-            else if( *keywords && *keys && *wildcards )
-            {
-                if( where_str )
-                    tmp = where_str;
-
-                if( strncmp( *keys, "kw_", 3 ) && strcmp( *keys, "language" ) )
-                {
-                    where_str = util_strcat( tmp ? tmp : "", tmp ? " and (" : "(", table, ".", *keys, *wildcards == 2 ? " like '%" : " = '", *keywords, *wildcards == 2 ? "%')" : "')", NULL );
-                }
-                else
-                {
-                    where_str = util_strcat( tmp ? tmp : "", tmp ? " and (keywords." : "(keywords.", *keys, *wildcards == 2 ? " like '%" : " = '", *keywords, *wildcards == 2 ? "%')" : "')", NULL );
-                }
-
-                if( tmp )
-                    free( tmp );
-            }
-            else
-            {
-                break;
-            }
-            keys++;
-            keywords++;
-            wildcards++;
-        }
-
-        if( where_str )
-        {
-            sql = util_strcat( "select count(distinct ", table, ".name) from ", table, " left join keywords on ", table, ".name=keywords.name where ", where_str, NULL );
-            db_query( &db, sql, NULL );
-            //printf( "%s\n", sql);
-
-            free( where_str );
-            free( sql );
-        }
-    }
-
-    db_fetch_num( &db );
-    tmp =  db_get_value_by_index( &db, 0 );
-    count = tmp ? atoi( tmp ) : 0;
-=======
     db_init( &db, pm->db_name, OPEN_READ );
 
     tmp = NULL;
@@ -3458,7 +2172,6 @@ int packages_exists( YPackageManager *pm, char *name, char *version )
     }
 
 
->>>>>>> develop
     db_close( &db );
 
     return ret;
@@ -3466,17 +2179,11 @@ int packages_exists( YPackageManager *pm, char *name, char *version )
 
 YPackage *packages_get_repo_package( YPackageManager *pm, char *name, int installed, char *repo )
 {
-<<<<<<< HEAD
-    int     count, ret;
-    char    *version_installed, *tmp;
-    DB      db;
-=======
     char                    *sql, *sub_sql, *tmp, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "homepage", "description", "uri", "sha", "size", "repo", "arch", "install", "exec", "data_count", "installed", "install_time", "can_update", "build_date", "packager", "source_name", "package_dest", "source_uri", NULL  }; 
     DB                      db;
     YPackage                *pkg = NULL;
     YPackageSource          *source;
->>>>>>> develop
 
     if( !pm || !name )
     {
@@ -3484,94 +2191,6 @@ YPackage *packages_get_repo_package( YPackageManager *pm, char *name, int instal
     }
 
     db_init( &db, pm->db_name, OPEN_READ );
-<<<<<<< HEAD
-
-    if( version )
-    {
-        version_installed = NULL;
-
-        db_query( &db, "select version from world where name=?", name, NULL);
-
-        if( db_fetch_num( &db ) )
-        {
-            version_installed = db_get_value_by_index( &db, 0 );
-            if( version[0] == '>' || version[0] == '=' || version[0] == '!' || version[0] == '<')
-            {
-                if( version[1] == '=' )
-                {
-                    ret = packages_compare_version( version_installed, version + 2 );
-                    switch( version[0] )
-                    {
-                        case '>':
-                            ret = ret != -1;
-                            break;
-
-                        case '!':
-                            ret = ret != 0;
-                            break;
-
-                        case '<':
-                            ret = ret != 1;
-                            break;
-
-                        default:
-                            ret = ret == 0;
-                    }
-                }
-                else
-                {
-                    ret = packages_compare_version( version_installed, version + 1 );
-                    switch( version[0] )
-                    {
-                        case '=':
-                            ret = ret == 0;
-                            break;
-
-                        case '>':
-                            ret = ret == 1;
-                            break;
-
-                        case '<':
-                            ret = ret == -1;
-                            break;
-
-                        default:
-                            ret = ret == 0;
-                    }
-                }
-            }
-            else
-            {
-                ret = packages_compare_version( version, version_installed ) == 0;
-            }
-        }
-        else
-        {
-            ret = 0;
-        }
-
-    }
-    else
-    {
-        db_query( &db, "select count(*) from world where name=?", name, NULL);
-        db_fetch_num( &db );
-        tmp =  db_get_value_by_index( &db, 0 );
-        count = tmp ? atoi( tmp ) : 0;
-        ret = count > 0;
-    }
-
-
-    db_close( &db );
-
-    return ret;
-}
-
-int packages_exists( YPackageManager *pm, char *name, char *version )
-{
-    int     count, ret, repo_testing;
-    char    *table, *sql, *version_installed, *tmp;
-    DB      db;
-=======
 
     if( installed )
     {
@@ -3614,7 +2233,6 @@ int packages_exists( YPackageManager *pm, char *name, char *version )
                     {
                         sub_sql = util_strcat( "select *,'universe' as source_name,'", source->source_uri, "' as source_uri,'", source->package_dest, "' as package_dest from universe_testing", NULL );
                     }
->>>>>>> develop
 
                 }
             }
@@ -3630,20 +2248,6 @@ int packages_exists( YPackageManager *pm, char *name, char *version )
                     sub_sql = util_strcat( "select *,'", source->source_name, "' as source_name,'", source->source_uri, "' as source_uri,'", source->package_dest, "' as package_dest from additional_", source->source_name, "_", source->accept_repo, NULL );
                 }
 
-<<<<<<< HEAD
-    if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
-        repo_testing =1;
-    else
-        repo_testing =0;
-
-    table = repo_testing ? "universe_testing" : "universe";
-
-    db_init( &db, pm->db_name, OPEN_READ );
-
-    if( version )
-    {
-        version_installed = NULL;
-=======
             }
 
             if( tmp )
@@ -3676,126 +2280,6 @@ int packages_exists( YPackageManager *pm, char *name, char *version )
             hash_table_add_data( pkg->ht, cur_key, cur_value );
         }
     }
->>>>>>> develop
-
-        sql = util_strcat( "select version from ", table, " where name=?", NULL );
-        db_query( &db, sql, name, NULL);
-        free( sql );
-
-        if( db_fetch_num( &db ) )
-        {
-            version_installed = db_get_value_by_index( &db, 0 );
-            if( version[0] == '>' || version[0] == '=' || version[0] == '!' || version[0] == '<')
-            {
-                if( version[1] == '=' )
-                {
-                    ret = packages_compare_version( version_installed, version + 2 );
-                    switch( version[0] )
-                    {
-                        case '>':
-                            ret = ret != -1;
-                            break;
-
-                        case '!':
-                            ret = ret != 0;
-                            break;
-
-                        case '<':
-                            ret = ret != 1;
-                            break;
-
-                        default:
-                            ret = ret == 0;
-                    }
-                }
-                else
-                {
-                    ret = packages_compare_version( version_installed, version + 1 );
-                    switch( version[0] )
-                    {
-                        case '=':
-                            ret = ret == 0;
-                            break;
-
-                        case '>':
-                            ret = ret == 1;
-                            break;
-
-                        case '<':
-                            ret = ret == -1;
-                            break;
-
-                        default:
-                            ret = ret == 0;
-                    }
-                }
-            }
-            else
-            {
-                ret = packages_compare_version( version, version_installed ) == 0;
-            }
-        }
-        else
-        {
-            ret = 0;
-        }
-
-    }
-    else
-    {
-        //db_query( &db, "select count(*) from universe where name=?", name, NULL);
-
-        sql = util_strcat( "select count(*) from ", table, " where name=?", NULL );
-        db_query( &db, sql, name, NULL);
-        free( sql );
-
-        db_fetch_num( &db );
-        tmp =  db_get_value_by_index( &db, 0 );
-        count = tmp ? atoi( tmp ) : 0;
-        ret = count > 0;
-    }
-
-
-    db_close( &db );
-
-    return ret;
-}
-
-YPackage *packages_get_repo_package( YPackageManager *pm, char *name, int installed, char *repo )
-{
-    int                     repo_testing;
-    char                    *sql, *cur_key, *cur_value, **attr_keys_offset;
-    char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "homepage", "description", "uri", "sha", "size", "repo", "arch", "install", "exec", "data_count", "installed", "install_time", "can_update", "build_date", "packager", NULL  }; 
-    DB                      db;
-    YPackage                 *pkg = NULL;
-
-    if( !pm || !name )
-    {
-        return NULL;
-    }
-
-    if( repo && !strcmp( repo, "testing" ) )
-        repo_testing =1;
-    else
-        repo_testing =0;
-
-    db_init( &db, pm->db_name, OPEN_READ );
-    sql = util_strcat( "select * from ", installed ? "world" : (repo_testing ? "universe_testing" : "universe")," where name=? limit 1", NULL );
-    db_query( &db, sql, name, NULL);
-    free( sql );
-
-    if( db_fetch_assoc( &db ) )
-    {
-        pkg = (YPackage *)malloc( sizeof( YPackage ) );
-        pkg->ht = hash_table_init( );
-
-        attr_keys_offset = attr_keys;
-        while( (cur_key = *attr_keys_offset++) )
-        {
-            cur_value = db_get_value_by_key( &db, cur_key );
-            hash_table_add_data( pkg->ht, cur_key, cur_value );
-        }
-    }
 
     db_close( &db );
 
@@ -3804,23 +2288,7 @@ YPackage *packages_get_repo_package( YPackageManager *pm, char *name, int instal
 
 YPackage *packages_get_package( YPackageManager *pm, char *name, int installed )
 {
-<<<<<<< HEAD
-    char                    *repo;
-
-    if( !pm || !name )
-    {
-        return NULL;
-    }
-
-    if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
-        repo = "testing";
-    else
-        repo = "stable";
-
-    return packages_get_repo_package( pm, name, installed, repo );
-=======
     return packages_get_repo_package( pm, name, installed, NULL );
->>>>>>> develop
 }
 
 /*
@@ -3828,22 +2296,14 @@ YPackage *packages_get_package( YPackageManager *pm, char *name, int installed )
  */
 int packages_get_package_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data )
 {
-<<<<<<< HEAD
-    return packages_get_info_from_ypk( ypk_path, package, package_data, NULL, NULL, NULL );
-=======
     return packages_get_info_from_ypk( ypk_path, package, package_data, NULL, NULL, NULL, NULL );
->>>>>>> develop
 }
 
 
 /*
  * packages_get_info_from_ypk
  */
-<<<<<<< HEAD
-int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data, YPackageFile **package_file, char *install_script, char *desktop_file )
-=======
 int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData **package_data, YPackageFile **package_file, char *install_script, char *desktop_file, char *icon )
->>>>>>> develop
 {
     int                 i, ret, return_code = 0, cur_data_index, data_count;
     void                *pkginfo = NULL, *control = NULL, *filelist = NULL;
@@ -3889,11 +2349,7 @@ int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData
         control = NULL;
     }
 
-<<<<<<< HEAD
-    if( package || install_script || desktop_file )
-=======
     if( package || install_script || desktop_file || icon )
->>>>>>> develop
     {
         pkg = (YPackage *)malloc( sizeof( YPackage ) );
         pkg->ht = hash_table_init( );
@@ -4039,8 +2495,6 @@ int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData
         }
     }
 
-<<<<<<< HEAD
-=======
     //extract icon
     if( icon )
     {
@@ -4073,7 +2527,6 @@ int packages_get_info_from_ypk( char *ypk_path, YPackage **package, YPackageData
         }
     }
 
->>>>>>> develop
 
     //clean up
     if( pkginfo )
@@ -4177,13 +2630,8 @@ void packages_free_package( YPackage *pkg )
  */
 YPackageData *packages_get_package_data( YPackageManager *pm, char *name, int installed )
 {
-<<<<<<< HEAD
-    int                     data_count, cur_data_index, repo_testing;
-    char                    *sql, *cur_key, *cur_value, **attr_keys_offset, *tmp;
-=======
     int                     data_count, cur_data_index;
     char                    *sql, *sub_sql, *tmp, *cur_key, *cur_value, **attr_keys_offset, *max_version;
->>>>>>> develop
     char                    *attr_keys[] = { "name", "data_name", "data_format", "data_size", "data_install_size", "data_depend", "data_bdepend", "data_recommended", "data_conflict", "data_replace", NULL  }; 
     DB                      db;
     YPackageData            *pkg_data = NULL;
@@ -4194,27 +2642,7 @@ YPackageData *packages_get_package_data( YPackageManager *pm, char *name, int in
         return NULL;
     }
 
-    if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
-        repo_testing =1;
-    else
-        repo_testing =0;
-
     db_init( &db, pm->db_name, OPEN_READ );
-<<<<<<< HEAD
-    //get file count
-    sql = util_strcat( "select count(*) from ", installed ? "world_data" : repo_testing ? "universe_testing_data" : "universe_data"," where name=?", NULL );
-    db_query( &db, sql, name, NULL);
-    free( sql );
-    db_fetch_num( &db );
-    tmp =  db_get_value_by_index( &db, 0 );
-    data_count = tmp ? atoi( tmp ) : 0;
-    db_cleanup( &db );
-
-    //get data
-    sql = util_strcat( "select * from ", installed ? "world_data" : repo_testing ? "universe_testing_data" : "universe_data"," where name=?", NULL );
-    db_query( &db, sql, name, NULL);
-    free( sql );
-=======
 
     if( installed )
     {
@@ -4316,7 +2744,6 @@ YPackageData *packages_get_package_data( YPackageManager *pm, char *name, int in
         db_query( &db, sql, name, max_version, NULL);
         free( sql );
     }
->>>>>>> develop
 
     pkg_data = (YPackageData *)malloc( sizeof( YPackageData ) );
     pkg_data->htl = hash_table_list_init( data_count );
@@ -4615,8 +3042,6 @@ void packages_free_package_file( YPackageFile *pkg_file )
     free( pkg_file );
 }
 
-<<<<<<< HEAD
-=======
 
 YPackageReplaceFileList *packages_get_replace_file_list( YPackageManager *pm, YPackageData *pkg_data, YPackageFile *pkg_file )
 {
@@ -4707,101 +3132,6 @@ YPackageList *packages_get_installed_list( YPackageManager *pm, int limit, int o
     char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", "repo", "exec", "install_time", "installed", "can_update", "homepage", "build_date", "packager", "language", "kw_name", "kw_generic_name", "kw_fullname", "kw_comment", NULL  }; 
     DB                      db;
     YPackageList            *pkg_list;
->>>>>>> develop
-
-YPackageReplaceFileList *packages_get_replace_file_list( YPackageManager *pm, YPackageData *pkg_data, YPackageFile *pkg_file )
-{
-    int                 i, j, k;
-    char                *replace, *tmp, *token, *saveptr, *file, *type, *replace_with;
-    YPackageFile        *pkg_file2;
-    YPackageReplaceFileList *list;
-
-    if( !pkg_data || !pkg_file )
-        return NULL;
-
-<<<<<<< HEAD
-    list = NULL;
-
-    for( i = 0; i < pkg_data->cnt; i++ )
-    {
-        tmp = packages_get_package_data_attr( pkg_data, i, "data_replace");
-        if( tmp )
-        {
-            replace = strdup( tmp );
-            tmp = NULL;
-            token = strtok_r( replace, " ,", &saveptr );
-            while( token )
-            {
-                if( packages_has_installed( pm, token, NULL ) )
-                {
-                    pkg_file2 = packages_get_package_file( pm, token );
-
-                    for( j = 0; j < pkg_file2->cnt; j++ )
-                    {
-                        replace_with = packages_get_package_file_attr( pkg_file2, j, "replace_with");
-                        if( replace_with && strlen( replace_with ) > 0 )
-                            continue;
-
-                        file = packages_get_package_file_attr( pkg_file2, j, "file");
-                        type = packages_get_package_file_attr( pkg_file2, j, "type");
-                        if( file && type && ( type[0] == 'F' || type[0] == 'S' ) )
-                        {
-                            for( k = 0; k < pkg_file->cnt; k++ )
-                            {
-                                if( !strcmp( file, packages_get_package_file_attr( pkg_file, k, "file" ) ) )
-                                {
-
-                                    if( !list )
-                                    {
-                                        list = (YPackageReplaceFileList *)malloc( sizeof( YPackageReplaceFileList ) );
-                                        list->max_cnt = pkg_file->cnt;
-                                        list->cur_cnt = 0;
-                                        list->htl = hash_table_list_init( pkg_file->cnt );
-                                    }
-
-                                    if( list->cur_cnt >= list->max_cnt )
-                                        break;
-
-                                    hash_table_list_add_data( list->htl, list->cur_cnt, "replace", token );
-                                    hash_table_list_add_data( list->htl, list->cur_cnt, "file", file );
-                                    list->cur_cnt++;
-                                    break;
-                                }
-                            } //for k
-                        }
-                    } //for j
-                    packages_free_package_file( pkg_file2 );
-                    pkg_file2 = NULL;
-                }
-                token = strtok_r( NULL, " ,", &saveptr );
-            }
-            free( replace );
-        }
-    }
-
-    return list;
-}
-
-void packages_free_replace_file_list( YPackageReplaceFileList *list )
-{
-    if( !list )
-        return;
-
-    hash_table_list_cleanup( list->htl );
-    free( list );
-}
-
-
-/*
- * packages_get_list
- */
-YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, char *keys[], char *keywords[], int wildcards[], int installed )
-{
-    int                     cur_pkg_index, repo_testing;
-    char                    *table, *sql, *where_str, *order_str, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset, *tmp;
-    char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", "repo", "exec", "install_time", "installed", "can_update", "homepage", "build_date", "packager", "language", "kw_name", "kw_generic_name", "kw_fullname", "kw_comment", NULL  }; 
-    DB                      db;
-    YPackageList            *pkg_list;
 
 
     if( offset < 0 )
@@ -4810,24 +3140,6 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
     if( limit < 1 )
         limit = 5;
 
-    if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
-        repo_testing =1;
-    else
-        repo_testing =0;
-
-    where_str = NULL;
-
-    offset_str = util_int_to_str( offset );
-    limit_str = util_int_to_str( limit );
-
-    table = installed ? "world" : repo_testing ? "universe_testing" : "universe";
-    order_str = installed ? " order by install_time desc " : "";
-
-    db_init( &db, pm->db_name, OPEN_READ );
-    if( !keys || !keywords || !wildcards || !(*keys) || !(*keywords) || !(*wildcards) )
-    {
-        sql = util_strcat( "select * from ", table, order_str, " limit ? offset ?", NULL );
-=======
     where_str = NULL;
 
     offset_str = util_int_to_str( offset );
@@ -5037,7 +3349,6 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
         free( sub_sql );
         sub_sql = NULL;
 
->>>>>>> develop
         db_query( &db, sql, limit_str, offset_str, NULL);
         free( sql );
     }
@@ -5054,20 +3365,10 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
                 if( where_str )
                     tmp = where_str;
 
-<<<<<<< HEAD
-                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(", table, ".name like '%", *keywords, "%' or ", table, ".generic_name like  '%", *keywords, "%' or ", table, ".description like  '%", *keywords, "%' or keywords.kw_name like  '%", *keywords, "%' or keywords.kw_generic_name like  '%", *keywords, "%' or keywords.kw_fullname like  '%", *keywords, "%' or keywords.kw_comment like '%", *keywords, "%')", NULL );
-                if( tmp )
-                    free( tmp );
-
-
-                //db_query( &db, sql, keyword, keyword, keyword, limit_str, offset_str, NULL);
-                //free( sql );
-=======
                 where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(name like '%", *keywords, "%' or generic_name like  '%", *keywords, "%' or description like  '%", *keywords, "%' or keywords.kw_name like  '%", *keywords, "%' or keywords.kw_generic_name like  '%", *keywords, "%' or keywords.kw_fullname like  '%", *keywords, "%' or keywords.kw_comment like '%", *keywords, "%')", NULL );
                 if( tmp )
                     free( tmp );
                 tmp = NULL;
->>>>>>> develop
             }
             else if( (*keywords) && ((*keys)[0] == '*') && (*wildcards == 1) )
             {
@@ -5076,19 +3377,10 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
                 if( where_str )
                     tmp = where_str;
 
-<<<<<<< HEAD
-                where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(" , table, ".name = '", *keywords, "' or ", table, ".generic_name = '", *keywords, "' or keywords.kw_name = '", *keywords, "' or keywords.kw_generic_name = '", *keywords, "' or keywords.kw_fullname = '", *keywords, "')", NULL );
-                if( tmp )
-                    free( tmp );
-
-                //db_query( &db, sql, keyword, keyword, keyword, limit_str, offset_str, NULL);
-                //free( sql );
-=======
                 where_str = util_strcat( tmp ? tmp : "", tmp ? " and " : "",  "(name = '", *keywords, "' or generic_name = '", *keywords, "' or keywords.kw_name = '", *keywords, "' or keywords.kw_generic_name = '", *keywords, "' or keywords.kw_fullname = '", *keywords, "')", NULL );
                 if( tmp )
                     free( tmp );
                 tmp = NULL;
->>>>>>> develop
             }
             else if( *keywords && *keys && *wildcards )
             {
@@ -5099,11 +3391,7 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
 
                 if( strncmp( *keys, "kw_", 3 ) && strcmp( *keys, "language" ) )
                 {
-<<<<<<< HEAD
-                    where_str = util_strcat( tmp ? tmp : "", tmp ? " and (" : "(", table, ".", *keys, *wildcards == 2 ? " like '%" : " = '", *keywords, *wildcards == 2 ? "%')" : "')", NULL );
-=======
                     where_str = util_strcat( tmp ? tmp : "", tmp ? " and (" : "(", *keys, *wildcards == 2 ? " like '%" : " = '", *keywords, *wildcards == 2 ? "%')" : "')", NULL );
->>>>>>> develop
                 }
                 else
                 {
@@ -5112,13 +3400,7 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
 
                 if( tmp )
                     free( tmp );
-<<<<<<< HEAD
-
-                //db_query( &db, sql, keyword, limit_str, offset_str, NULL );
-                //free( sql );
-=======
                 tmp = NULL;
->>>>>>> develop
             }
             else
             {
@@ -5132,13 +3414,8 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
 
         if( where_str )
         {
-<<<<<<< HEAD
-            sql = util_strcat( "select * from ", table, " left join keywords on ", table, ".name=keywords.name where ", where_str, " group by ", table, ".name ", order_str, " limit ? offset ?", NULL );
-            //printf( "%s\n", sql );
-=======
             sql = util_strcat( "select * from ", sub_sql, " left join keywords using (name) where ", where_str, " group by name limit ? offset ?", NULL );
             //puts(sql);
->>>>>>> develop
             db_query( &db, sql, limit_str, offset_str, NULL );
 
             free( where_str );
@@ -5206,15 +3483,9 @@ YPackageList *packages_get_list2( YPackageManager *pm, int page_size, int page_n
 //YPackageList *packages_get_list_with_data( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int installed )
 YPackageList *packages_search_world_data( YPackageManager *pm, int limit, int offset, char *key, char *keyword )
 {    
-<<<<<<< HEAD
-    int                     cur_pkg_index, repo_testing;
-    char                    *table, *table_data, *sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
-    char                    *attr_keys[] = { "name", "generic_name", "category", "priority", "version", "license", "description", "size", NULL  }; 
-=======
     int                     cur_pkg_index;
     char                    *sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
     char                    *attr_keys[] = { "name", "version", NULL  }; 
->>>>>>> develop
     DB                      db;
     YPackageList            *pkg_list;
 
@@ -5227,22 +3498,9 @@ YPackageList *packages_search_world_data( YPackageManager *pm, int limit, int of
     if( limit < 1 )
         limit = 5;
 
-    if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
-        repo_testing =1;
-    else
-        repo_testing =0;
-
     offset_str = util_int_to_str( offset );
     limit_str = util_int_to_str( limit );
 
-<<<<<<< HEAD
-    table = installed ? "world" : repo_testing ? "universe_testing" : "universe";
-    table_data = installed ? "world_data" : repo_testing ? "universe_testing_data" : "universe_data";
-
-    db_init( &db, pm->db_name, OPEN_READ );
-    sql = util_strcat( "select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " = ? ", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like ?||',%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?||',%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like ?||'(%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?||'(%'", " limit ? offset ?", NULL );
-    db_query( &db, sql, keyword, keyword, keyword, keyword, keyword, keyword, limit_str, offset_str, NULL);
-=======
     db_init( &db, pm->db_name, OPEN_READ );
 
     //sql = util_strcat( "select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " = ? ", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like ?||',%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?||',%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like ?||'(%'", "union select ", table, ".* from ", table, ",", table_data, " where ", table, ".name=", table_data, ".name and ", key, " like '%,'||?||'(%'", " limit ? offset ?", NULL );
@@ -5251,7 +3509,6 @@ YPackageList *packages_search_world_data( YPackageManager *pm, int limit, int of
     sql = util_strcat( "select name, version from world_data where ", key, " = '", keyword, "' union select name, version from world_data where ", key, " like '", keyword, ",%' union select name, version from world_data where ", key, " like '%,", keyword, "' union select name, version from world_data where ", key, " like '%,", keyword, ",%' union select name, version from world_data where ", key, " like '", keyword, "(%' union select name, version from world_data where ", key, " like '%,", keyword, "(%' limit ? offset ?", NULL );
     //db_query( &db, sql, keyword, keyword, keyword, keyword, keyword, keyword, limit_str, offset_str, NULL);
     db_query( &db, sql, limit_str, offset_str, NULL);
->>>>>>> develop
     free( sql );
     free( limit_str );
     free( offset_str );
@@ -5413,7 +3670,6 @@ int packages_download_progress_callback( void *arg,double dltotal, double dlnow,
 
     if( !arg )
         return 0;
-<<<<<<< HEAD
 
     cb = (YPackageDCB *)arg;
     if( cb->dcb )
@@ -5423,17 +3679,6 @@ int packages_download_progress_callback( void *arg,double dltotal, double dlnow,
     else
         return 0;
 
-=======
-
-    cb = (YPackageDCB *)arg;
-    if( cb->dcb )
-        return cb->dcb( cb->dcb_arg, cb->package_name, dltotal, dlnow );
-    else if( cb->pcb )
-        return cb->pcb( cb->pcb_arg, cb->package_name, 2, dlnow / dltotal, NULL );
-    else
-        return 0;
-
->>>>>>> develop
     //return cb->cb( dcb->arg, dltotal, dlnow );
 }
 
@@ -5485,12 +3730,8 @@ int packages_download_package( YPackageManager *pm, char *package_name, char *ur
         package_path = util_strcat( pm->package_dest, "/", basename( package_url ), NULL );
         target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
     }
-<<<<<<< HEAD
-        printf( "Path: %s\n", package_path );
-=======
     */
         //printf( "Path: %s\n", package_path );
->>>>>>> develop
 
     if( force || access( package_path, R_OK ) )
     {
@@ -5570,11 +3811,7 @@ exception_handler:
 int packages_install_package( YPackageManager *pm, char *package_name, char *version, ypk_progress_callback cb, void *cb_arg  )
 {
     int                 return_code;
-<<<<<<< HEAD
-    char                *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
-=======
     char                *source_uri = NULL, *package_dest = NULL, *target_url = NULL, *package_url = NULL, *package_path = NULL, *pkg_sha = NULL, *ypk_sha = NULL;
->>>>>>> develop
     YPackage            *pkg;
 
     if( !package_name )
@@ -5603,17 +3840,6 @@ int packages_install_package( YPackageManager *pm, char *package_name, char *ver
     {
         return_code = -3;
         goto exception_handler;
-<<<<<<< HEAD
-    }
-
-    if( cb )
-    {
-        cb( cb_arg, package_name, 1, 1, NULL );
-    }
-
-    package_path = util_strcat( pm->package_dest, "/", basename( package_url ), NULL );
-    target_url = util_strcat( pm->source_uri, "/", package_url, NULL );
-=======
     }
 
     package_dest = packages_get_package_attr( pkg, "package_dest" );
@@ -5637,13 +3863,11 @@ int packages_install_package( YPackageManager *pm, char *package_name, char *ver
 
     package_path = util_strcat( package_dest, "/", basename( package_url ), NULL );
     target_url = util_strcat( source_uri, "/", package_url, NULL );
->>>>>>> develop
     pkg_sha = packages_get_package_attr( pkg, "sha" );
 
     if( !access( package_path, F_OK ) )
     {
         ypk_sha = util_sha1( package_path );
-<<<<<<< HEAD
 
         if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
         {
@@ -5655,19 +3879,6 @@ int packages_install_package( YPackageManager *pm, char *package_name, char *ver
 
             free( ypk_sha );
 
-=======
-
-        if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
-        {
-            if( packages_download_package( NULL, package_name, target_url, package_path, 1, NULL, NULL, cb, cb_arg  ) < 0 )
-            {
-                return -4;
-                goto exception_handler;
-            }
-
-            free( ypk_sha );
-
->>>>>>> develop
             ypk_sha = util_sha1( package_path );
             if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
             {
@@ -5712,17 +3923,10 @@ exception_handler:
 }
 
 
-<<<<<<< HEAD
-YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name, char *version )
-{
-    int             i;
-    char            *token, *saveptr, *depend, *version2, *tmp, *tmp2;
-=======
 YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, char *package_name, char *version, char *skip, int self_type )
 {
     int             i;
     char            *token, *saveptr, *depend, *recommended, *version2, *tmp, *tmp2;
->>>>>>> develop
     YPackageData    *pkg_data;
     YPackageChangeList    *list, *sub_list;
 
@@ -5742,10 +3946,6 @@ YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, c
             depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
             if( depend )
             {
-<<<<<<< HEAD
-
-=======
->>>>>>> develop
                 version2 = NULL;
                 token = strtok_r( depend, " ,", &saveptr );
                 while( token )
@@ -5762,24 +3962,6 @@ YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, c
                             *tmp2 = 0;
                     }
 
-<<<<<<< HEAD
-                    if( !packages_has_installed( pm, tmp, version2 ) )
-                    {
-                        if( !list )
-                            list = dlist_init();
-
-                        packages_clist_append( list, tmp, version2, 0, 2 );
-
-                        sub_list = packages_get_depend_list( pm, tmp, version2 );
-                        if( sub_list )
-                        {
-                            dlist_cat( sub_list, list );
-                            dlist_cleanup( list, packages_free_change_package );
-                            list = sub_list;
-                        }
-                    }
-
-=======
                     if( skip && tmp && !strcmp( skip, tmp ) )
                     {
                         ;
@@ -5861,7 +4043,6 @@ YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, c
                             dlist_cleanup( sub_list, packages_free_change_package );
                         }
                     }
->>>>>>> develop
                     free( tmp );
                     version2 = NULL;
                     token = strtok_r( NULL, " ,", &saveptr );
@@ -5873,14 +4054,6 @@ YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, c
         packages_free_package_data( pkg_data );
     }
 
-<<<<<<< HEAD
-    packages_clist_remove_duplicate_item( list );
-    return list;
-}
-
-YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name, char *version )
-{
-=======
     if( list )
     {
         packages_clist_remove_duplicate_item( list );
@@ -5895,7 +4068,6 @@ YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package
 
 YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name, char *version )
 {
->>>>>>> develop
     int             i;
     char            *token, *saveptr, *recommended, *version2, *tmp, *tmp2;
     YPackageData    *pkg_data;
@@ -5968,10 +4140,6 @@ int packages_clist_package_cmp( void *pkg1, void *pkg2 )
 
 int packages_clist_append( YPackageChangeList *list, char *name, char *version, int size, int type )
 {
-<<<<<<< HEAD
-    int                     len;
-=======
->>>>>>> develop
     YPackageChangePackage   *pkg;
 
     if( !list || !name )
@@ -5981,43 +4149,22 @@ int packages_clist_append( YPackageChangeList *list, char *name, char *version, 
     if( !pkg )
         return -2;
 
-<<<<<<< HEAD
-    len = strlen( name );
-    pkg->name = (char *)malloc( len + 1 );
-=======
     pkg->name = strdup( name );
->>>>>>> develop
     if( !pkg->name )
     {
         free( pkg );
         return -3;
     }
-<<<<<<< HEAD
-    strncpy( pkg->name, name, len );
-    pkg->name[len] = 0;
-
-    if( version )
-    {
-        len = strlen( version );
-        pkg->version = (char *)malloc( len + 1 );
-=======
 
     if( version )
     {
         pkg->version = strdup( version );
->>>>>>> develop
         if( !pkg->version )
         {
             free( pkg->name );
             free( pkg );
             return -4;
         }
-<<<<<<< HEAD
-
-        strncpy( pkg->version, version, len );
-        pkg->version[len] = 0;
-=======
->>>>>>> develop
     }
     else
     {
@@ -6043,23 +4190,13 @@ YPackageChangeList *packages_clist_remove_duplicate_item( YPackageChangeList *li
 YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name, char *version )
 {
     int                     i;
-<<<<<<< HEAD
-    char                    *token, *version2, *saveptr, *depend, *dev, *bdepend, *tmp;
-    YPackageData            *pkg_data;
-    YPackageChangeList      *list;
-=======
     char                    *token, *version2, *saveptr, *depend, *dev, *bdepend, *tmp, *tmp2;
     YPackageData            *pkg_data;
     YPackageChangeList      *list, *sub_list;
->>>>>>> develop
 
     list = NULL;
     sub_list = NULL;
 
-<<<<<<< HEAD
-
-=======
->>>>>>> develop
     if( (pkg_data = packages_get_package_data( pm, package_name, 0 )) )
     {
         for( i = 0; i < pkg_data->cnt; i++ )
@@ -6067,18 +4204,6 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
             depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
             if( depend )
             {
-<<<<<<< HEAD
-
-                token = strtok_r( depend, " ,", &saveptr );
-                while( token )
-                {
-                    tmp = util_strcat( token, NULL );
-                    if( (version2 = strchr( tmp, '(' )) )
-                    {
-                        *version2 = 0;
-                    }
-                    
-=======
                 version2 = NULL;
                 token = strtok_r( depend, " ,", &saveptr );
                 while( token )
@@ -6094,7 +4219,6 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
                         if( (tmp2 = strchr( version2, ')' )) )
                             *tmp2 = 0;
                     }
->>>>>>> develop
 
                     dev = util_strcat( tmp, "-dev", NULL );
                     free( tmp );
@@ -6110,11 +4234,6 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
                         if( !list )
                             list = dlist_init();
 
-<<<<<<< HEAD
-                        packages_clist_append( list, dev, NULL, 0, 2 );
-                    }
-                    free( dev );
-=======
                         packages_clist_append( list, dev, version2, 0, 2 );
 
                         sub_list = packages_get_depend_list( pm, dev, version2, NULL );
@@ -6128,7 +4247,6 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
                     }
                     free( dev );
                     version2 = NULL;
->>>>>>> develop
                     token = strtok_r( NULL, " ,", &saveptr );
                 }
             }
@@ -6136,22 +4254,13 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
             bdepend = packages_get_package_data_attr( pkg_data, i, "data_bdepend");
             if( bdepend )
             {
-<<<<<<< HEAD
-=======
                 version2 = NULL;
->>>>>>> develop
                 token = strtok_r( bdepend, " ,", &saveptr );
                 while( token )
                 {
                     tmp = strdup( token );
                     if( (version2 = strchr( tmp, '(' )) )
                     {
-<<<<<<< HEAD
-                        if( !list )
-                            list = dlist_init();
-
-                        packages_clist_append( list, token, NULL, 0, 2 );
-=======
                         *version2++ = 0;
 
                         while( (*version2 == ' ') )
@@ -6175,7 +4284,6 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
                             dlist_cleanup( list, packages_free_change_package );
                             list = sub_list;
                         }
->>>>>>> develop
                     }
                     token = strtok_r( NULL, " ,", &saveptr );
                 }
@@ -6192,8 +4300,6 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
             list = dlist_init();
 
         packages_clist_append( list, "build-essential", NULL, 0, 2 );
-<<<<<<< HEAD
-=======
 
         sub_list = packages_get_depend_list( pm, "build-essential", NULL, NULL );
         if( sub_list )
@@ -6202,7 +4308,6 @@ YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *packag
             dlist_cleanup( list, packages_free_change_package );
             list = sub_list;
         }
->>>>>>> develop
     }
 
     packages_clist_remove_duplicate_item( list );
@@ -6248,11 +4353,7 @@ YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *packag
     
     list = NULL;
 
-<<<<<<< HEAD
-    depend = packages_get_depend_list( pm, package_name, version );
-=======
     depend = packages_get_depend_list( pm, package_name, version, NULL );
->>>>>>> develop
     if( depend )
     {
         list = depend;
@@ -6326,7 +4427,6 @@ YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package
     YPackageList            *pkg_list;
     YPackageChangePackage   *cur_pkg;
     YPackageChangeList      *list, *sub_list;
-<<<<<<< HEAD
 
 
     if( depth > 4 )
@@ -6338,19 +4438,6 @@ YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package
     }
 
 
-=======
-
-
-    if( depth > 4 )
-        return NULL;
-
-    if( !packages_has_installed( pm, package_name, NULL ) )
-    {
-        return NULL;
-    }
-
-
->>>>>>> develop
     /*
     cur_pkg =  (YPackageChangePackage *)malloc( sizeof( YPackageChangePackage ) );
     len = strlen( package_name );
@@ -6432,21 +4519,6 @@ YPackageChangeList *packages_get_remove_list( YPackageManager *pm, char *package
 int packages_remove_list( YPackageManager *pm, YPackageChangeList *list, ypk_progress_callback cb, void *cb_arg  )
 {
     YPackageChangePackage    *cur_pkg;
-<<<<<<< HEAD
-
-    if( !list )
-        return -1;
-
-    cur_pkg = dlist_head_data( list );
-    while( cur_pkg )
-    {
-        //printf("removing %s ...\n", cur_pkg->name );
-        packages_remove_package( pm, cur_pkg->name, cb, cb_arg );
-        cur_pkg = dlist_next_data( list );
-    }
-    return 0;
-}
-=======
 
     if( !list )
         return -1;
@@ -6580,132 +4652,10 @@ int packages_check_conflict( YPackageManager *pm, YPackageData *pkg_data, char *
             free( conflict );
         }
     }
->>>>>>> develop
 
     return ret;
 }
 
-<<<<<<< HEAD
-int packages_check_depend( YPackageManager *pm, YPackageData *pkg_data, char *extra, int extra_max_len )
-{
-    int                 i, len, offset = 0, ret = 0;
-    char                *depend, *token, *saveptr, *version, *tmp, *tmp2;
-
-    if( !pkg_data )
-        return -1;
-
-    for( i = 0; i < pkg_data->cnt; i++ )
-    {
-        tmp = packages_get_package_data_attr( pkg_data, i, "data_depend");
-        if( tmp )
-        {
-            depend = strdup( tmp );
-            tmp = NULL;
-            version = NULL;
-            token = strtok_r( depend, " ,", &saveptr );
-            while( token )
-            {
-                tmp = util_strcat( token, NULL );
-                if( (version = strchr( tmp, '(' )) )
-                {
-                    *version++ = 0;
-
-                    while( *version == ' ' )
-                        version++;
-
-                    if( (tmp2 = strchr( version, ')' )) )
-                        *tmp2 = 0;
-                }
-
-                if( !packages_has_installed( pm, tmp, version ) )
-                {
-                    if( extra && extra_max_len > 0 )
-                    {
-                        len = strlen( token );
-                        if( extra_max_len > offset + len + 2 )
-                        {
-                            strncpy( extra + offset, token, len );
-                            offset += len;
-                            extra[offset] = ' ';
-                            extra[++offset] = 0;
-                        }
-
-                    }
-
-                    ret = -1;
-                }
-
-                free( tmp );
-                version = NULL;
-                token = strtok_r( NULL, " ,", &saveptr );
-            }
-            free( depend );
-        }
-    }
-
-    return ret;
-}
-
-int packages_check_conflict( YPackageManager *pm, YPackageData *pkg_data, char *extra, int extra_max_len )
-{
-    int                 i, len, offset = 0, ret = 0;
-    char                *conflict, *token, *saveptr, *version, *tmp, *tmp2;
-
-    if( !pkg_data )
-        return -1;
-
-    for( i = 0; i < pkg_data->cnt; i++ )
-    {
-        tmp = packages_get_package_data_attr( pkg_data, i, "data_conflict");
-        if( tmp )
-        {
-            conflict = strdup( tmp );
-            tmp = NULL;
-            version = NULL;
-            token = strtok_r( conflict, " ,", &saveptr );
-            while( token )
-            {
-                tmp = util_strcat( token, NULL );
-                if( (version = strchr( tmp, '(' )) )
-                {
-                    *version++ = 0;
-
-                    while( *version == ' ' )
-                        version++;
-
-                    if( (tmp2 = strchr( version, ')' )) )
-                        *tmp2 = 0;
-                }
-
-                if( packages_has_installed( pm, tmp, version ) )
-                {
-                    if( extra && extra_max_len > 0 )
-                    {
-                        len = strlen( token );
-                        if( extra_max_len > offset + len + 2 )
-                        {
-                            strncpy( extra + offset, token, len );
-                            offset += len;
-                            extra[offset] = ' ';
-                            extra[++offset] = 0;
-                        }
-                    }
-
-                    ret = -1;
-                }
-                free( tmp );
-                version = NULL;
-                token = strtok_r( NULL, " ,", &saveptr );
-            }
-            free( conflict );
-        }
-    }
-
-    return ret;
-}
-
-=======
->>>>>>> develop
 /*
  * packages_check_package
  */
@@ -6720,11 +4670,7 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
         return -1;
 
     //get ypk's infomations
-<<<<<<< HEAD
-    if( packages_get_info_from_ypk( ypk_path, &pkg, &pkg_data, &pkg_file, NULL, NULL ) != 0 )
-=======
     if( packages_get_info_from_ypk( ypk_path, &pkg, &pkg_data, &pkg_file, NULL, NULL, NULL ) != 0 )
->>>>>>> develop
     {
         return -1;
     }
@@ -6745,14 +4691,9 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
 int packages_check_package2( YPackageManager *pm, YPackage *pkg, YPackageData *pkg_data, char *extra, int extra_max_len )
 {
     int                 ret, return_code = 0;
-<<<<<<< HEAD
-    char                *package_name, *arch, *version, *version2, *repo, *repo2;
-    struct utsname      buf;
-=======
     char                *package_name, *arch, *arch2, *version, *version2, *repo, *repo2, line[32];
     struct utsname      buf;
     FILE                *fp;
->>>>>>> develop
     YPackage            *pkg2 = NULL;
 
 
@@ -6767,35 +4708,6 @@ int packages_check_package2( YPackageManager *pm, YPackage *pkg, YPackageData *p
     //check arch
     if( arch && ( arch[0] != 'a' || arch[1] != 'n' || arch[2] != 'y' ) )
     {
-<<<<<<< HEAD
-        if( !uname( &buf ) )
-        {
-            if( strcmp( buf.machine, arch ) )
-            {
-                return_code = -2;
-
-                if( extra && extra_max_len > 0 )
-                {
-                    strncpy( extra, buf.machine, extra_max_len );
-                }
-
-                goto exception_handler;
-            }
-        }
-    }
-
-    if( packages_check_depend( pm, pkg_data, extra, extra_max_len ) == -1 )
-    {
-        return_code = -3; 
-        goto exception_handler;
-    }
-
-
-    if( packages_check_conflict( pm, pkg_data, extra, extra_max_len ) == -1 )
-    {
-        return_code = -4; 
-        goto exception_handler;
-=======
         if( ( fp = fopen( "/var/ypkg/modules/kernel", "r" ) ) != NULL )
         {
             if( fgets( line, 32, fp ) != NULL ) 
@@ -6829,7 +4741,6 @@ int packages_check_package2( YPackageManager *pm, YPackage *pkg, YPackageData *p
                 goto exception_handler;
             }
         }
->>>>>>> develop
     }
 
     if( packages_check_depend( pm, pkg_data, extra, extra_max_len ) == -1 )
@@ -7004,196 +4915,6 @@ int packages_pack_package( char *source_dir, char *ypk_path, ypk_progress_callba
     //check control.xml
     control_xml = util_strcat( source_dir, "/YLMFOS/control.xml", NULL );
     if( access( control_xml, R_OK | W_OK ) == -1 )
-<<<<<<< HEAD
-    {
-        ret = -1;
-        goto cleanup;
-    }
-
-	if( ( xmldoc = xpath_open( control_xml ) ) == (xmlDocPtr)-1 )
-    {
-        ret = -2;
-        goto cleanup;
-    }
-
-    package_name =  xpath_get_node( xmldoc, (xmlChar *)"//Package/@name" );
-    if( !package_name )
-    {
-        ret = -2;
-        goto cleanup;
-    }
-
-    version =  xpath_get_node( xmldoc, (xmlChar *)"//version" );
-    if( !version )
-    {
-        ret = -2;
-        goto cleanup;
-    }
-
-    arch =  xpath_get_node( xmldoc, (xmlChar *)"//arch" );
-    if( !arch )
-    {
-        arch = strdup( "i686" );
-    }
-
-    install = xpath_get_node( xmldoc, (xmlChar *)"//install" );
-
-    if( cb )
-    {
-        msg = util_strcat( "building package  `", package_name, ":", version, ":", arch, "`  in `", package_name, "_", version, "-", arch, ".ypk'\n", NULL );
-        cb( cb_arg, "*", 0, 1, msg );
-    }
-
-    filelist = util_strcat( source_dir, "/YLMFOS/filelist", NULL );
-    if( access( filelist, R_OK ) == -1 )
-    {
-        ret = -3;
-        goto cleanup;
-    }
-
-    //copy install script
-    if( install )
-    {
-        install_script = util_strcat( source_dir, "/YLMFOS/", install, NULL );
-        if( access( install_script, R_OK ) != -1 )
-        {
-            install_script_dest = util_strcat( source_dir, "/var", NULL );
-            if( access( install_script_dest, F_OK ) ) //not exists
-            {
-                del_var = 1;
-            }
-            free( install_script_dest );
-
-            install_script_dest = util_strcat( source_dir, "/var/ypkg/db/", package_name, NULL );
-            if( !util_mkdir( install_script_dest ) )
-            {
-                free( install_script_dest );
-                install_script_dest = util_strcat( source_dir, "/var/ypkg/db/", package_name, "/", install, NULL );
-                util_copy_file( install_script, install_script_dest );
-            }
-            free( install_script_dest );
-
-        }
-        free( install_script );
-    }
-
-    //pack pkgdata
-    pkgdata = util_strcat( tmp_ypk_dir, "/", "pkgdata", NULL );
-    ret = archive_create( pkgdata, 'J', 'c',  source_dir, exclude );
-
-    if( del_var )
-    {
-        install_script_dest = util_strcat( source_dir, "/var", NULL );
-    }
-    else
-    {
-        install_script_dest = util_strcat( source_dir, "/var/ypkg", NULL );
-    }
-    util_remove_dir( install_script_dest );
-    free( install_script_dest );
-
-    if( ret == -1 )
-    {
-        free( pkgdata );
-        ret = -4;
-        goto cleanup;
-    }
-
-    //update control.xml
-    if( (fp_xml = fopen( control_xml, "r+" )) )
-    {
-        control_xml_size = util_file_size( control_xml );
-        control_xml_content = malloc( control_xml_size + 1 );
-        memset( control_xml_content, 0, control_xml_size + 1 );
-        if( control_xml_content )
-        {
-            if( fread( control_xml_content, 1, control_xml_size, fp_xml ) == control_xml_size )
-            {
-                now = time( NULL );
-                if( now )
-                {
-                    tmp = util_int_to_str( now );
-                    time_str = util_strcat( "<build_date>", tmp, "</build_date>", NULL );
-                    free( tmp );
-                }
-
-                data_size = util_file_size( pkgdata );
-                if( data_size )
-                {
-                    tmp = util_int_to_str( data_size );
-                    data_size_str = util_strcat( "<size>", tmp, "</size>", NULL );
-                    free( tmp );
-                }
-
-                tmp = preg_replace( "<build_date>.*?</build_date>", time_str, control_xml_content, PCRE_CASELESS, 1 );
-                free( control_xml_content );
-                free( time_str );
-                control_xml_content = tmp;
-
-                tmp = preg_replace( "<size>.*?</size>", data_size_str, control_xml_content, PCRE_CASELESS, 1 );
-                free( control_xml_content );
-                free( data_size_str );
-                control_xml_content = tmp;
-
-                uri_str =  xpath_get_node( xmldoc, (xmlChar *)"//uri" );
-                if( !uri_str )
-                {
-                    tmp = strdup( package_name );
-                    tmp[1] = 0;
-                    uri_str = util_strcat( "<uri>", tmp, "/", package_name, "_", version, "-", arch, ".ypk</uri>", NULL );
-                    free( tmp );
-                    tmp = preg_replace( "<uri>.*?</uri>", uri_str, control_xml_content, PCRE_CASELESS, 1 );
-                    if( tmp )
-                    {
-                        if( strlen( tmp ) > 1000 )
-                        {
-                            free( control_xml_content );
-                            control_xml_content = tmp;
-                        }
-                        else
-                        {
-                            free( tmp );
-                        }
-                    }
-                    free( uri_str );
-                }
-
-                tmp = NULL;
-
-                rewind( fp_xml );
-                control_xml_size = strlen( control_xml_content );
-                fwrite( control_xml_content, control_xml_size, 1, fp_xml );
-            }
-            free( control_xml_content );
-        }
-        fclose( fp_xml );
-        truncate( control_xml, control_xml_size );
-    }
-
-    free( pkgdata );
-
-    //pack pkginfo
-    info_path = util_strcat( source_dir, "/YLMFOS", NULL );
-    pkginfo = util_strcat( tmp_ypk_dir, "/pkginfo", NULL );
-    ret = archive_create( pkginfo, 'j', 't',  info_path, NULL );
-    free( pkginfo );
-    free( info_path );
-
-    if( ret == -1 )
-    {
-        ret = -5;
-        goto cleanup;
-    }
-
-    //pack ypk
-    if( !ypk_path )
-    {
-        tmp = util_strcat( package_name, "_", version, "-", arch, ".ypk", NULL );
-        if( archive_create( tmp, 'j', 't', tmp_ypk_dir, NULL ) )
-            ret = -6;
-        free( tmp );
-    }
-=======
     {
         ret = -1;
         goto cleanup;
@@ -7382,12 +5103,10 @@ int packages_pack_package( char *source_dir, char *ypk_path, ypk_progress_callba
             ret = -6;
         free( tmp );
     }
->>>>>>> develop
     else
     {
         if( archive_create( ypk_path, 'j', 't', tmp_ypk_dir, NULL ) )
             ret = -6;
-<<<<<<< HEAD
     }
 
 cleanup:
@@ -7416,122 +5135,11 @@ cleanup:
     return ret;
 }
 
-/*
- * compare version
- */
-int packages_compare_version( char *version1, char *version2 )
-{
-    int         buf_size = 64, result;
-    char        *pattern = "(?<ver>(.*?)+)(-(?<ver1>.*?))?(-(?<ver2>.*?))?(-(?<ver3>.*?))?$";
-    char        buf1[buf_size], buf2[buf_size], *sub_ver1, *sub_ver2;
-    PREGInfo    pi1, pi2;
-
-    if( preg_match( &pi1, pattern, version1, 0, 1 ) > 0 &&  preg_match( &pi2, pattern, version2, 0, 1 ) > 0 )
-    {
-        memset( buf1, 0, buf_size );
-        memset( buf2, 0, buf_size );
-        if( preg_result2(&pi1, "ver", buf1, buf_size) > 0 && preg_result2(&pi2, "ver", buf2, buf_size) > 0 )
-        {
-            result = packages_compare_main_version( buf1, buf2 );
-            if( !result )
-            {
-                if( preg_result2(&pi1, "ver1", buf1, buf_size) > 0 )
-                    sub_ver1 = buf1;
-                else
-                    sub_ver1 = NULL;
-
-
-                if( preg_result2(&pi2, "ver1", buf2, buf_size) > 0 )
-                    sub_ver2 = buf2;
-                else
-                    sub_ver2 = NULL;
-                
-
-                result = packages_compare_sub_version( sub_ver1, sub_ver2 );
-                if( !result )
-                {
-                    if( preg_result2(&pi1, "ver2", buf1, buf_size) > 0 )
-                        sub_ver1 = buf1;
-                    else
-                        sub_ver1 = NULL;
-
-                    if( preg_result2(&pi2, "ver2", buf2, buf_size) > 0 )
-                        sub_ver2 = buf2;
-                    else
-                        sub_ver2 = NULL;
-
-                    result = packages_compare_sub_version( sub_ver1, sub_ver2 );
-                    if( !result )
-                    {
-                        if( preg_result2(&pi1, "ver3", buf1, buf_size) > 0 )
-                            sub_ver1 = buf1;
-                        else
-                            sub_ver1 = NULL;
-
-                        if( preg_result2(&pi2, "ver3", buf2, buf_size) > 0 )
-                            sub_ver2 = buf2;
-                        else
-                            sub_ver2 = NULL;
-
-                        result = packages_compare_sub_version( sub_ver1, sub_ver2 );
-                    }
-                }
-            }
-
-
-            if( result && result != -2 )
-            {
-                result = result > 0 ? 1 : -1;
-            }
-
-        }
-        else
-        {
-            result = -2;
-        }
-    }
-    else
-    {
-        result = -2;
-=======
->>>>>>> develop
-    }
-
-cleanup:
-    if( control_xml )
-        free( control_xml );
-
-    if( filelist )
-        free( filelist );
-
-    if( package_name )
-        free( package_name );
-
-    if( version )
-        free( version );
-
-    if( arch )
-        free( arch );
-
-    util_remove_dir( tmp_ypk_dir );
-
-    if( xmldoc )
-    {
-        xmlFreeDoc( xmldoc );
-        xmlCleanupParser();
-    }
-    return ret;
-}
-
-<<<<<<< HEAD
-int packages_compare_main_version( char *version1, char *version2 )
-=======
 /*
  * compare version
  */
 #define MAX_VER_STR_LEN 64
 int packages_compare_version( char *version1, char *version2 )
->>>>>>> develop
 {
     int         result;
     char        *sub_ver1, *sub_ver2, *saveptr1, *saveptr2, ver_str1[MAX_VER_STR_LEN], ver_str2[MAX_VER_STR_LEN] ;
@@ -7552,19 +5160,6 @@ int packages_compare_version( char *version1, char *version2 )
     result = packages_compare_main_version( sub_ver1, sub_ver2 );
     if( !result )
     {
-<<<<<<< HEAD
-        memset( buf1, 0, buf_size );
-        memset( buf2, 0, buf_size );
-        preg_result(&pi1, 0, buf1, buf_size); 
-        preg_result(&pi2, 0, buf2, buf_size);
-
-        ver1 = atoi( buf1 );
-        ver2 = atoi( buf2 );
-        if( (result =  ver1 - ver2) )
-        {
-            result = result > 0 ? 1 : -1;
-            break;
-=======
         while( 1 )
         {
             sub_ver1 = strtok_r( NULL, "-", &saveptr1 );
@@ -7575,7 +5170,6 @@ int packages_compare_version( char *version1, char *version2 )
             result = packages_compare_sub_version( sub_ver1, sub_ver2 );
             if( result )
                 break;
->>>>>>> develop
         }
     }
 
@@ -7750,17 +5344,10 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     int                 i, j, installed, upgrade, delete_file, ret, return_code;
     void                *filelist;
     char                *msg, *sql, *sql_data, *sql_filelist;
-<<<<<<< HEAD
-    char                *package_name, *version, *version2, *repo, *repo2, *install, *file_type, *file_type2, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *can_update, *tmp_file, *replace_name, *replace_file, *replace_with;
-    char                tmp_ypk_install[] = "/tmp/ypkinstall.XXXXXX";
-    char                extra[128];
-    YPackage            *pkg, *pkg2, *pkg3;
-=======
     char                *package_name, *version, *version2, *repo, *install, *file_type, *file_type2, *file_file, *file_size, *file_perms, *file_uid, *file_gid, *file_mtime, *file_extra, *tmp_file, *replace_name, *replace_file, *replace_with;
     char                tmp_ypk_install[] = "/tmp/ypkinstall.XXXXXX";
     char                extra[128];
     YPackage            *pkg, *pkg2;
->>>>>>> develop
     YPackageData        *pkg_data;
     YPackageFile        *pkg_file, *pkg_file2;
     YPackageReplaceFileList *replace_list;
@@ -7774,7 +5361,6 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     filelist = NULL;
     pkg = NULL; 
     pkg2 = NULL; 
-    pkg3 = NULL; 
     pkg_data = NULL;
     pkg_file = NULL;
     pkg_file2 = NULL;
@@ -7794,11 +5380,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     }
 
     mkstemp( tmp_ypk_install );
-<<<<<<< HEAD
-    ret = packages_get_info_from_ypk( ypk_path, &pkg, &pkg_data, &pkg_file, tmp_ypk_install, NULL );
-=======
     ret = packages_get_info_from_ypk( ypk_path, &pkg, &pkg_data, &pkg_file, tmp_ypk_install, NULL, NULL );
->>>>>>> develop
     if( ret != 0 )
     {
         msg = util_strcat( "Error: invalid format or file not found.\n", NULL );
@@ -7906,15 +5488,8 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     repo = packages_get_package_attr( pkg, "repo" );
     install = packages_get_package_attr( pkg, "install" );
 
-<<<<<<< HEAD
-    if( repo && !strcmp( repo, "stable" ) )
-        pkg2 = packages_get_repo_package( pm, package_name, 0, "stable" );
-
-    pkg3 = packages_get_repo_package( pm, package_name, 0, "testing" );
-=======
     pkg2 = packages_get_repo_package( pm, package_name, 0, NULL );
 
->>>>>>> develop
 
     pkg_file2 = packages_get_package_file( pm, package_name );
 
@@ -8065,322 +5640,6 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
             return_code = -10; 
             goto exception_handler;
         }
-<<<<<<< HEAD
-    }
-
-
-    //update file list
-    ret = db_exec( &db, "delete from world_file where name=?", package_name, NULL );  
-    if( ret != SQLITE_DONE )
-    {
-        db_exec( &db, "rollback", NULL );  
-        //printf( "rollback file list, db_ret:%d\n", ret );
-        return_code = -10; 
-        goto exception_handler;
-    }
-
-    sql_filelist = "insert into world_file (name, version, type, file, size, perms, uid, gid, mtime, extra) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; 
-
-    for( i = 0; i < pkg_file->cnt; i++ )
-    {
-            file_type = packages_get_package_file_attr( pkg_file, i, "type");
-            file_file = packages_get_package_file_attr( pkg_file, i, "file");
-            file_size = packages_get_package_file_attr( pkg_file, i, "size");
-            file_perms = packages_get_package_file_attr( pkg_file, i, "perms");
-            file_uid = packages_get_package_file_attr( pkg_file, i, "uid");
-            file_gid = packages_get_package_file_attr( pkg_file, i, "gid");
-            file_mtime = packages_get_package_file_attr( pkg_file, i, "mtime");
-            file_extra = packages_get_package_file_attr( pkg_file, i, "extra");
-
-            ret = db_exec( &db, sql_filelist, 
-                    package_name,
-                    version,
-                    file_type ? file_type : "",
-                    file_file ? file_file : "",
-                    file_size ? file_size : "",
-                    file_perms ? file_perms : "",
-                    file_uid ? file_uid : "",
-                    file_gid ? file_gid : "",
-                    file_mtime ? file_mtime : "",
-                    file_extra ? file_extra : "",
-                    NULL );
-
-            if( ret != SQLITE_DONE )
-            {
-                db_exec( &db, "rollback", NULL );  
-                //printf( "rollback file list, db_ret:%d\n", ret );
-                return_code = -10; 
-                goto exception_handler;
-            }
-    }
-
-    //replace mark
-    if( pkg_file2 )
-    {
-        for( i = 0; i < pkg_file2->cnt; i++ )
-        {
-            replace_name = packages_get_package_file_attr( pkg_file2, i, "replace");
-            replace_file = packages_get_package_file_attr( pkg_file2, i, "file");
-            if( replace_name && replace_file && strlen( replace_name ) > 0 )
-            {
-                ret = db_exec( &db, "update world_file set replace=?, replace_with='' where name=? and file=?", replace_name, package_name, replace_file, NULL );  
-                if( ret != SQLITE_DONE )
-                {
-                    db_exec( &db, "rollback", NULL );  
-                    return_code = -10; 
-                    goto exception_handler;
-                }
-            }
-        }
-    }
-
-    if( replace_list )
-    {
-        for( i = 0; i < replace_list->cur_cnt; i++ )
-        {
-            replace_name = hash_table_list_get_data( replace_list->htl, i, "replace" );
-            replace_file = hash_table_list_get_data( replace_list->htl, i, "file" );
-            if( replace_name && replace_file && strlen( replace_name ) > 0 )
-            {
-                ret = db_exec( &db, "update world_file set replace=? where name=? and file=?", replace_name, package_name, replace_file, NULL );  
-                if( ret != SQLITE_DONE )
-                {
-                    db_exec( &db, "rollback", NULL );  
-                    return_code = -10; 
-                    goto exception_handler;
-                }
-
-                ret = db_exec( &db, "update world_file set replace='', replace_with=? where name=? and file=?", package_name, replace_name, replace_file, NULL );  
-                if( ret != SQLITE_DONE )
-                {
-                    db_exec( &db, "rollback", NULL );  
-                    return_code = -10; 
-                    goto exception_handler;
-                }
-            }
-        }
-    }
-
-    //update universe
-    can_update = "0";
-    if( pkg2 )
-    {
-        version2 = packages_get_package_attr( pkg2, "version" );
-        repo2 = packages_get_package_attr( pkg2, "repo" );
-        if( version && (strlen( version ) > 0) && version2 && (strlen( version2 ) > 0) )
-        {
-            switch( packages_compare_version( version2, version ) )
-            {
-                case 1:
-                    can_update = "1";
-                    break;
-                case 0:
-                    can_update = "0";
-                    break;
-                case -1:
-                    if( repo && repo2 && strcmp( repo, repo2 ) )
-                    {
-                        can_update = "-1";
-                    }
-                    else
-                    {
-                        can_update = "0";
-                    }
-                    break;
-            }
-        }
-        else
-        {
-            can_update = "0";
-        }
-
-        ret = db_exec( &db, "update universe set installed='1', can_update=? where name=?", can_update, package_name, NULL );  
-        if( ret != SQLITE_DONE )
-        {
-            db_exec( &db, "rollback", NULL );  
-            //printf( "rollback universe, db_ret:%d\n", ret );
-            return_code = -10; 
-            goto exception_handler;
-        }
-    }
-
-    if( pkg3 )
-    {
-        version2 = packages_get_package_attr( pkg3, "version" );
-        repo2 = packages_get_package_attr( pkg3, "repo" );
-        if( version && (strlen( version ) > 0) && version2 && (strlen( version2 ) > 0) )
-        {
-            switch( packages_compare_version( version2, version ) )
-            {
-                case 1:
-                    can_update = "1";
-                    break;
-                case 0:
-                    can_update = "0";
-                    break;
-                case -1:
-                    if( repo && repo2 && strcmp( repo, repo2 ) )
-                    {
-                        can_update = "-1";
-                    }
-                    else
-                    {
-                        can_update = "0";
-                    }
-                    break;
-            }
-        }
-        else
-        {
-            can_update = "0";
-        }
-
-        ret = db_exec( &db, "update universe_testing set installed='1', can_update=? where name=?", can_update, package_name, NULL );  
-        if( ret != SQLITE_DONE )
-        {
-            db_exec( &db, "rollback", NULL );  
-            //printf( "rollback universe_testing, db_ret:%d\n", ret );
-            return_code = -10; 
-            goto exception_handler;
-        }
-    }
-
-    ret = db_exec( &db, "commit", NULL );  
-    if( ret != SQLITE_DONE )
-    {
-        db_exec( &db, "rollback", NULL );  
-        //printf( "rollback commit, db_ret:%d\n", ret );
-        return_code = -10; 
-        goto exception_handler;
-    }
-    db_close( &db );
-
-    if( cb )
-    {
-        cb( cb_arg, ypk_path, 8, 1, NULL );
-    }
-
-    //rename files
-    if( replace_list )
-    {
-        for( i = 0; i < replace_list->cur_cnt; i++ )
-        {
-            replace_name = hash_table_list_get_data( replace_list->htl, i, "replace" );
-            replace_file = hash_table_list_get_data( replace_list->htl, i, "file" );
-            if( replace_name && replace_file && strlen( replace_name ) > 0 )
-            {
-                tmp_file = util_strcat( replace_file, "~", replace_name, ".orig", NULL );
-                if( tmp_file )
-                {
-                    rename( replace_file, tmp_file );
-                    free( tmp_file );
-                    tmp_file = NULL;
-                }
-            }
-        }
-    }
-
-    for( i = 0; i < pkg_file->cnt; i++ )
-    {
-        file_file = packages_get_package_file_attr( pkg_file, i, "file");
-        if( file_file )
-        {
-            tmp_file = util_strcat( file_file, "~ypk", NULL );
-            if( tmp_file )
-            {
-                rename( tmp_file, file_file );
-                free( tmp_file );
-                tmp_file = NULL;
-            }
-        }
-    }
-
-    if( install && strlen( install ) )
-    {
-        file_file = util_strcat( "/var/ypkg/db/", package_name, "/", install, NULL );
-        if( file_file )
-        {
-            tmp_file = util_strcat( "/var/ypkg/db/", package_name, "/", install, "~ypk", NULL );
-            if( tmp_file )
-            {
-                rename( tmp_file, file_file );
-                free( tmp_file );
-                tmp_file = NULL;
-            }
-            free( file_file );
-            file_file = NULL;
-        }
-    }
-
-    if( installed && pkg_file && pkg_file2 )
-    {
-        for( i = 0; i < pkg_file2->cnt; i++ )
-        {
-            file_file = packages_get_package_file_attr( pkg_file2, i, "file");
-            if( file_file )
-            {
-                //skip directory
-                file_type = packages_get_package_file_attr( pkg_file2, i, "type");
-                if( !file_type || file_type[0] == 'D' )
-                    continue;
-
-                //remove backup file && skip
-                replace_with = packages_get_package_file_attr( pkg_file2, i, "replace_with");
-                if( replace_with && strlen( replace_with ) > 0 )
-                {
-                    tmp_file = util_strcat( file_file, "~", package_name, ".orig", NULL );
-                    if( tmp_file )
-                    {
-                        remove( tmp_file );
-                        free( tmp_file );
-                        tmp_file = NULL;
-                    }
-                    continue;
-                }
-
-                //delete the files only in the old version
-                delete_file = 1;
-                for( j = 0; j < pkg_file->cnt; j++ )
-                {
-                    file_type2 = packages_get_package_file_attr( pkg_file, j, "type");
-                    //if( !file_type2 || file_type2[0] != file_type[0] )
-                    if( !file_type2 || file_type2[0] == 'D' )
-                        continue;
-
-                    if( !strcmp( file_file, packages_get_package_file_attr( pkg_file, j, "file" ) ) )
-                    {
-                        delete_file = 0;
-                        break;
-                    }
-
-                }
-
-                if( delete_file )
-                {
-                    remove( file_file );
-                }
-            }
-
-        }
-    }
-
-
-    //exec post_x script
-    if( cb )
-    {
-        cb( cb_arg, ypk_path, 7, -1, "Executing post_install script\n" );
-    }
-
-    if( !access( tmp_ypk_install, R_OK ) )
-    {
-        if( !upgrade )
-        {
-            if( packages_exec_script( tmp_ypk_install, package_name, version, NULL, "post_install" ) == -1 )
-            {
-                return_code = -11; 
-                goto exception_handler;
-            }
-=======
     }
 
 
@@ -8706,82 +5965,6 @@ exception_handler:
         {
             version2 = extra;
             packages_exec_script( tmp_ypk_install, package_name, version, version2, "pre_upgrade_fallback" );
->>>>>>> develop
-        }
-        else if( upgrade == 1 )
-        {
-            version2 = extra;
-<<<<<<< HEAD
-            if( packages_exec_script( tmp_ypk_install, package_name, version, version2, "post_upgrade" ) == -1 )
-            {
-                return_code = -11; 
-                goto exception_handler;
-            }
-        }
-        else //downgrade
-        {
-            version2 = extra;
-            if( packages_exec_script( tmp_ypk_install, package_name, version, version2, "post_downgrade" ) == -1 )
-            {
-                return_code = -11; 
-                goto exception_handler;
-            }
-        }
-    }
-
-    if( cb )
-    {
-        cb( cb_arg, ypk_path, 7, 1, NULL );
-    }
-
-    if( !strcmp( package_name, "ypkg2" ) )
-    {
-        packages_upgrade_db( pm );
-    }
-
-    if( cb )
-    {
-        cb( cb_arg, ypk_path, 9, 1, NULL );
-    }
-
-exception_handler:
-
-    //rollback
-    if( return_code <= -8 && return_code > -11 )
-    {
-        for( i = 0; i < pkg_file->cnt; i++ )
-        {
-            tmp_file = util_strcat( packages_get_package_file_attr( pkg_file, i, "file"), "~ypk", NULL);
-            if( tmp_file )
-            {
-                remove( tmp_file );
-                free( tmp_file );
-                tmp_file = NULL;
-            }
-        }
-    }
-
-    if( install && strlen( install ) )
-    {
-        tmp_file = util_strcat( "/var/ypkg/db/", package_name, "/", install, "~ypk", NULL );
-        if( tmp_file )
-        {
-            remove( tmp_file );
-            free( tmp_file );
-            tmp_file = NULL;
-        }
-    }
-
-    if( return_code <= -7 && return_code > -11 && access( tmp_ypk_install, R_OK ) == 0 )
-    {
-        if( !upgrade )
-        {
-            packages_exec_script( tmp_ypk_install, package_name, version, NULL, "pre_install_fallback" );
-        }
-        else if( upgrade == 1 )
-        {
-            version2 = extra;
-            packages_exec_script( tmp_ypk_install, package_name, version, version2, "pre_upgrade_fallback" );
         }
         else
         {
@@ -8790,12 +5973,6 @@ exception_handler:
         }
     }
 
-=======
-            packages_exec_script( tmp_ypk_install, package_name, version, version2, "pre_downgrade_fallback" );
-        }
-    }
-
->>>>>>> develop
     //clean up
     if( filelist )
         free( filelist );
@@ -8805,12 +5982,6 @@ exception_handler:
 
     if( pkg2 )
         packages_free_package( pkg2 );
-<<<<<<< HEAD
-
-    if( pkg3 )
-        packages_free_package( pkg3 );
-=======
->>>>>>> develop
 
     if( pkg_data )
         packages_free_package_data( pkg_data );
@@ -8830,15 +6001,10 @@ exception_handler:
 
 int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progress_callback cb, void *cb_arg  )
 {
-<<<<<<< HEAD
-    int             i, return_code, repo_testing;
-    char            *install_file, *version, *install_file_path = NULL, *table, *sql, *file_path, *file_type, *replace, *replace_with, *tmp_file;
-=======
     //int             i, return_code, repo_testing;
     int             i, return_code;
     //char            *install_file, *version, *install_file_path = NULL, *table, *sql, *file_path, *file_type, *replace, *replace_with, *tmp_file;
     char            *install_file, *version, *install_file_path = NULL, *file_path, *file_type, *replace, *replace_with, *tmp_file;
->>>>>>> develop
     YPackage        *pkg;
     YPackageFile    *pkg_file;
     DB              db;
@@ -8848,18 +6014,12 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
 
     return_code = 0;
 
-<<<<<<< HEAD
-=======
     /*
->>>>>>> develop
     if( pm->accept_repo && !strcmp( pm->accept_repo, "testing" ) )
         repo_testing =1;
     else
         repo_testing =0;
-<<<<<<< HEAD
-=======
         */
->>>>>>> develop
 
     if( cb )
     {
@@ -9041,18 +6201,12 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
         }
     }
     //db_exec( &db, "update universe set can_update='0', installed='0' where name=?", package_name, NULL );  
-<<<<<<< HEAD
-=======
     /*
->>>>>>> develop
     table = repo_testing ? "universe_testing" : "universe";
     sql = util_strcat( "update ", table, " set installed='0', can_update='0' where name=?", NULL );
     db_exec( &db, sql, package_name, NULL );  
     free( sql );
-<<<<<<< HEAD
-=======
     */
->>>>>>> develop
 
     db_exec( &db, "end", NULL );  
     db_close( &db );
@@ -9061,7 +6215,6 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
     {
         cb( cb_arg, package_name, 8, 1, NULL );
     }
-<<<<<<< HEAD
 
     if( cb )
     {
@@ -9069,15 +6222,6 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
     }
 
 
-=======
-
-    if( cb )
-    {
-        cb( cb_arg, package_name, 9, 1, NULL );
-    }
-
-
->>>>>>> develop
 exception_handler:
     if( install_file_path )
         free( install_file_path );
@@ -9094,9 +6238,6 @@ exception_handler:
  */
 int packages_cleanup_package( YPackageManager *pm )
 {
-<<<<<<< HEAD
-    return util_remove_files( pm->package_dest, ".ypk" );
-=======
     YPackageSource          *source;
 
     source = dlist_head_data( pm->source_list );
@@ -9106,7 +6247,6 @@ int packages_cleanup_package( YPackageManager *pm )
         source = dlist_next_data( pm->source_list );
     }
     return 0;
->>>>>>> develop
 }
 
 

@@ -20,14 +20,6 @@ char *util_get_config(char *config_file, char *keyword)
     if( ( fp = fopen( config_file, "r" ) ) == NULL )
         return NULL;
     match = 0;
-<<<<<<< HEAD
-    while( fgets( line, MAXCFGLINE, fp ) != NULL ) 
-    {
-        pos = strchr( line, '=' );
-        sprintf( pattern, "%%%ds%%*2s%%%ds", (int)(pos - line), MAXCFGLINE-1 );
-        n = sscanf( line, pattern, keybuf, valbuf );
-        if( n == 2 && strcmp(keyword, keybuf) == 0 )
-=======
     while( fgets( line, MAXCFGLINE - 1, fp ) != NULL ) 
     {
         if( line[0] == '#' )
@@ -54,7 +46,6 @@ char *util_get_config(char *config_file, char *keyword)
         util_rtrim( valbuf, 0 );
 
         if( strcmp(keyword, keybuf) == 0 )
->>>>>>> develop
         {
             match = 1;
             break;
@@ -64,15 +55,9 @@ char *util_get_config(char *config_file, char *keyword)
     if( match != 0 )
     {
         len = strlen( valbuf );
-<<<<<<< HEAD
-        valbuf[len - 1] = '\0';
-        result = malloc( len );
-        strncpy( result, valbuf, len );
-=======
         result = malloc( len + 1 );
         strncpy( result, valbuf, len );
         result[len] = 0;
->>>>>>> develop
         return result;
     }
     else 
