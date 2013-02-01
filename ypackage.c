@@ -2780,12 +2780,18 @@ YPackageData *packages_get_package_data( YPackageManager *pm, char *name, int in
  */
 char *packages_get_package_data_attr( YPackageData *pkg_data, int index, char *key )
 {
+    if( !pkg_data || !key )
+        return NULL;
+
     return hash_table_list_get_data( pkg_data->htl, index, key );
 }
 
 char *packages_get_package_data_attr2( YPackageData *pkg_data, int index, char *key )
 {
     char *result;
+
+    if( !pkg_data || !key )
+        return NULL;
 
     result = hash_table_list_get_data( pkg_data->htl, index, key );
     return result ? result : "";

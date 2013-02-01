@@ -1357,8 +1357,11 @@ int main( int argc, char **argv )
 
                     tmp = packages_get_package_attr( pkg, "size");
                     size = tmp ? atoi( tmp ) : 0;
+                    tmp = NULL;
 
-                    tmp = packages_get_package_data_attr( pkg_data, 0, "data_install_size");
+                    if( pkg_data )
+                        tmp = packages_get_package_data_attr( pkg_data, 0, "data_install_size");
+
                     install_size = tmp ? atoi( tmp ) : 0;
 
                     printf( 
