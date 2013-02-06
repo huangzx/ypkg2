@@ -1,10 +1,9 @@
 /* Libypk
  *
- * Copyright (c) 2012 StartOS
+ * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Version: 0.1
- * Date: 2012.11.28
+ * Date: 2013.2.5
  */
 #ifndef PACKAGE_H
 #define PACKAGE_H
@@ -255,9 +254,7 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
 
 YPackageList *packages_get_list2( YPackageManager *pm, int page_size, int page_no, char *keys[], char *keywords[], int wildcards[], int installed );
 
-//YPackageList *packages_get_history_list( YPackageManager *pm, char *name );
 
-//YPackageList *packages_get_list_with_data( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int installed );
 YPackageList *packages_search_world_data( YPackageManager *pm, int limit, int offset, char *key, char *keyword );
 
 YPackageList *packages_get_list_by_depend( YPackageManager *pm, int limit, int offset, char *depend, int installed );

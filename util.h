@@ -66,5 +66,6 @@ int util_file_size( char *file );
  * hash
  */
 char *util_sha1( char *file );
+char *util_str_sha1( char *str );
 
 #endif /* !UTIL_H */
