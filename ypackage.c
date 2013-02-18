@@ -1108,6 +1108,8 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
 
     db_exec( &db, "delete from universe_data", NULL );
     sql = util_strcat( "insert into universe_data select * from universe_data_cache where (", source_select, ") order by name, version collate vercmp desc", NULL );
+    free( source_select );
+    source_select = NULL;
     db_exec( &db, sql, NULL );
     free( sql );
     sql = NULL;
@@ -1116,7 +1118,27 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
     db_cleanup( &db );
 
     //update world
+    source = dlist_head_data( pm->source_list );
+    while( source )
+    {
+        if( source_select )
+        {
+            tmp = source_select;
+            source_select = util_strcat( tmp, " or (b.source='", source->source_name, "' and b.repo='", source->accept_repo, "')", NULL );
+        }
+        else
+        {
+            source_select = util_strcat( "(b.source='", source->source_name, "' and b.repo='", source->accept_repo, "')", NULL );
+        }
+
+        if( tmp )
+            free( tmp );
+        tmp = NULL;
+
+        source = dlist_next_data( pm->source_list );
+    }
     sql = util_strcat( "select a.name, a.version, b.version from world as a left join universe as b using (name) where a.version <> b.version and (", source_select, ") order by b.name, b.version collate vercmp", NULL );
+    puts( sql);
     free( source_select );
     source_select = NULL;
     db_query( &db, sql, NULL);
