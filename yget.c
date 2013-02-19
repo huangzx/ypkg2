@@ -1323,7 +1323,7 @@ int main( int argc, char **argv )
                 package_name = argv[optind];
                 if( (pkg = packages_get_package( pm, package_name, 1 )) )
                 {
-                    pkg_data = packages_get_package_data( pm, package_name, 0 );
+                    pkg_data = packages_get_package_data( pm, package_name, 1 );
 
                     can_update = packages_get_package_attr( pkg, "can_update" );
 

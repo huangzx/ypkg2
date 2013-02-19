@@ -1138,7 +1138,6 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
         source = dlist_next_data( pm->source_list );
     }
     sql = util_strcat( "select a.name, a.version, b.version from world as a left join universe as b using (name) where a.version <> b.version and (", source_select, ") order by b.name, b.version collate vercmp", NULL );
-    puts( sql);
     free( source_select );
     source_select = NULL;
     db_query( &db, sql, NULL);
