@@ -3282,7 +3282,7 @@ YPackageList *packages_get_list_by_bdepend( YPackageManager *pm, int limit, int 
 /*
  * packages_get_list_by_file
  */
-YPackageList *packages_get_list_by_file( YPackageManager *pm, int limit, int offset, char *file )
+YPackageList *packages_get_list_by_file( YPackageManager *pm, int limit, int offset, char *file, int absolute )
 {    
     int                     cur_pkg_index;
     char                    *sql, *offset_str, *limit_str, *cur_key, *cur_value, **attr_keys_offset;
@@ -3303,9 +3303,17 @@ YPackageList *packages_get_list_by_file( YPackageManager *pm, int limit, int off
     limit_str = util_int_to_str( limit );
 
     db_init( &db, pm->db_name, OPEN_READ );
-    sql = util_strcat( "select distinct * from world,world_file where world.name=world_file.name  and file like ", file[0] == '/' ? "'%'" : "'%/'", "||? limit ? offset ?", NULL );
-    db_query( &db, sql, file, limit_str, offset_str, NULL);
-    free( sql );
+    if( absolute )
+    {
+        db_query( &db, "select distinct * from world,world_file where world.name=world_file.name  and file=? limit ? offset ?", file, limit_str, offset_str, NULL);
+    }
+    else
+    {
+        sql = util_strcat( "select distinct * from world,world_file where world.name=world_file.name  and file like ", file[0] == '/' ? "'%'" : "'%/'", "||? limit ? offset ?", NULL );
+        db_query( &db, sql, file, limit_str, offset_str, NULL);
+        free( sql );
+        sql = NULL;
+    }
     free( limit_str );
     free( offset_str );
 

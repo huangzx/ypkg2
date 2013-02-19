@@ -22,6 +22,7 @@
 #define COLOR_RESET "\e[0m"
 
 int colorize;
+int absolute;
 
 struct option longopts[] = {
     { "help", no_argument, NULL, 'h' },
@@ -39,6 +40,7 @@ struct option longopts[] = {
     { "compare-version", no_argument, NULL, 'm' },
     { "force", no_argument, NULL, 'f' },
     { "color", no_argument, &colorize, 1 },
+    { "absolute", no_argument, &absolute, 1 },
     { 0, 0, 0, 0}
 };
 
@@ -62,6 +64,7 @@ Commands:\n\
   -S|--whatprovides           Search which package provide this file\n\
   --compare-version           Comprare two version strings \n\
   --color                     Colorize the output\n\n\
+  --absolute                  with -S, use absolute path\n\n\
 Options:\n\
   -f|--force                  Override problems, Only work with install\n\
        ";
@@ -963,7 +966,7 @@ int main( int argc, char **argv )
                             printf( "Searching for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  file_name );
                         else
                             printf( "Searching for "  "%s"  " ...\n",  file_name );
-                        pkg_list = packages_get_list_by_file( pm, 2000, 0, file_name );
+                        pkg_list = packages_get_list_by_file( pm, 2000, 0, file_name, absolute );
                         if( pkg_list )
                         {
                             for( j = 0; j < pkg_list->cnt; j++ )

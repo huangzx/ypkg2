@@ -265,7 +265,7 @@ YPackageList *packages_get_list_by_conflict( YPackageManager *pm, int limit, int
 
 YPackageList *packages_get_list_by_recommended( YPackageManager *pm, int limit, int offset, char *recommended, int installed );
 
-YPackageList *packages_get_list_by_file( YPackageManager *pm, int limit, int offset, char *file );
+YPackageList *packages_get_list_by_file( YPackageManager *pm, int limit, int offset, char *file, int absolute );
 
 char *packages_get_list_attr( YPackageList *pkg_list, int index, char *key );
 char *packages_get_list_attr2( YPackageList *pkg_list, int index, char *key );
