@@ -818,104 +818,111 @@ int main( int argc, char **argv )
                 else
                 {
                     package_name = argv[optind];
-                    //depend
-                    printf( "[R] stand for runtime depend, [B] for build time, [A] for recommoneded, [C] for conflict.\n" );
-                    pkg_list = packages_get_list_by_depend( pm, 2000, 0, package_name, 1 );
-                    if( pkg_list )
-                    {
-                        if( !flag )
-                        {
-                            flag = 1;
-                            if( colorize )
-                                printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
-                            else
-                                printf(  "%s is related with:\n" ,  package_name );
-                        }
-                        for( i = 0; i < pkg_list->cnt; i++ )
-                        {
-                            if( colorize )
-                                printf( COLOR_BLUE "[R]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                            else
-                                printf(  "[R]"  " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                        }
-                        packages_free_list( pkg_list );
-                    }
-
-                    //bdepend
-                    pkg_list = packages_get_list_by_bdepend( pm, 2000, 0, package_name, 1 );
-                    if( pkg_list )
-                    {
-                        if( !flag )
-                        {
-                            flag = 1;
-                            if( colorize )
-                                printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
-                            else
-                                printf(  "%s is related with:\n" ,  package_name );
-                        }
-                        for( i = 0; i < pkg_list->cnt; i++ )
-                        {
-                            if( colorize )
-                                printf( COLOR_BLUE "[B]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                            else
-                                printf(  "[B]"  " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                        }
-                        packages_free_list( pkg_list );
-                    }
-
-                    //recommoneded
-                    pkg_list = packages_get_list_by_recommended( pm, 2000, 0, package_name, 1 );
-                    if( pkg_list )
-                    {
-                        if( !flag )
-                        {
-                            flag = 1;
-                            if( colorize )
-                                printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
-                            else
-                                printf(  "%s is related with:\n" ,  package_name );
-                        }
-                        for( i = 0; i < pkg_list->cnt; i++ )
-                        {
-                            if( colorize )
-                                printf( COLOR_BLUE "[A]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                            else
-                                printf(  "[A]"  " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                        }
-                        packages_free_list( pkg_list );
-                    }
-
-                    //conflict
-                    pkg_list = packages_get_list_by_conflict( pm, 2000, 0, package_name, 1 );
-                    if( pkg_list )
-                    {
-                        if( !flag )
-                        {
-                            flag = 1;
-                            if( colorize )
-                                printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
-                            else
-                                printf(  "%s is related with:\n" ,  package_name );
-                        }
-                        for( i = 0; i < pkg_list->cnt; i++ )
-                        {
-                            if( colorize )
-                                printf( COLOR_BLUE "[C]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                            else
-                                printf(  "[C]"  " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                        }
-                        packages_free_list( pkg_list );
-                    }
-
-                    if( !flag )
+                    if( !packages_exists( pm, package_name, NULL ) )
                     {
                         if( colorize )
-                            printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
+                            printf( COLOR_RED "%s not found.\n" COLOR_RESET,  package_name );
                         else
-                            printf(  "%s not found\n" ,  package_name );
+                            printf(  "%s not found.\n" ,  package_name );
                         err = 3;
                     }
+                    else
+                    {
+                        //depend
+                        printf( "[R] stand for runtime depend, [B] for build time, [A] for recommoneded, [C] for conflict.\n" );
+                        pkg_list = packages_get_list_by_depend( pm, 2000, 0, package_name, 1 );
+                        if( pkg_list )
+                        {
+                            if( !flag )
+                            {
+                                flag = 1;
+                                if( colorize )
+                                    printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
+                                else
+                                    printf(  "%s is related with:\n" ,  package_name );
+                            }
+                            for( i = 0; i < pkg_list->cnt; i++ )
+                            {
+                                if( colorize )
+                                    printf( COLOR_BLUE "[R]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                                else
+                                    printf(  "[R]"  " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                            }
+                            packages_free_list( pkg_list );
+                        }
 
+                        //bdepend
+                        pkg_list = packages_get_list_by_bdepend( pm, 2000, 0, package_name, 1 );
+                        if( pkg_list )
+                        {
+                            if( !flag )
+                            {
+                                flag = 1;
+                                if( colorize )
+                                    printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
+                                else
+                                    printf(  "%s is related with:\n" ,  package_name );
+                            }
+                            for( i = 0; i < pkg_list->cnt; i++ )
+                            {
+                                if( colorize )
+                                    printf( COLOR_BLUE "[B]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                                else
+                                    printf(  "[B]"  " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                            }
+                            packages_free_list( pkg_list );
+                        }
+
+                        //recommoneded
+                        pkg_list = packages_get_list_by_recommended( pm, 2000, 0, package_name, 1 );
+                        if( pkg_list )
+                        {
+                            if( !flag )
+                            {
+                                flag = 1;
+                                if( colorize )
+                                    printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
+                                else
+                                    printf(  "%s is related with:\n" ,  package_name );
+                            }
+                            for( i = 0; i < pkg_list->cnt; i++ )
+                            {
+                                if( colorize )
+                                    printf( COLOR_BLUE "[A]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                                else
+                                    printf(  "[A]"  " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                            }
+                            packages_free_list( pkg_list );
+                        }
+
+                        //conflict
+                        pkg_list = packages_get_list_by_conflict( pm, 2000, 0, package_name, 1 );
+                        if( pkg_list )
+                        {
+                            if( !flag )
+                            {
+                                flag = 1;
+                                if( colorize )
+                                    printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
+                                else
+                                    printf(  "%s is related with:\n" ,  package_name );
+                            }
+                            for( i = 0; i < pkg_list->cnt; i++ )
+                            {
+                                if( colorize )
+                                    printf( COLOR_BLUE "[C]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                                else
+                                    printf(  "[C]"  " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                            }
+                            packages_free_list( pkg_list );
+                        }
+
+                        if( !flag )
+                        {
+                            puts(  "\nNone." );
+                        }
+
+                    }
                     packages_manager_cleanup2( pm );
                 }
             }
