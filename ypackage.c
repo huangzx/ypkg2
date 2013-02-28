@@ -13,7 +13,7 @@ int libypk_errno;
 YPackageManager *packages_manager_init()
 {
     int                 len;
-    char                *source_name, *source_uri, *accept_repo, *desc, *use, *config_file, *token, *saveptr;
+    char                *source_name, *source_uri, *accept_repo, *desc, *config_file, *token, *saveptr;
     DIR                 *dir;
     struct dirent       *entry;
     YPackageManager     *pm;
@@ -60,16 +60,9 @@ YPackageManager *packages_manager_init()
             config_file = util_strcat( CONFIG_DIR, "/", entry->d_name, NULL );
 
             source_uri = util_get_config( config_file, "YPPATH_URI" );
-            use = util_get_config( config_file, "USE" );
-            if( use && ( use[0] == 'N' || use[0] == 'n' ) )
+            if( source_uri )
             {
-                ;
-            }
-            else if( source_uri )
-            {
-                //source_name = strdup( entry->d_name );
                 source_name = util_str_sha1( source_uri );
-                //source_name[len-5] = 0;
                 accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
                 desc = util_get_config( config_file, "YPPATH_PKGDEST" );
 
@@ -85,7 +78,6 @@ YPackageManager *packages_manager_init()
                 free( desc );
             }
             free( source_uri );
-            free( use );
             free( config_file );
             config_file = NULL;
         }
@@ -97,12 +89,7 @@ YPackageManager *packages_manager_init()
     {
         config_file = CONFIG_FILE;
         source_uri = util_get_config( config_file, "YPPATH_URI" );
-        use = util_get_config( config_file, "USE" );
-        if( use && ( use[0] == 'N' || use[0] == 'n' ) )
-        {
-            ;
-        }
-        else if( source_uri )
+        if( source_uri )
         {
             desc = util_get_config( config_file, "YPPATH_PKGDEST" );
             accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
@@ -120,7 +107,6 @@ YPackageManager *packages_manager_init()
             free( desc );
         }
         free( source_uri );
-        free( use );
 
         pm->log = util_get_config( config_file, "LOG" );
     }
@@ -214,7 +200,7 @@ void packages_manager_free_source( void *node )
 YPackageManager *packages_manager_init2( int type )
 {
     int                 ret, len;
-    char                *source_name, *source_uri, *accept_repo, *desc, *use, *config_file, *token, *saveptr;
+    char                *source_name, *source_uri, *accept_repo, *desc, *config_file, *token, *saveptr;
     DIR                 *dir;
     struct dirent       *entry;
     YPackageManager     *pm;
@@ -289,15 +275,9 @@ YPackageManager *packages_manager_init2( int type )
             config_file = util_strcat( CONFIG_DIR, "/", entry->d_name, NULL );
 
             source_uri = util_get_config( config_file, "YPPATH_URI" );
-            use = util_get_config( config_file, "USE" );
-            if( use && ( use[0] == 'N' || use[0] == 'n' ) )
-            {
-                ;
-            }
-            else if( source_uri )
+            if( source_uri )
             {
                 source_name = util_str_sha1( source_uri );
-                //source_name[len-5] = 0;
                 accept_repo = util_get_config( config_file, "ACCEPT_REPO" );
                 desc = util_get_config( config_file, "YPPATH_PKGDEST" );
 
@@ -313,7 +293,6 @@ YPackageManager *packages_manager_init2( int type )
                 free( desc );
             }
             free( source_uri );
-            free( use );
             free( config_file );
             config_file = NULL;
         }
@@ -326,12 +305,7 @@ YPackageManager *packages_manager_init2( int type )
     {
         config_file = CONFIG_FILE;
         source_uri = util_get_config( config_file, "YPPATH_URI" );
-        use = util_get_config( config_file, "USE" );
-        if( use && ( use[0] == 'N' || use[0] == 'n' ) )
-        {
-            ;
-        }
-        else if( source_uri )
+        if( source_uri )
         {
             source_name = util_str_sha1( source_uri );
             desc = util_get_config( config_file, "YPPATH_PKGDEST" );
@@ -347,7 +321,6 @@ YPackageManager *packages_manager_init2( int type )
             free( desc );
         }
         free( source_uri );
-        free( use );
 
         pm->log = util_get_config( config_file, "LOG" );
     }
