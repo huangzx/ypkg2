@@ -3,7 +3,7 @@
  * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Date: 2013.2.5
+ * Date: 2013.2.28
  */
 #ifndef PACKAGE_H
 #define PACKAGE_H
@@ -99,6 +99,7 @@ typedef struct {
     char    *source_uri;
     char    *accept_repo;
     char    *package_dest;
+    int     updated;
 }YPackageSource;
 
 typedef DList YPackageSourceList;

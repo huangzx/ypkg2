@@ -3,7 +3,7 @@
  * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Date: 2013.2.5
+ * Date: 2013.2.28
  */
 #define LIBYPK 1
 #include "ypackage.h"
@@ -169,6 +169,7 @@ int packages_manager_add_source( YPackageSourceList *list, char *source_name, ch
     source->source_uri = strdup( source_uri );
     source->accept_repo = accept_repo ? strdup( accept_repo ) : strdup( DEFAULT_REPO );
     source->package_dest = package_dest ? strdup( package_dest ) : strdup( DEFAULT_PKGDEST );
+    source->updated = 0;
     dlist_append( list, source );
 
     return 0;
@@ -1048,14 +1049,21 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
             memset( sum, '\0', 48 );
             if( sscanf( list_line, "%s %d %s", update_file, &timestamp, sum ) == 3 )
             {
-                //puts(list_line);
                 len = strlen( source->accept_repo );
-                if( !strncmp( source->accept_repo, update_file, len ) && (!last_checksum  || strcmp( sum, last_checksum ) ) )
+                if( !strncmp( source->accept_repo, update_file, len ) )
                 {
-                    if( !packages_update_single_xml( pm, source, update_file, sum, cb, cb_arg  ) )
+                    if( (!last_checksum  || strcmp( sum, last_checksum ) ) )
                     {
-                        packages_set_source_checksum( pm, source->source_name, source->accept_repo, sum );
-                        cnt++;
+                        if( !packages_update_single_xml( pm, source, update_file, sum, cb, cb_arg  ) )
+                        {
+                            packages_set_source_checksum( pm, source->source_name, source->accept_repo, sum );
+                            source->updated++;
+                            cnt++;
+                        }
+                    }
+                    else
+                    {
+                        source->updated++;
                     }
                 }
             }
@@ -1121,19 +1129,22 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
     source = dlist_head_data( pm->source_list );
     while( source )
     {
-        if( source_select )
+        if( source->updated )
         {
-            tmp = source_select;
-            source_select = util_strcat( tmp, " or (b.source='", source->source_name, "' and b.repo='", source->accept_repo, "')", NULL );
-        }
-        else
-        {
-            source_select = util_strcat( "(b.source='", source->source_name, "' and b.repo='", source->accept_repo, "')", NULL );
-        }
+            if( source_select )
+            {
+                tmp = source_select;
+                source_select = util_strcat( tmp, " or (b.source='", source->source_name, "' and b.repo='", source->accept_repo, "')", NULL );
+            }
+            else
+            {
+                source_select = util_strcat( "(b.source='", source->source_name, "' and b.repo='", source->accept_repo, "')", NULL );
+            }
 
-        if( tmp )
-            free( tmp );
-        tmp = NULL;
+            if( tmp )
+                free( tmp );
+            tmp = NULL;
+        }
 
         source = dlist_next_data( pm->source_list );
     }
