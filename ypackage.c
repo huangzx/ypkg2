@@ -5218,10 +5218,10 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     }
 
 
-    package_name = packages_get_package_attr( pkg, "name" );
-    version = packages_get_package_attr( pkg, "version" );
-    repo = packages_get_package_attr( pkg, "repo" );
-    install = packages_get_package_attr( pkg, "install" );
+    package_name = packages_get_package_attr2( pkg, "name" );
+    version = packages_get_package_attr2( pkg, "version" );
+    repo = packages_get_package_attr2( pkg, "repo" );
+    install = packages_get_package_attr2( pkg, "install" );
 
     pkg2 = packages_get_repo_package( pm, package_name, 0, NULL );
 
