@@ -3,68 +3,14 @@
  * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Date: 2013.2.28
+ * Date: 2013.3.5
  */
 #ifndef PACKAGE_H
 #define PACKAGE_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <time.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <sys/wait.h>
-#include <sys/utsname.h>
-
-#ifdef LIBYPK 
-
-#include "download.h"
-#include "util.h"
-#include "db.h"
+#include <sqlite3.h>
 #include "data.h"
-#include "archive.h"
-#include "xml.h"
-#include "preg.h"
 
-#else
-
-typedef struct hsearch_data HashIndex;
-typedef struct _HashData {
-    int                 size;
-    int                 pos;
-    char                *buf;
-    struct _HashData   *next;
-}HashData;
-
-typedef struct {
-    HashIndex          *index;
-    HashData           *data;
-    HashData           *cur_data;
-}HashTable;
-
-
-typedef struct {
-    int                 max_cnt;
-    int                 cur_cnt;
-    HashIndex          **list;
-    HashData           *data;
-    HashData           *cur_data;
-}HashTableList;
-
-typedef struct _DListNode {
-    struct _DListNode        *prev;
-    struct _DListNode        *next;
-    void                     *data;
-}DListNode;
-
-typedef struct _DList {
-    int            cnt;
-    DListNode      *head;
-    DListNode      *tail;
-}DList;
-#endif
 
 #define CONFIG_FILE "/etc/yget.conf"
 #define CONFIG_DIR "/etc/yget.conf.d"
@@ -278,6 +224,8 @@ void packages_free_list( YPackageList *pkg_list );
  */
 int packages_compare_version( char *version1, char *version2 );
 int packages_compare_version_collate( void *arg, int len1, const void *version1, int len2, const void *version2 );
+void packages_max_version_step( sqlite3_context *context, int argc, sqlite3_value **argv );
+void packages_max_version_final( sqlite3_context *context );
 
 /*
  * package install & remove & upgrade

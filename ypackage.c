@@ -3,9 +3,28 @@
  * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Date: 2013.2.28
+ * Date: 2013.3.5
  */
-#define LIBYPK 1
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <time.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <sys/wait.h>
+#include <sys/utsname.h>
+#include <sqlite3.h>
+
+#include "download.h"
+#include "util.h"
+#include "db.h"
+#include "data.h"
+#include "archive.h"
+#include "xml.h"
+#include "preg.h"
+
 #include "ypackage.h"
 
 int libypk_errno;
@@ -963,6 +982,7 @@ int packages_check_update( YPackageManager *pm )
     return 1;
 }
 
+
 int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg )
 {
     int             timestamp, len, cnt;
@@ -974,6 +994,7 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
     DB              db;
 
     cnt = 0;
+
 
     if( cb )
     {
@@ -1059,22 +1080,26 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
 
     //update universe
     db_create_collation( &db, "vercmp", packages_compare_version_collate, NULL );
+    db_create_function( &db, "max_ver", 1,  NULL, &packages_max_version_step, &packages_max_version_final );
     source = dlist_head_data( pm->source_list );
     while( source )
     {
-        if( source_select )
+        if( source->updated )
         {
-            tmp = source_select;
-            source_select = util_strcat( tmp, " or (source='", source->source_name, "' and repo='", source->accept_repo, "')", NULL );
-        }
-        else
-        {
-            source_select = util_strcat( "(source='", source->source_name, "' and repo='", source->accept_repo, "')", NULL );
-        }
+            if( source_select )
+            {
+                tmp = source_select;
+                source_select = util_strcat( tmp, " or (source='", source->source_name, "' and repo='", source->accept_repo, "')", NULL );
+            }
+            else
+            {
+                source_select = util_strcat( "(source='", source->source_name, "' and repo='", source->accept_repo, "')", NULL );
+            }
 
-        if( tmp )
-            free( tmp );
-        tmp = NULL;
+            if( tmp )
+                free( tmp );
+            tmp = NULL;
+        }
 
         source = dlist_next_data( pm->source_list );
     }
@@ -1082,13 +1107,13 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
     db_exec( &db, "begin", NULL );
 
     db_exec( &db, "delete from universe", NULL );
-    sql = util_strcat( "insert into universe select * from universe_cache where (", source_select, ") order by name, version collate vercmp desc", NULL );
+    sql = util_strcat( "insert into universe select * from universe_cache where (", source_select, ") group by name having version=max_ver(version)", NULL );
     db_exec( &db, sql, NULL );
     free( sql );
     sql = NULL;
 
     db_exec( &db, "delete from universe_data", NULL );
-    sql = util_strcat( "insert into universe_data select * from universe_data_cache where (", source_select, ") order by name, version collate vercmp desc", NULL );
+    sql = util_strcat( "insert into universe_data select * from universe_data_cache where (", source_select, ") group by name having version=max_ver(version)", NULL );
     free( source_select );
     source_select = NULL;
     db_exec( &db, sql, NULL );
@@ -1099,29 +1124,7 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
     db_cleanup( &db );
 
     //update world
-    source = dlist_head_data( pm->source_list );
-    while( source )
-    {
-        if( source->updated )
-        {
-            if( source_select )
-            {
-                tmp = source_select;
-                source_select = util_strcat( tmp, " or (b.source='", source->source_name, "' and b.repo='", source->accept_repo, "')", NULL );
-            }
-            else
-            {
-                source_select = util_strcat( "(b.source='", source->source_name, "' and b.repo='", source->accept_repo, "')", NULL );
-            }
-
-            if( tmp )
-                free( tmp );
-            tmp = NULL;
-        }
-
-        source = dlist_next_data( pm->source_list );
-    }
-    sql = util_strcat( "select a.name, a.version, b.version from world as a left join universe as b using (name) where a.version <> b.version and (", source_select, ") order by b.name, b.version collate vercmp", NULL );
+    sql = util_strcat( "select a.name, a.version, b.version from world as a left join universe as b using (name) where a.version <> b.version  order by b.name, b.version collate vercmp", NULL );
     free( source_select );
     source_select = NULL;
     db_query( &db, sql, NULL);
@@ -5000,6 +5003,43 @@ int packages_compare_version_collate( void *arg, int len1, const void *version1,
         return 0;
 
     return packages_compare_version( (char *)version1, (char *)version2 );
+}
+
+void packages_max_version_step( sqlite3_context *context, int argc, sqlite3_value **argv )
+{
+    char *tmp = sqlite3_aggregate_context( context, 32 );
+    char *ver = (char *)sqlite3_value_text( argv[0] );
+
+    if( ver && ver[0] ) 
+    {
+        if( tmp )
+        {
+            if( tmp[0] == 0 )
+            {
+                strncpy( tmp, ver, 32 );
+            }
+            else
+            {
+                if( packages_compare_version( ver, tmp ) > 0 )
+                {
+                    memset( tmp, 0, 32 );
+                    strncpy( tmp, ver, 32 );
+                }
+            }
+            
+        }
+    }
+}
+
+void packages_max_version_final( sqlite3_context *context )
+{
+    char *tmp = sqlite3_aggregate_context( context, 32 );
+    if( tmp )
+    {
+        sqlite3_result_text( context, tmp, -1, SQLITE_TRANSIENT );
+        return;
+    }
+    sqlite3_result_null( context );
 }
 
 /*
