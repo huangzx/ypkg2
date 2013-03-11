@@ -4797,13 +4797,13 @@ int packages_pack_package( char *source_dir, char *ypk_path, ypk_progress_callba
     if( !ypk_path )
     {
         tmp = util_strcat( package_name, "_", version, "-", arch, ".ypk", NULL );
-        if( archive_create( tmp, 'j', 't', tmp_ypk_dir, NULL ) )
+        if( archive_create( tmp, 0, 't', tmp_ypk_dir, NULL ) )
             ret = -6;
         free( tmp );
     }
     else
     {
-        if( archive_create( ypk_path, 'j', 't', tmp_ypk_dir, NULL ) )
+        if( archive_create( ypk_path, 0, 't', tmp_ypk_dir, NULL ) )
             ret = -6;
     }
 
