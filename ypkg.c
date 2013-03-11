@@ -1,10 +1,9 @@
 /* ypkg2
  *
- * Copyright (c) 2012 StartOS
+ * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
- * Version: 0.1
- * Date: 2012.8.13
+ * Date: 2013.3.11
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -378,58 +377,58 @@ int main( int argc, char **argv )
                                 break;
                             case -1:
                                 if( colorize )
-                                    printf( COLOR_RED "Error: invalid format or file not found.\n" COLOR_RESET );
+                                    fprintf( stderr, COLOR_RED "Error: invalid format or file not found.\n" COLOR_RESET );
                                 else
-                                    printf(  "Error: invalid format or file not found.\n"  );
+                                    fprintf( stderr,  "Error: invalid format or file not found.\n"  );
                                 break;
                             case -2:
                                 if( colorize )
-                                    printf( COLOR_RED "Error: architecture mismatched.\n" COLOR_RESET );
+                                    fprintf( stderr, COLOR_RED "Error: architecture mismatched.\n" COLOR_RESET );
                                 else
-                                    printf(  "Error: architecture mismatched.\n"  );
+                                    fprintf( stderr,  "Error: architecture mismatched.\n"  );
                                 break;
                             case -3:
                                 if( colorize )
-                                    printf( COLOR_RED "Error: missing runtime dependencies.\n" COLOR_RESET );
+                                    fprintf( stderr, COLOR_RED "Error: missing runtime dependencies.\n" COLOR_RESET );
                                 else
-                                    printf(  "Error: missing runtime dependencies.\n"  );
+                                    fprintf( stderr,  "Error: missing runtime dependencies.\n"  );
                                 break;
                             case -4:
                                 if( colorize )
-                                    printf( COLOR_RED "Error: conflicting dependencies found.\n" COLOR_RESET );
+                                    fprintf( stderr, COLOR_RED "Error: conflicting dependencies found.\n" COLOR_RESET );
                                 else
-                                    printf(  "Error: conflicting dependencies found.\n"  );
+                                    fprintf( stderr,  "Error: conflicting dependencies found.\n"  );
                                 break;
                             case -5:
                             case -6:
                                 if( colorize )
-                                    printf( COLOR_RED "Error: reading state infomation failed.\n" COLOR_RESET );
+                                    fprintf( stderr, COLOR_RED "Error: reading state infomation failed.\n" COLOR_RESET );
                                 else
-                                    printf(  "Error: reading state infomation failed.\n"  );
+                                    fprintf( stderr,  "Error: reading state infomation failed.\n"  );
                                 break;
                             case -7:
                                 if( colorize )
-                                    printf( COLOR_RED "Error: an error occurred while executing the pre_install script.\n" COLOR_RESET );
+                                    fprintf( stderr, COLOR_RED "Error: an error occurred while executing the pre_install script.\n" COLOR_RESET );
                                 else
-                                    printf(  "Error: an error occurred while executing the pre_install script.\n"  );
+                                    fprintf( stderr,  "Error: an error occurred while executing the pre_install script.\n"  );
                                 break;
                             case -8:
                                 if( colorize )
-                                    printf( COLOR_RED "Error: an error occurred while copy files.\n" COLOR_RESET );
+                                    fprintf( stderr, COLOR_RED "Error: an error occurred while copy files.\n" COLOR_RESET );
                                 else
-                                    printf(  "Error: an error occurred while copy files.\n"  );
+                                    fprintf( stderr,  "Error: an error occurred while copy files.\n"  );
                                 break;
                             case -9:
                                 if( colorize )
-                                    printf( COLOR_RED "Error: an error occurred while executing the post_install script.\n" COLOR_RESET );
+                                    fprintf( stderr, COLOR_RED "Error: an error occurred while executing the post_install script.\n" COLOR_RESET );
                                 else
-                                    printf(  "Error: an error occurred while executing the post_install script.\n"  );
+                                    fprintf( stderr,  "Error: an error occurred while executing the post_install script.\n"  );
                                 break;
                             case -10:
                                 if( colorize )
-                                    printf( COLOR_RED "Error: an error occurred while updating database.\n" COLOR_RESET );
+                                    fprintf( stderr, COLOR_RED "Error: an error occurred while updating database.\n" COLOR_RESET );
                                 else
-                                    printf(  "Error: an error occurred while updating database.\n"  );
+                                    fprintf( stderr,  "Error: an error occurred while updating database.\n"  );
                                 break;
                         }
                         if( ret != 0 )
@@ -500,33 +499,33 @@ int main( int argc, char **argv )
                                 break;
                             case -1:
                                 if( colorize )
-                                    printf( COLOR_RED "Error: invalid format or file not found.\n" COLOR_RESET );
+                                    fprintf( stderr, COLOR_RED "Error: invalid format or file not found.\n" COLOR_RESET );
                                 else
-                                    printf(  "Error: invalid format or file not found.\n"  );
+                                    fprintf( stderr,  "Error: invalid format or file not found.\n"  );
                                 break;
                             case -2:
                                 if( colorize )
-                                    printf( COLOR_RED "Error: architecture mismatched.\n" COLOR_RESET );
+                                    fprintf( stderr, COLOR_RED "Error: architecture mismatched.\n" COLOR_RESET );
                                 else
-                                    printf(  "Error: architecture mismatched.\n"  );
+                                    fprintf( stderr,  "Error: architecture mismatched.\n"  );
                                 break;
                             case -3:
                                 if( colorize )
-                                    printf( COLOR_RED "Error: missing runtime dependency.\n" COLOR_RESET );
+                                    fprintf( stderr, COLOR_RED "Error: missing runtime dependency.\n" COLOR_RESET );
                                 else
-                                    printf(  "Error: missing runtime dependency.\n"  );
+                                    fprintf( stderr,  "Error: missing runtime dependency.\n"  );
                                 break;
                             case -4:
                                 if( colorize )
-                                    printf( COLOR_RED "Error: conflicting dependency.\n" COLOR_RESET );
+                                    fprintf( stderr, COLOR_RED "Error: conflicting dependency.\n" COLOR_RESET );
                                 else
-                                    printf(  "Error: conflicting dependency.\n"  );
+                                    fprintf( stderr,  "Error: conflicting dependency.\n"  );
                                 break;
                             default:
                                 if( colorize )
-                                    printf( COLOR_RED "Error: unknown error.\n" COLOR_RESET );
+                                    fprintf( stderr, COLOR_RED "Error: unknown error.\n" COLOR_RESET );
                                 else
-                                    printf(  "Error: unknown error.\n"  );
+                                    fprintf( stderr,  "Error: unknown error.\n"  );
                         }
 
                         if( ret != 0 )
@@ -1035,9 +1034,9 @@ int main( int argc, char **argv )
                 if( packages_check_package( pm, ypk_path, NULL, 0 ) == -1 )
                 {
                     if( colorize )
-                        printf( COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
+                        fprintf( stderr, COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
                     else
-                        printf(  "Error: invalid format[%s]\n" , ypk_path );
+                        fprintf( stderr,  "Error: invalid format[%s]\n" , ypk_path );
                     err = 3;
                     break;
                 }
@@ -1047,9 +1046,9 @@ int main( int argc, char **argv )
                     if( packages_get_package_from_ypk( ypk_path, &pkg, NULL ) )
                     {
                         if( colorize )
-                            printf( COLOR_RED "Error: Invalid format[%s]\n" COLOR_RESET, ypk_path );
+                            fprintf( stderr, COLOR_RED "Error: Invalid format[%s]\n" COLOR_RESET, ypk_path );
                         else
-                            printf(  "Error: Invalid format[%s]\n" , ypk_path );
+                            fprintf( stderr,  "Error: Invalid format[%s]\n" , ypk_path );
                         err = 3;
                         break;
                     }
@@ -1099,9 +1098,9 @@ int main( int argc, char **argv )
                 if( packages_check_package( pm, ypk_path, NULL, 0 ) == -1 )
                 {
                     if( colorize )
-                        printf( COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
+                        fprintf( stderr, COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
                     else
-                        printf(  "Error: invalid format[%s]\n" , ypk_path );
+                        fprintf( stderr,  "Error: invalid format[%s]\n" , ypk_path );
                     err = 3;
                     break;
                 }
@@ -1111,9 +1110,9 @@ int main( int argc, char **argv )
                     if( packages_get_package_from_ypk( ypk_path, &pkg, NULL ) )
                     {
                         if( colorize )
-                            printf( COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
+                            fprintf( stderr, COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
                         else
-                            printf(  "Error: invalid format[%s]\n" , ypk_path );
+                            fprintf( stderr,  "Error: invalid format[%s]\n" , ypk_path );
                         err = 3;
                         break;
                     }
@@ -1159,33 +1158,33 @@ int main( int argc, char **argv )
                 else if( ret == -1 )
                 {
                     if( colorize )
-                        printf( COLOR_RED "Error: cannot access control.xml in the %s directory.\n" COLOR_RESET, pack_path );
+                        fprintf( stderr, COLOR_RED "Error: cannot access control.xml in the %s directory.\n" COLOR_RESET, pack_path );
                     else
-                        printf(  "Error: cannot access control.xml in the %s directory.\n" , pack_path );
+                        fprintf( stderr,  "Error: cannot access control.xml in the %s directory.\n" , pack_path );
                     err = 3;
                 }
                 else if( ret == -2 )
                 {
                     if( colorize )
-                        printf( COLOR_RED "Error: missing some required configuration in control.xml.\n" COLOR_RESET );
+                        fprintf( stderr, COLOR_RED "Error: missing some required configuration in control.xml.\n" COLOR_RESET );
                     else
-                        printf(  "Error: missing some required configuration in control.xml.\n"  );
+                        fprintf( stderr,  "Error: missing some required configuration in control.xml.\n"  );
                     err = 3;
                 }
                 else if( ret == -3 )
                 {
                     if( colorize )
-                        printf( COLOR_RED "Error: cannot access filelist in the %s directory.\n" COLOR_RESET, pack_path );
+                        fprintf( stderr, COLOR_RED "Error: cannot access filelist in the %s directory.\n" COLOR_RESET, pack_path );
                     else
-                        printf(  "Error: cannot access filelist in the %s directory.\n" , pack_path );
+                        fprintf( stderr,  "Error: cannot access filelist in the %s directory.\n" , pack_path );
                     err = 3;
                 }
                 else if( ret < 0 )
                 {
                     if( colorize )
-                        printf( COLOR_RED "Error: an error occurred while packaging.\n" COLOR_RESET );
+                        fprintf( stderr, COLOR_RED "Error: an error occurred while packaging.\n" COLOR_RESET );
                     else
-                        printf(  "Error: an error occurred while packaging.\n"  );
+                        fprintf( stderr,  "Error: an error occurred while packaging.\n"  );
                     err = 3;
                 }
             }
@@ -1255,18 +1254,18 @@ int main( int argc, char **argv )
                     else
                     {
                         if( colorize )
-                            printf( COLOR_RED "Error: invalid format or file not found[%s]\n" COLOR_RESET, argv[optind + 1] );
+                            fprintf( stderr, COLOR_RED "Error: invalid format or file not found[%s]\n" COLOR_RESET, argv[optind + 1] );
                         else
-                            printf(  "Error: invalid format or file not found[%s]\n" , argv[optind + 1] );
+                            fprintf( stderr,  "Error: invalid format or file not found[%s]\n" , argv[optind + 1] );
                         err = 3;
                     }
                 }
                 else
                 {
                     if( colorize )
-                        printf( COLOR_RED "Error: invalid format or file not found[%s]\n" COLOR_RESET, argv[optind] );
+                        fprintf( stderr, COLOR_RED "Error: invalid format or file not found[%s]\n" COLOR_RESET, argv[optind] );
                     else
-                        printf(  "Error: invalid format or file not found[%s]\n" , argv[optind] );
+                        fprintf( stderr,  "Error: invalid format or file not found[%s]\n" , argv[optind] );
                     err = 3;
                 }
 

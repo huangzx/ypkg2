@@ -1,10 +1,9 @@
 /* yget2
  *
- * Copyright (c) 2012 StartOS
+ * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
- * Version: 0.1
- * Date: 2012.11.28
+ * Date: 2013.3.11
  */
 
 #define LIBYPK 1
@@ -270,9 +269,9 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
     if( !packages_exists( pm, package_name, version ) )
     {
         if( colorize )
-            printf( COLOR_RED "Error: package %s(%s) not found.\n" COLOR_RESET, package_name, version );
+            fprintf( stderr, COLOR_RED "Error: package %s(%s) not found.\n" COLOR_RESET, package_name, version );
         else
-            printf(  "Error: package %s(%s) not found.\n" , package_name, version );
+            fprintf( stderr, "Error: package %s(%s) not found.\n" , package_name, version );
         return -2;
     }
 
@@ -280,9 +279,9 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
     if( !pkg )
     {
         if( colorize )
-            printf( COLOR_RED "Error: package %s(%s) not found.\n" COLOR_RESET, package_name, version );
+            fprintf( stderr, COLOR_RED "Error: package %s(%s) not found.\n" COLOR_RESET, package_name, version );
         else
-            printf(  "Error: package %s(%s) not found.\n" , package_name, version );
+            fprintf( stderr,  "Error: package %s(%s) not found.\n" , package_name, version );
         return -2;
     }
 
@@ -290,9 +289,9 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
     if( !package_url )
     {
         if( colorize )
-            printf( COLOR_RED "Error: read download url of package failed.\n" COLOR_RESET );
+            fprintf( stderr, COLOR_RED "Error: read download url of package failed.\n" COLOR_RESET );
         else
-            printf(  "Error: read download url of package failed.\n"  );
+            fprintf( stderr,  "Error: read download url of package failed.\n"  );
         return_code = -3;
         goto return_point;
     }
@@ -334,9 +333,9 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
             if( packages_download_package( NULL, package_name, target_url, package_path, 1, yget_download_progress_callback,&dl_stat, yget_progress_callback, pm ) < 0 )
             {
                 if( colorize )
-                    printf( COLOR_RED "Error: download %s from %s failed.\n" COLOR_RESET, package_name, target_url );
+                    fprintf( stderr, COLOR_RED "Error: download %s from %s failed.\n" COLOR_RESET, package_name, target_url );
                 else
-                    printf(  "Error: download %s from %s failed.\n" , package_name, target_url );
+                    fprintf( stderr,  "Error: download %s from %s failed.\n" , package_name, target_url );
                 return_code = -4;
                 goto return_point;
             }
@@ -347,9 +346,9 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
             if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
             {
                 if( colorize )
-                    printf( COLOR_RED "Error: checksum mismatched. [%s sha1sum: %s]\n" COLOR_RESET, package_path, ypk_sha );
+                    fprintf( stderr, COLOR_RED "Error: checksum mismatched. [%s sha1sum: %s]\n" COLOR_RESET, package_path, ypk_sha );
                 else
-                    printf(  "Error: checksum mismatched. [%s sha1sum: %s]\n" , package_path, ypk_sha );
+                    fprintf( stderr,  "Error: checksum mismatched. [%s sha1sum: %s]\n" , package_path, ypk_sha );
                 return_code = -4;
                 goto return_point;
             }
@@ -360,9 +359,9 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
         if( packages_download_package( NULL, package_name, target_url, package_path, 0, yget_download_progress_callback,&dl_stat, yget_progress_callback, pm ) < 0 )
         {
             if( colorize )
-                printf( COLOR_RED "Error: download %s from %s failed.\n" COLOR_RESET, package_name, target_url );
+                fprintf( stderr, COLOR_RED "Error: download %s from %s failed.\n" COLOR_RESET, package_name, target_url );
             else
-                printf(  "Error: download %s from %s failed.\n" , package_name, target_url );
+                fprintf( stderr,  "Error: download %s from %s failed.\n" , package_name, target_url );
             return_code = -4;
             goto return_point;
         }
@@ -371,9 +370,9 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
         if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
         {
             if( colorize )
-                printf( COLOR_RED "Error: checksum mismatched. [%s sha1sum: %s]\n" COLOR_RESET, package_path, ypk_sha );
+                fprintf( stderr, COLOR_RED "Error: checksum mismatched. [%s sha1sum: %s]\n" COLOR_RESET, package_path, ypk_sha );
             else
-                printf(  "Error: checksum mismatched. [%s sha1sum: %s]\n" , package_path, ypk_sha );
+                fprintf( stderr,  "Error: checksum mismatched. [%s sha1sum: %s]\n" , package_path, ypk_sha );
             return_code = -4;
             goto return_point;
         }
@@ -407,57 +406,57 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
                         break;
                     case -1:
                         if( colorize )
-                            printf( COLOR_RED "Error: invalid format or file not found.\n" COLOR_RESET );
+                            fprintf( stderr, COLOR_RED "Error: invalid format or file not found.\n" COLOR_RESET );
                         else
-                            printf(  "Error: invalid format or file not found.\n"  );
+                            fprintf( stderr,  "Error: invalid format or file not found.\n"  );
                         break;
                     case -2:
                         if( colorize )
-                            printf( COLOR_RED "Error: architecture mismatched.\n" COLOR_RESET );
+                            fprintf( stderr, COLOR_RED "Error: architecture mismatched.\n" COLOR_RESET );
                         else
-                            printf(  "Error: architecture mismatched.\n"  );
+                            fprintf( stderr,  "Error: architecture mismatched.\n"  );
                         break;
                     case -3:
                         if( colorize )
-                            printf( COLOR_RED "Error: missing runtime dependencies.\n" COLOR_RESET );
+                            fprintf( stderr, COLOR_RED "Error: missing runtime dependencies.\n" COLOR_RESET );
                         else
-                            printf(  "Error: missing runtime dependencies.\n"  );
+                            fprintf( stderr,  "Error: missing runtime dependencies.\n"  );
                         break;
                     case -4:
                         if( colorize )
-                            printf( COLOR_RED "Error: conflicting dependencies found.\n" COLOR_RESET );
+                            fprintf( stderr, COLOR_RED "Error: conflicting dependencies found.\n" COLOR_RESET );
                         else
-                            printf(  "Error: conflicting dependencies found.\n"  );
+                            fprintf( stderr,  "Error: conflicting dependencies found.\n"  );
                         break;
                     case -5:
                     case -6:
                         if( colorize )
-                            printf( COLOR_RED "Error: read state infomation failed.\n" COLOR_RESET );
+                            fprintf( stderr, COLOR_RED "Error: read state infomation failed.\n" COLOR_RESET );
                         else
-                            printf(  "Error: read state infomation failed.\n"  );
+                            fprintf( stderr,  "Error: read state infomation failed.\n"  );
                         break;
                     case -7:
                         if( colorize )
-                            printf( COLOR_RED "Error: an error occurred while executing pre_install script.\n" COLOR_RESET );
+                            fprintf( stderr, COLOR_RED "Error: an error occurred while executing pre_install script.\n" COLOR_RESET );
                         else
-                            printf(  "Error: an error occurred while executing pre_install script.\n"  );
+                            fprintf( stderr,  "Error: an error occurred while executing pre_install script.\n"  );
                         break;
                     case -8:
                         if( colorize )
-                            printf( COLOR_RED "Error: an error occurred while copying files.\n" COLOR_RESET );
+                            fprintf( stderr, COLOR_RED "Error: an error occurred while copying files.\n" COLOR_RESET );
                         else
-                            printf(  "Error: an error occurred while copying files.\n"  );
+                            fprintf( stderr,  "Error: an error occurred while copying files.\n"  );
                         break;
                     case -9:
                         if( colorize )
-                            printf( COLOR_RED "Error: an error occurred while executing post_install script.\n" COLOR_RESET );
+                            fprintf( stderr, COLOR_RED "Error: an error occurred while executing post_install script.\n" COLOR_RESET );
                         else
-                            printf(  "Error: an error occurred while executing post_install script.\n"  );
+                            fprintf( stderr,  "Error: an error occurred while executing post_install script.\n"  );
                     case -10:
                         if( colorize )
-                            printf( COLOR_RED "Error: an error occurred while updating database.\n" COLOR_RESET );
+                            fprintf( stderr, COLOR_RED "Error: an error occurred while updating database.\n" COLOR_RESET );
                         else
-                            printf(  "Error: an error occurred while updating database.\n"  );
+                            fprintf( stderr,  "Error: an error occurred while updating database.\n"  );
                         break;
                 }
 
@@ -532,9 +531,9 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
             else
             {
                 if( colorize )
-                    printf( COLOR_RED "Error: installation failed.\n" COLOR_RESET );
+                    fprintf( stderr, COLOR_RED "Error: installation failed.\n" COLOR_RESET );
                 else
-                    printf(  "Error: installation failed.\n"  );
+                    fprintf( stderr,  "Error: installation failed.\n"  );
                 return_code = -1;
                 if( cur_pkg->type != 3 )
                 {
