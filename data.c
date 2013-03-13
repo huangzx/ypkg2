@@ -1,10 +1,9 @@
 /* Libypk data structure functions
  *
- * Copyright (c) 2012 StartOS
+ * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Version: 0.1
- * Date: 2012.8.13
+ * Date: 2013.3.13
  */
 #include "data.h"
 
@@ -686,17 +685,29 @@ void dlist_cleanup( DList *list, void (*node_cleanup)(void *) )
 
 DList *dlist_cat( DList *lista, DList *listb )
 {
-    if( !lista || !listb )
+    if( !lista )
         return NULL;
 
-    if( lista->cnt == 0 || listb->cnt == 0 )
-        return NULL;
+    if( !listb )
+        return lista;
 
-    lista->tail->next = listb->head;
-    listb->head->prev = lista->tail;
+    if( listb->cnt == 0 )
+        return lista;
 
-    lista->tail = listb->tail;
-    lista->cnt += listb->cnt;
+    if( lista->cnt == 0 )
+    {
+        lista->head = listb->head;
+        lista->tail = listb->tail;
+        lista->cnt = listb->cnt;
+    }
+    else
+    {
+        lista->tail->next = listb->head;
+        listb->head->prev = lista->tail;
+
+        lista->tail = listb->tail;
+        lista->cnt += listb->cnt;
+    }
 
     listb->head = listb->tail = NULL;
     listb->cnt = 0;

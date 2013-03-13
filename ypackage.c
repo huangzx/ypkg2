@@ -3,7 +3,7 @@
  * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Date: 2013.3.5
+ * Date: 2013.3.11
  */
 
 #include <stdio.h>
@@ -3621,21 +3621,22 @@ exception_handler:
 }
 
 
-YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, char *package_name, char *version, char *skip, int self_type )
+int packages_get_depend_list_recursively( YPackageManager *pm, YPackageChangeList **depend_list_p, YPackageChangeList **missing_list_p,  char *package_name, char *version, char *skip, int self_type )
+//YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, char *package_name, char *version, char *skip, int self_type )
 {
-    int             i;
+    int             i, err;
     char            *token, *saveptr, *depend, *recommended, *version2, *tmp, *tmp2;
     YPackageData    *pkg_data;
-    YPackageChangeList    *list, *sub_list;
+    YPackageChangeList    *list, *sub_list, *missing_list;
 
-    /*
-    if( packages_has_installed( pm, package_name, version ) )
-    {
-        return NULL;
-    }
-    */
-    
+    if( !depend_list_p || !package_name )
+        return -1;
+
+    err = 0;
+
     list = NULL;
+    sub_list = NULL;
+    missing_list = NULL;
 
     if( (pkg_data = packages_get_package_data( pm, package_name, 0 )) )
     {
@@ -3664,20 +3665,29 @@ YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, c
                     {
                         ;
                     }
+                    else if( !packages_exists( pm, tmp, version2 ) )
+                    {
+                        err = -2;
+                        if( !missing_list )
+                        {
+                            missing_list = dlist_init();
+                        }
+                        packages_clist_append( missing_list, tmp, version2, 0, 2 );
+                    }
                     else if( !packages_has_installed( pm, tmp, version2 ) )
                     {
-                        //packages_clist_append( list, tmp, version2, 0, 2 );
                         if( !list )
                         {
                             list = dlist_init();
                             packages_clist_append( list, util_strcat( "{", package_name, NULL ), NULL, 0, 7 );
                         }
 
-                        sub_list = packages_get_depend_list_recursively( pm, tmp, version2, package_name, 2 );
-                        if( sub_list )
+                        err = packages_get_depend_list_recursively( pm, &sub_list, &missing_list, tmp, version2, package_name, 2 );
+                        if( !err )
                         {
                             dlist_cat( list, sub_list );
                             dlist_cleanup( sub_list, packages_free_change_package );
+                            sub_list = NULL;
                         }
                     }
 
@@ -3727,18 +3737,30 @@ YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, c
                     {
                         ;
                     }
+                    else if( !packages_exists( pm, tmp, version2 ) )
+                    {
+                        /*
+                        err = -2;
+                        if( !missing_list )
+                        {
+                            missing_list = dlist_init();
+                        }
+                        packages_clist_append( missing_list, tmp, version2, 0, 2 );
+                        */
+                        ;
+                    }
                     else if( !packages_has_installed( pm, tmp, version2 ) )
                     {
                         if( !list )
                             list = dlist_init();
 
-                        //packages_clist_append( list, tmp, version2, 0, 3 );
 
-                        sub_list = packages_get_depend_list_recursively( pm, tmp, version2, package_name, 3 );
-                        if( sub_list )
+                        //err = packages_get_depend_list_recursively( pm, &sub_list, &missing_list, tmp, version2, package_name, 3 );
+                        if( !packages_get_depend_list_recursively( pm, &sub_list, NULL, tmp, version2, package_name, 3 ) )
                         {
                             dlist_cat( list, sub_list );
                             dlist_cleanup( sub_list, packages_free_change_package );
+                            sub_list = NULL;
                         }
                     }
                     free( tmp );
@@ -3751,17 +3773,39 @@ YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, c
         packages_clist_append( list, util_strcat( package_name, "}", NULL ), NULL, 0, 8 );
         packages_free_package_data( pkg_data );
     }
+    else
+    {
+        return -1;
+    }
 
     if( list )
     {
         packages_clist_remove_duplicate_item( list );
     }
-    return list;
+    *depend_list_p = list;
+
+    if( missing_list )
+    {
+        if( missing_list_p )
+        {
+            if( !*missing_list_p )
+                *missing_list_p = dlist_init();
+
+            dlist_cat( *missing_list_p, missing_list );
+        }
+
+        dlist_cleanup( missing_list, packages_free_change_package );
+        missing_list = NULL;
+    }
+
+    return err;
 }
 
 YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name, char *version, char *skip )
 {
-    return packages_get_depend_list_recursively( pm, package_name, version, skip, 0 );
+    YPackageChangeList *list;
+    packages_get_depend_list_recursively( pm, &list, NULL, package_name, version, skip, 0 );
+    return list;
 }
 
 YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name, char *version )

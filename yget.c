@@ -3,7 +3,7 @@
  * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
- * Date: 2013.3.11
+ * Date: 2013.3.12
  */
 
 #define LIBYPK 1
@@ -569,7 +569,7 @@ int main( int argc, char **argv )
     YPackageData    *pkg_data;
     YPackageList    *pkg_list;
     YPackageChangePackage  *cur_package;       
-    YPackageChangeList     *sub_list, *install_list, *remove_list, *upgrade_list;
+    YPackageChangeList     *sub_list, *missing_list, *install_list, *remove_list, *upgrade_list;
 
     if( argc == 1 )
     {
@@ -858,24 +858,10 @@ int main( int argc, char **argv )
             else
             {
                 install_list = NULL;
+                missing_list = NULL;
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
-
-                    /*
-                    install_list = packages_get_install_list( pm, package_name );
-                    if(install_list)
-                    {
-                        printf( "Install: %s", install_list->name );
-                        cur_package = install_list->prev;
-                        while( cur_package )
-                        {
-                            printf(" %s ", cur_package->name );
-                            cur_package = cur_package->prev;
-                        }
-                        continue;
-                    }
-                    */
 
                     if( !packages_exists( pm, package_name, NULL ) )
                     {
@@ -903,38 +889,37 @@ int main( int argc, char **argv )
                         continue;
                     }
 
-                    /*
-                    if( !install_list )
-                        install_list = dlist_init();
-                        */
-
-                    //packages_clist_append( install_list, package_name, version, 0, 1 );
-
-                    sub_list = packages_get_depend_list_recursively( pm, package_name, version, NULL, 1 );
-                    if( sub_list )
+                    if( !packages_get_depend_list_recursively( pm, &sub_list, &missing_list, package_name, version, NULL, 1 ) )
                     {
                         dlist_cat( sub_list, install_list );
                         dlist_cleanup( install_list, packages_free_change_package );
                         install_list = sub_list;
+                        sub_list = NULL;
                     }
-
-
-                    /*
-                    sub_list = packages_get_recommended_list( pm, package_name, version );
-                    if( sub_list )
+                    else
                     {
-                        dlist_cat( sub_list, recommended_list );
-                        dlist_cleanup( recommended_list, packages_free_change_package );
-                        recommended_list = sub_list;
+                        dlist_cleanup( sub_list, packages_free_change_package );
+                        sub_list = NULL;
+                        err = 3;
                     }
-                    */
 
                 }
 
-                confirm = 'N';
-
-                if( install_list )
+                if( missing_list )
                 {
+                    fprintf( stderr,  "Error: missing runtime dependencies:"  );
+
+                    cur_package = dlist_head_data( missing_list );
+                    while( cur_package )
+                    {
+                        printf(" %s ", cur_package->name );
+                        cur_package = dlist_next_data( install_list );
+                    }
+                    putchar( '\n' );
+                }
+                else if( install_list )
+                {
+                    confirm = 'N';
                     
                     printf( "Install: " );
                     cur_package = dlist_head_data( install_list );
@@ -998,7 +983,18 @@ int main( int argc, char **argv )
                         pkg = NULL;
                     }
 
+                }
+
+                if( install_list )
+                {
                     packages_free_install_list( install_list );
+                    install_list = NULL;
+                }
+
+                if( missing_list )
+                {
+                    packages_free_install_list( missing_list );
+                    missing_list = NULL;
                 }
             }
             break;
@@ -1442,7 +1438,19 @@ int main( int argc, char **argv )
                                 upgrade_ypkg = 1;
                             }
 
-                            sub_list = packages_get_depend_list_recursively( pm, cur_package->name, cur_package->version, NULL, 1 );
+                            if( !packages_get_depend_list_recursively( pm, &sub_list, &missing_list, cur_package->name, cur_package->version, NULL, 1 ) )
+                            {
+                                dlist_cat( sub_list, install_list );
+                                dlist_cleanup( install_list, packages_free_change_package );
+                                install_list = sub_list;
+                                sub_list = NULL;
+                            }
+                            else
+                            {
+                                dlist_cleanup( sub_list, packages_free_change_package );
+                                sub_list = NULL;
+                                err = 3;
+                            }
 
                             if( sub_list )
                             {

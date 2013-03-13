@@ -3,7 +3,7 @@
  * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Date: 2013.3.5
+ * Date: 2013.3.11
  */
 #ifndef PACKAGE_H
 #define PACKAGE_H
@@ -253,7 +253,7 @@ YPackageChangeList *packages_clist_remove_duplicate_item( YPackageChangeList *ch
 
 
 YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *package_name, char *version );
-YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, char *package_name, char *version, char *skip, int self_type );
+int packages_get_depend_list_recursively( YPackageManager *pm, YPackageChangeList **depend_list_p, YPackageChangeList **missing_list_p,  char *package_name, char *version, char *skip, int self_type );
 YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name, char *version, char *skip );
 YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name, char *version );
 YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name, char *version );
