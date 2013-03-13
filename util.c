@@ -524,3 +524,33 @@ char *util_sha1( char *file )
 
     return result;
 }
+
+char *util_str_sha1( char *str )
+{
+    char            *result;
+    SHA1Context     sha;
+
+    if( !str )
+    {
+        return NULL;
+    }
+
+    SHA1Reset( &sha );
+
+    SHA1Input( &sha, (unsigned char *)str, strlen( str ) );
+
+    if( !SHA1Result( &sha ) )
+    {
+        return NULL;
+    }
+    else
+    {
+        result = malloc( 41 );
+        if( !result )
+            return NULL;
+
+        snprintf( result, 41, "%08x%08x%08x%08x%08x", sha.Message_Digest[0], sha.Message_Digest[1], sha.Message_Digest[2], sha.Message_Digest[3], sha.Message_Digest[4] );
+    }
+
+    return result;
+}

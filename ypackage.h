@@ -1,71 +1,16 @@
 /* Libypk
  *
- * Copyright (c) 2012 StartOS
+ * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Version: 0.1
- * Date: 2012.11.28
+ * Date: 2013.3.11
  */
 #ifndef PACKAGE_H
 #define PACKAGE_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <time.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <sys/wait.h>
-#include <sys/utsname.h>
-
-#ifdef LIBYPK 
-
-#include "download.h"
-#include "util.h"
-#include "db.h"
+#include <sqlite3.h>
 #include "data.h"
-#include "archive.h"
-#include "xml.h"
-#include "preg.h"
 
-#else
-
-typedef struct hsearch_data HashIndex;
-typedef struct _HashData {
-    int                 size;
-    int                 pos;
-    char                *buf;
-    struct _HashData   *next;
-}HashData;
-
-typedef struct {
-    HashIndex          *index;
-    HashData           *data;
-    HashData           *cur_data;
-}HashTable;
-
-
-typedef struct {
-    int                 max_cnt;
-    int                 cur_cnt;
-    HashIndex          **list;
-    HashData           *data;
-    HashData           *cur_data;
-}HashTableList;
-
-typedef struct _DListNode {
-    struct _DListNode        *prev;
-    struct _DListNode        *next;
-    void                     *data;
-}DListNode;
-
-typedef struct _DList {
-    int            cnt;
-    DListNode      *head;
-    DListNode      *tail;
-}DList;
-#endif
 
 #define CONFIG_FILE "/etc/yget.conf"
 #define CONFIG_DIR "/etc/yget.conf.d"
@@ -100,6 +45,7 @@ typedef struct {
     char    *source_uri;
     char    *accept_repo;
     char    *package_dest;
+    int     updated;
 }YPackageSource;
 
 typedef DList YPackageSourceList;
@@ -255,9 +201,7 @@ YPackageList *packages_get_list( YPackageManager *pm, int limit, int offset, cha
 
 YPackageList *packages_get_list2( YPackageManager *pm, int page_size, int page_no, char *keys[], char *keywords[], int wildcards[], int installed );
 
-//YPackageList *packages_get_history_list( YPackageManager *pm, char *name );
 
-//YPackageList *packages_get_list_with_data( YPackageManager *pm, int limit, int offset, char *key, char *keyword, int installed );
 YPackageList *packages_search_world_data( YPackageManager *pm, int limit, int offset, char *key, char *keyword );
 
 YPackageList *packages_get_list_by_depend( YPackageManager *pm, int limit, int offset, char *depend, int installed );
@@ -268,7 +212,7 @@ YPackageList *packages_get_list_by_conflict( YPackageManager *pm, int limit, int
 
 YPackageList *packages_get_list_by_recommended( YPackageManager *pm, int limit, int offset, char *recommended, int installed );
 
-YPackageList *packages_get_list_by_file( YPackageManager *pm, int limit, int offset, char *file );
+YPackageList *packages_get_list_by_file( YPackageManager *pm, int limit, int offset, char *file, int absolute );
 
 char *packages_get_list_attr( YPackageList *pkg_list, int index, char *key );
 char *packages_get_list_attr2( YPackageList *pkg_list, int index, char *key );
@@ -280,6 +224,8 @@ void packages_free_list( YPackageList *pkg_list );
  */
 int packages_compare_version( char *version1, char *version2 );
 int packages_compare_version_collate( void *arg, int len1, const void *version1, int len2, const void *version2 );
+void packages_max_version_step( sqlite3_context *context, int argc, sqlite3_value **argv );
+void packages_max_version_final( sqlite3_context *context );
 
 /*
  * package install & remove & upgrade
@@ -307,7 +253,7 @@ YPackageChangeList *packages_clist_remove_duplicate_item( YPackageChangeList *ch
 
 
 YPackageChangeList *packages_get_install_list( YPackageManager *pm, char *package_name, char *version );
-YPackageChangeList *packages_get_depend_list_recursively( YPackageManager *pm, char *package_name, char *version, char *skip, int self_type );
+int packages_get_depend_list_recursively( YPackageManager *pm, YPackageChangeList **depend_list_p, YPackageChangeList **missing_list_p,  char *package_name, char *version, char *skip, int self_type );
 YPackageChangeList *packages_get_depend_list( YPackageManager *pm, char *package_name, char *version, char *skip );
 YPackageChangeList *packages_get_recommended_list( YPackageManager *pm, char *package_name, char *version );
 YPackageChangeList *packages_get_bdepend_list( YPackageManager *pm, char *package_name, char *version );

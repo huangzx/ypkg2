@@ -1,10 +1,9 @@
 /* yget2
  *
- * Copyright (c) 2012 StartOS
+ * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
- * Version: 0.1
- * Date: 2012.11.28
+ * Date: 2013.3.12
  */
 
 #define LIBYPK 1
@@ -34,6 +33,8 @@ typedef struct {
     struct timeval  st;
 }DownloadStat;
 
+int colorize;
+
 struct option longopts[] = {
     { "help", no_argument, NULL, 'h' },
     { "install", no_argument, NULL, 'I' },
@@ -47,6 +48,7 @@ struct option longopts[] = {
     { "clean", no_argument, NULL, 'C' },
     { "update", no_argument, NULL, 'u' },
     { "upgrade", no_argument, NULL, 'U' },
+    { "color", no_argument, &colorize, 1 },
     { 0, 0, 0, 0}
 };
 
@@ -63,10 +65,12 @@ Commands:\n\
   --remove            Remove package\n\
   --search            Search the package list for a regex pattern\n\
   --show              Show a readable record for the package\n\
+  --status            Show the infomation of a installed packages\n\
   --clean             Erase downloaded archive files\n\
   --autoremove        Remove automatically all unused packages\n\
   --upgrade           Perform an upgrade\n\
-  --update            Retrieve new lists of packages\n\n\
+  --update            Retrieve new lists of packages\n\
+  --color             Colorize the output\n\n\
 Options:\n\
   -p                  Instead of actually install, simply display what to do\n\
   -y                  Assume Yes to all queries\n\
@@ -264,21 +268,30 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
     return_code = 0;
     if( !packages_exists( pm, package_name, version ) )
     {
-        printf( COLOR_RED "Error: package %s(%s) not found.\n" COLOR_RESET, package_name, version );
+        if( colorize )
+            fprintf( stderr, COLOR_RED "Error: package %s(%s) not found.\n" COLOR_RESET, package_name, version );
+        else
+            fprintf( stderr, "Error: package %s(%s) not found.\n" , package_name, version );
         return -2;
     }
 
     pkg = packages_get_package( pm, package_name, 0 );
     if( !pkg )
     {
-        printf( COLOR_RED "Error: package %s(%s) not found.\n" COLOR_RESET, package_name, version );
+        if( colorize )
+            fprintf( stderr, COLOR_RED "Error: package %s(%s) not found.\n" COLOR_RESET, package_name, version );
+        else
+            fprintf( stderr,  "Error: package %s(%s) not found.\n" , package_name, version );
         return -2;
     }
 
     package_url = packages_get_package_attr( pkg, "uri" );
     if( !package_url )
     {
-        printf( COLOR_RED "Error: read download url of package failed.\n" COLOR_RESET );
+        if( colorize )
+            fprintf( stderr, COLOR_RED "Error: read download url of package failed.\n" COLOR_RESET );
+        else
+            fprintf( stderr,  "Error: read download url of package failed.\n"  );
         return_code = -3;
         goto return_point;
     }
@@ -319,7 +332,10 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
         {
             if( packages_download_package( NULL, package_name, target_url, package_path, 1, yget_download_progress_callback,&dl_stat, yget_progress_callback, pm ) < 0 )
             {
-                printf( COLOR_RED "Error: download %s from %s failed.\n" COLOR_RESET, package_name, target_url );
+                if( colorize )
+                    fprintf( stderr, COLOR_RED "Error: download %s from %s failed.\n" COLOR_RESET, package_name, target_url );
+                else
+                    fprintf( stderr,  "Error: download %s from %s failed.\n" , package_name, target_url );
                 return_code = -4;
                 goto return_point;
             }
@@ -329,7 +345,10 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
             ypk_sha = util_sha1( package_path );
             if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
             {
-                printf( COLOR_RED "Error: checksum mismatched. [%s sha1sum: %s]\n" COLOR_RESET, package_path, ypk_sha );
+                if( colorize )
+                    fprintf( stderr, COLOR_RED "Error: checksum mismatched. [%s sha1sum: %s]\n" COLOR_RESET, package_path, ypk_sha );
+                else
+                    fprintf( stderr,  "Error: checksum mismatched. [%s sha1sum: %s]\n" , package_path, ypk_sha );
                 return_code = -4;
                 goto return_point;
             }
@@ -339,7 +358,10 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
     {
         if( packages_download_package( NULL, package_name, target_url, package_path, 0, yget_download_progress_callback,&dl_stat, yget_progress_callback, pm ) < 0 )
         {
-            printf( COLOR_RED "Error: download %s from %s failed.\n" COLOR_RESET, package_name, target_url );
+            if( colorize )
+                fprintf( stderr, COLOR_RED "Error: download %s from %s failed.\n" COLOR_RESET, package_name, target_url );
+            else
+                fprintf( stderr,  "Error: download %s from %s failed.\n" , package_name, target_url );
             return_code = -4;
             goto return_point;
         }
@@ -347,7 +369,10 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
         ypk_sha = util_sha1( package_path );
         if( ypk_sha && strncmp( pkg_sha, ypk_sha, 41 ) )
         {
-            printf( COLOR_RED "Error: checksum mismatched. [%s sha1sum: %s]\n" COLOR_RESET, package_path, ypk_sha );
+            if( colorize )
+                fprintf( stderr, COLOR_RED "Error: checksum mismatched. [%s sha1sum: %s]\n" COLOR_RESET, package_path, ypk_sha );
+            else
+                fprintf( stderr,  "Error: checksum mismatched. [%s sha1sum: %s]\n" , package_path, ypk_sha );
             return_code = -4;
             goto return_point;
         }
@@ -368,37 +393,70 @@ int yget_install_package( YPackageManager *pm, char *package_name, char *version
                 {
                     case 1:
                     case 2:
-                        printf( COLOR_YELLO "Newer or same version installed, skipped.\n" COLOR_RESET );
+                        if( colorize )
+                            printf( COLOR_YELLO "Newer or same version installed, skipped.\n" COLOR_RESET );
+                        else
+                            printf(  "Newer or same version installed, skipped.\n"  );
                         break;
                     case 0:
-                        printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+                        if( colorize )
+                            printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+                        else
+                            printf(  "Installation successful.\n"  );
                         break;
                     case -1:
-                        printf( COLOR_RED "Error: invalid format or file not found.\n" COLOR_RESET );
+                        if( colorize )
+                            fprintf( stderr, COLOR_RED "Error: invalid format or file not found.\n" COLOR_RESET );
+                        else
+                            fprintf( stderr,  "Error: invalid format or file not found.\n"  );
                         break;
                     case -2:
-                        printf( COLOR_RED "Error: architecture mismatched.\n" COLOR_RESET );
+                        if( colorize )
+                            fprintf( stderr, COLOR_RED "Error: architecture mismatched.\n" COLOR_RESET );
+                        else
+                            fprintf( stderr,  "Error: architecture mismatched.\n"  );
                         break;
                     case -3:
-                        printf( COLOR_RED "Error: missing runtime dependencies.\n" COLOR_RESET );
+                        if( colorize )
+                            fprintf( stderr, COLOR_RED "Error: missing runtime dependencies.\n" COLOR_RESET );
+                        else
+                            fprintf( stderr,  "Error: missing runtime dependencies.\n"  );
                         break;
                     case -4:
-                        printf( COLOR_RED "Error: conflicting dependencies found.\n" COLOR_RESET );
+                        if( colorize )
+                            fprintf( stderr, COLOR_RED "Error: conflicting dependencies found.\n" COLOR_RESET );
+                        else
+                            fprintf( stderr,  "Error: conflicting dependencies found.\n"  );
                         break;
                     case -5:
                     case -6:
-                        printf( COLOR_RED "Error: read state infomation failed.\n" COLOR_RESET );
+                        if( colorize )
+                            fprintf( stderr, COLOR_RED "Error: read state infomation failed.\n" COLOR_RESET );
+                        else
+                            fprintf( stderr,  "Error: read state infomation failed.\n"  );
                         break;
                     case -7:
-                        printf( COLOR_RED "Error: an error occurred while executing pre_install script.\n" COLOR_RESET );
+                        if( colorize )
+                            fprintf( stderr, COLOR_RED "Error: an error occurred while executing pre_install script.\n" COLOR_RESET );
+                        else
+                            fprintf( stderr,  "Error: an error occurred while executing pre_install script.\n"  );
                         break;
                     case -8:
-                        printf( COLOR_RED "Error: an error occurred while copying files.\n" COLOR_RESET );
+                        if( colorize )
+                            fprintf( stderr, COLOR_RED "Error: an error occurred while copying files.\n" COLOR_RESET );
+                        else
+                            fprintf( stderr,  "Error: an error occurred while copying files.\n"  );
                         break;
                     case -9:
-                        printf( COLOR_RED "Error: an error occurred while executing post_install script.\n" COLOR_RESET );
+                        if( colorize )
+                            fprintf( stderr, COLOR_RED "Error: an error occurred while executing post_install script.\n" COLOR_RESET );
+                        else
+                            fprintf( stderr,  "Error: an error occurred while executing post_install script.\n"  );
                     case -10:
-                        printf( COLOR_RED "Error: an error occurred while updating database.\n" COLOR_RESET );
+                        if( colorize )
+                            fprintf( stderr, COLOR_RED "Error: an error occurred while updating database.\n" COLOR_RESET );
+                        else
+                            fprintf( stderr,  "Error: an error occurred while updating database.\n"  );
                         break;
                 }
 
@@ -451,19 +509,31 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
             {
                 skip++;
             }
-            printf( "skip " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
+            if( colorize )
+                printf( "skip " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
+            else
+                printf( "skip "  "%s"  " ...\n", cur_pkg->name );
         }
         else
         {
-            printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
+            if( colorize )
+                printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", cur_pkg->name );
+            else
+                printf( "Installing "  "%s"  " ...\n", cur_pkg->name );
             ret = yget_install_package( pm, cur_pkg->name, NULL, download_only, 0, force );
             if( !ret )
             {
-                printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+                if( colorize )
+                    printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+                else
+                    printf(  "Installation successful.\n"  );
             }
             else
             {
-                printf( COLOR_RED "Error: installation failed.\n" COLOR_RESET );
+                if( colorize )
+                    fprintf( stderr, COLOR_RED "Error: installation failed.\n" COLOR_RESET );
+                else
+                    fprintf( stderr,  "Error: installation failed.\n"  );
                 return_code = -1;
                 if( cur_pkg->type != 3 )
                 {
@@ -491,7 +561,7 @@ int yget_install_list( YPackageManager *pm, YPackageChangeList *list, int downlo
 
 int main( int argc, char **argv )
 {
-    int             c, force, init, download_only, simulation, yes, unknown_arg, i, j, action, ret, err, len, size, install_size, pkg_count, upgrade_ypkg;
+    int             arg_cnt, c, force, init, download_only, simulation, yes, unknown_arg, i, j, action, ret, err, len, size, install_size, pkg_count, upgrade_ypkg;
     char            confirm, *tmp, *package_name, *install_date, *build_date, *version,  *installed, *can_update, *repo;
 
     YPackageManager *pm;
@@ -499,7 +569,7 @@ int main( int argc, char **argv )
     YPackageData    *pkg_data;
     YPackageList    *pkg_list;
     YPackageChangePackage  *cur_package;       
-    YPackageChangeList     *sub_list, *install_list, *remove_list, *upgrade_list;
+    YPackageChangeList     *sub_list, *missing_list, *install_list, *remove_list, *upgrade_list;
 
     if( argc == 1 )
     {
@@ -573,6 +643,8 @@ int main( int argc, char **argv )
         return 1;
     }
 
+    arg_cnt = argc - optind;
+
     if( init )
     {
         i = 0;
@@ -616,7 +688,7 @@ int main( int argc, char **argv )
          * remove package
          */
         case 'R':
-            if( argc < 3 )
+            if( arg_cnt < 1 )
             {
                 err = 1;
             }
@@ -775,7 +847,7 @@ int main( int argc, char **argv )
             force ?: (force = 2);
 
         case 'I':
-            if( argc < 3 )
+            if( arg_cnt < 1 )
             {
                 err = 1;
             }
@@ -786,24 +858,10 @@ int main( int argc, char **argv )
             else
             {
                 install_list = NULL;
+                missing_list = NULL;
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
-
-                    /*
-                    install_list = packages_get_install_list( pm, package_name );
-                    if(install_list)
-                    {
-                        printf( "Install: %s", install_list->name );
-                        cur_package = install_list->prev;
-                        while( cur_package )
-                        {
-                            printf(" %s ", cur_package->name );
-                            cur_package = cur_package->prev;
-                        }
-                        continue;
-                    }
-                    */
 
                     if( !packages_exists( pm, package_name, NULL ) )
                     {
@@ -833,38 +891,37 @@ int main( int argc, char **argv )
                     if( !install_list )
                         install_list = dlist_init();
 
-                    /*
-                    if( !install_list )
-                        install_list = dlist_init();
-                        */
-
-                    //packages_clist_append( install_list, package_name, version, 0, 1 );
-
-                    sub_list = packages_get_depend_list_recursively( pm, package_name, version, NULL, 1 );
-                    if( sub_list )
+                    if( !packages_get_depend_list_recursively( pm, &sub_list, &missing_list, package_name, version, NULL, 1 ) )
                     {
                         dlist_cat( sub_list, install_list );
                         dlist_cleanup( install_list, packages_free_change_package );
                         install_list = sub_list;
+                        sub_list = NULL;
                     }
-
-
-                    /*
-                    sub_list = packages_get_recommended_list( pm, package_name, version );
-                    if( sub_list )
+                    else
                     {
-                        dlist_cat( sub_list, recommended_list );
-                        dlist_cleanup( recommended_list, packages_free_change_package );
-                        recommended_list = sub_list;
+                        dlist_cleanup( sub_list, packages_free_change_package );
+                        sub_list = NULL;
+                        err = 3;
                     }
-                    */
 
                 }
 
-                confirm = 'N';
-
-                if( install_list )
+                if( missing_list )
                 {
+                    fprintf( stderr,  "Error: missing runtime dependencies:"  );
+
+                    cur_package = dlist_head_data( missing_list );
+                    while( cur_package )
+                    {
+                        printf(" %s ", cur_package->name );
+                        cur_package = dlist_next_data( install_list );
+                    }
+                    putchar( '\n' );
+                }
+                else if( install_list )
+                {
+                    confirm = 'N';
                     
                     printf( "Install: " );
                     cur_package = dlist_head_data( install_list );
@@ -932,7 +989,18 @@ int main( int argc, char **argv )
                         pkg = NULL;
                     }
 
+                }
+
+                if( install_list )
+                {
                     packages_free_install_list( install_list );
+                    install_list = NULL;
+                }
+
+                if( missing_list )
+                {
+                    packages_free_install_list( missing_list );
+                    missing_list = NULL;
                 }
             }
             break;
@@ -941,7 +1009,7 @@ int main( int argc, char **argv )
          * install dev
          */
         case 'i':
-            if( argc < 3 )
+            if( arg_cnt < 1 )
             {
                 err = 1;
             }
@@ -1017,7 +1085,7 @@ int main( int argc, char **argv )
          * Search
          */
         case 'S':
-            if( argc < 3 )
+            if( arg_cnt < 1 )
             {
                 err = 1;
             }
@@ -1069,7 +1137,10 @@ int main( int argc, char **argv )
 
                                 printf( 
                                         "%-s \t%-8s \t%-s\n",
-                                        //COLOR_GREEN "%-s "  COLOR_RESET  "\t%-s \t%-8s \t%-s\n",
+                                        //if( colorize )
+                                            //COLOR_GREEN "%-s "  COLOR_RESET  "\t%-s \t%-8s \t%-s\n",
+                                            //else
+                                            // "%-s "    "\t%-s \t%-8s \t%-s\n",
                                         //installed, 
                                         packages_get_list_attr( pkg_list, j, "name"), 
                                         repo, 
@@ -1081,12 +1152,18 @@ int main( int argc, char **argv )
                         }
                         else
                         {
-                            printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
+                            if( colorize )
+                                printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
+                            else
+                                printf(  "%s not found\n" ,  package_name );
                         }
                     }
                     else
                     {
-                        printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
+                        if( colorize )
+                            printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
+                        else
+                            printf(  "%s not found\n" ,  package_name );
                     }
                 }
             }
@@ -1097,7 +1174,7 @@ int main( int argc, char **argv )
          * Show
          */
         case 's':
-            if( argc != 3 )
+            if( arg_cnt != 1  )
             {
                 err = 1;
             }
@@ -1145,7 +1222,10 @@ int main( int argc, char **argv )
                 {
                     if( packages_get_package_from_ypk( package_name, &pkg, &pkg_data ) < 0 )
                     {
-                        printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
+                        if( colorize )
+                            printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
+                        else
+                            printf(  "%s not found\n" ,  package_name );
                         return 1;
                     }
                 }
@@ -1221,7 +1301,10 @@ int main( int argc, char **argv )
                 }
                 else
                 {
-                    printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
+                    if( colorize )
+                        printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
+                    else
+                        printf(  "%s not found\n" ,  package_name );
                 }
 
             }
@@ -1232,7 +1315,7 @@ int main( int argc, char **argv )
          * status
          */
         case 't':
-            if( argc != 3 )
+            if( arg_cnt != 1 )
             {
                 err = 1;
             }
@@ -1241,7 +1324,7 @@ int main( int argc, char **argv )
                 package_name = argv[optind];
                 if( (pkg = packages_get_package( pm, package_name, 1 )) )
                 {
-                    pkg_data = packages_get_package_data( pm, package_name, 0 );
+                    pkg_data = packages_get_package_data( pm, package_name, 1 );
 
                     can_update = packages_get_package_attr( pkg, "can_update" );
 
@@ -1275,8 +1358,11 @@ int main( int argc, char **argv )
 
                     tmp = packages_get_package_attr( pkg, "size");
                     size = tmp ? atoi( tmp ) : 0;
+                    tmp = NULL;
 
-                    tmp = packages_get_package_data_attr( pkg_data, 0, "data_install_size");
+                    if( pkg_data )
+                        tmp = packages_get_package_data_attr( pkg_data, 0, "data_install_size");
+
                     install_size = tmp ? atoi( tmp ) : 0;
 
                     printf( 
@@ -1321,7 +1407,10 @@ int main( int argc, char **argv )
                 }
                 else
                 {
-                    printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
+                    if( colorize )
+                        printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
+                    else
+                        printf(  "%s not found\n" ,  package_name );
                 }
             }
 
@@ -1355,7 +1444,19 @@ int main( int argc, char **argv )
                                 upgrade_ypkg = 1;
                             }
 
-                            sub_list = packages_get_depend_list_recursively( pm, cur_package->name, cur_package->version, NULL, 1 );
+                            if( !packages_get_depend_list_recursively( pm, &sub_list, &missing_list, cur_package->name, cur_package->version, NULL, 1 ) )
+                            {
+                                dlist_cat( sub_list, install_list );
+                                dlist_cleanup( install_list, packages_free_change_package );
+                                install_list = sub_list;
+                                sub_list = NULL;
+                            }
+                            else
+                            {
+                                dlist_cleanup( sub_list, packages_free_change_package );
+                                sub_list = NULL;
+                                err = 3;
+                            }
 
                             if( sub_list )
                             {

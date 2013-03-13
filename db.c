@@ -1,11 +1,23 @@
 /* Database operating functions
  *
- * Copyright (c) 2012 StartOS
+ * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Version: 0.1
- * Date: 2012.4.12
+ * Date: 2013.3.5
  */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sqlite3.h>
+#include <stdarg.h>
+
+#ifndef __USE_GNU
+#define __USE_GNU
+#endif
+
+#include <search.h>
+
 #include "db.h"
 
 int db_init( DB *db, char *db_path, int open_mode )
@@ -203,8 +215,12 @@ sqlite3_int64 db_last_insert_rowid( DB *db )
     return sqlite3_last_insert_rowid( db->handle );
 }
 
-//int db_create_collation( DB *db, const char *name, int(*cmp_func)(void*,int,void*,int,void*), void *arg )
 int db_create_collation( DB *db, const char *name, int(*cmp_func)(void*,int,const void*,int,const void*), void *arg )
 {
     return sqlite3_create_collation( db->handle, name, SQLITE_UTF8, arg, cmp_func );
+}
+
+int db_create_function( DB *db, const char *name, int argc, void (*xFunc)(sqlite3_context*,int,sqlite3_value**), void (*xStep)(sqlite3_context*,int,sqlite3_value**), void (*xFinal)(sqlite3_context*) )
+{
+    return sqlite3_create_function( db->handle, name, argc, SQLITE_UTF8, NULL, xFunc, xStep, xFinal );
 }

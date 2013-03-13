@@ -240,6 +240,12 @@ int reader_fetch_fields( XMLReaderHandle *handle, int node_depth, char *prefix, 
         strncpy( full_key, key, XML_HASH_FULL_KEY_LEN );
     }
 
+    if( xmlTextReaderIsEmptyElement( handle->reader ) )
+    {
+        xmlHashAddEntry( handle->ht, (const xmlChar *)full_key, NULL );
+        return 1;
+    }
+
     if( attr_list )
     {
         local_attr_list = attr_list;

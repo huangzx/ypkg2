@@ -1,10 +1,9 @@
 /* ypkg2
  *
- * Copyright (c) 2012 StartOS
+ * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
- * Version: 0.1
- * Date: 2012.8.13
+ * Date: 2013.3.11
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -21,6 +20,9 @@
 #define COLOR_WHILE "\033[1m"
 #define COLOR_RESET "\e[0m"
 
+int colorize;
+int absolute;
+
 struct option longopts[] = {
     { "help", no_argument, NULL, 'h' },
     { "remove", no_argument, NULL, 'C' },
@@ -36,6 +38,8 @@ struct option longopts[] = {
     { "whatprovides", no_argument, NULL, 'S' },
     { "compare-version", no_argument, NULL, 'm' },
     { "force", no_argument, NULL, 'f' },
+    { "color", no_argument, &colorize, 1 },
+    { "absolute", no_argument, &absolute, 1 },
     { 0, 0, 0, 0}
 };
 
@@ -57,7 +61,9 @@ Commands:\n\
   -L|--list-installed         List all installed packages\n\
   -s|--whatrequires           Show which package needs package\n\
   -S|--whatprovides           Search which package provide this file\n\
-  --compare-version           Comprare two version strings \n\n\
+  --compare-version           Comprare two version strings \n\
+  --color                     Colorize the output\n\n\
+  --absolute                  with -S, use absolute path\n\n\
 Options:\n\
   -f|--force                  Override problems, Only work with install\n\
        ";
@@ -182,7 +188,7 @@ failed:
 
 int main( int argc, char **argv )
 {
-    int             c, force, i, j, action, ret, err, flag, len, exit_code;
+    int             arg_cnt, c, force, i, j, action, ret, err, flag, len, exit_code;
     char            *tmp, *package_name, *ypk_path, *pack_path, *unpack_path, *file_name, *install_time, *version, *version2, *depend, *bdepend, *recommended, *conflict, *file_type;
     YPackageManager *pm;
     YPackage        *pkg, *pkg2;
@@ -236,6 +242,7 @@ int main( int argc, char **argv )
         }
     }
 
+    arg_cnt = argc - optind;
 
     switch( action )
     {
@@ -250,7 +257,7 @@ int main( int argc, char **argv )
          * remove package
          */
         case 'C':
-            if( argc < 3 )
+            if( arg_cnt < 1 )
             {
                 err = 1;
             }
@@ -283,7 +290,10 @@ int main( int argc, char **argv )
                     {
                         packages_log( pm, argv[i], "Remove" );
                         ret = packages_remove_package( pm, argv[i], ypkg_progress_callback, pm );
-                        printf( "%s\n", ret < 0 ? COLOR_RED "failed." COLOR_RESET : COLOR_GREEN "successed."  COLOR_RESET );
+                        if( colorize )
+                            printf( "%s\n", ret < 0 ? COLOR_RED "failed." COLOR_RESET : COLOR_GREEN "successed."  COLOR_RESET );
+                        else
+                            printf( "%s\n", ret < 0 ? "failed." :  "successed." );
 
                         if( ret < 0 )
                             err = 3;
@@ -297,7 +307,7 @@ int main( int argc, char **argv )
          * install package
          */
         case 'I':
-            if( argc < 3 )
+            if( arg_cnt < 1 )
             {
                 err = 1;
             }
@@ -330,7 +340,10 @@ int main( int argc, char **argv )
                     {
                         package_name = argv[i];
                         packages_log( pm, package_name, "Install" );
-                        printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", package_name );
+                        if( colorize )
+                            printf( "Installing " COLOR_WHILE "%s" COLOR_RESET " ...\n", package_name );
+                        else
+                            printf( "Installing "  "%s"  " ...\n", package_name );
 
                         /*
                         if( !packages_get_info_from_ypk( package_name, &pkg, NULL, NULL, NULL, NULL ) )
@@ -351,38 +364,71 @@ int main( int argc, char **argv )
                         {
                             case 1:
                             case 2:
-                                printf( COLOR_YELLO "Warning: Newer or same version installed, skipped.\n" COLOR_RESET );
+                                if( colorize )
+                                    printf( COLOR_YELLO "Warning: Newer or same version installed, skipped.\n" COLOR_RESET );
+                                else
+                                    printf(  "Warning: Newer or same version installed, skipped.\n"  );
                                 break;
                             case 0:
-                                printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+                                if( colorize )
+                                    printf( COLOR_GREEN "Installation successful.\n" COLOR_RESET );
+                                else
+                                    printf(  "Installation successful.\n"  );
                                 break;
                             case -1:
-                                printf( COLOR_RED "Error: invalid format or file not found.\n" COLOR_RESET );
+                                if( colorize )
+                                    fprintf( stderr, COLOR_RED "Error: invalid format or file not found.\n" COLOR_RESET );
+                                else
+                                    fprintf( stderr,  "Error: invalid format or file not found.\n"  );
                                 break;
                             case -2:
-                                printf( COLOR_RED "Error: architecture mismatched.\n" COLOR_RESET );
+                                if( colorize )
+                                    fprintf( stderr, COLOR_RED "Error: architecture mismatched.\n" COLOR_RESET );
+                                else
+                                    fprintf( stderr,  "Error: architecture mismatched.\n"  );
                                 break;
                             case -3:
-                                printf( COLOR_RED "Error: missing runtime dependencies.\n" COLOR_RESET );
+                                if( colorize )
+                                    fprintf( stderr, COLOR_RED "Error: missing runtime dependencies.\n" COLOR_RESET );
+                                else
+                                    fprintf( stderr,  "Error: missing runtime dependencies.\n"  );
                                 break;
                             case -4:
-                                printf( COLOR_RED "Error: conflicting dependencies found.\n" COLOR_RESET );
+                                if( colorize )
+                                    fprintf( stderr, COLOR_RED "Error: conflicting dependencies found.\n" COLOR_RESET );
+                                else
+                                    fprintf( stderr,  "Error: conflicting dependencies found.\n"  );
                                 break;
                             case -5:
                             case -6:
-                                printf( COLOR_RED "Error: reading state infomation failed.\n" COLOR_RESET );
+                                if( colorize )
+                                    fprintf( stderr, COLOR_RED "Error: reading state infomation failed.\n" COLOR_RESET );
+                                else
+                                    fprintf( stderr,  "Error: reading state infomation failed.\n"  );
                                 break;
                             case -7:
-                                printf( COLOR_RED "Error: an error occurred while executing the pre_install script.\n" COLOR_RESET );
+                                if( colorize )
+                                    fprintf( stderr, COLOR_RED "Error: an error occurred while executing the pre_install script.\n" COLOR_RESET );
+                                else
+                                    fprintf( stderr,  "Error: an error occurred while executing the pre_install script.\n"  );
                                 break;
                             case -8:
-                                printf( COLOR_RED "Error: an error occurred while copy files.\n" COLOR_RESET );
+                                if( colorize )
+                                    fprintf( stderr, COLOR_RED "Error: an error occurred while copy files.\n" COLOR_RESET );
+                                else
+                                    fprintf( stderr,  "Error: an error occurred while copy files.\n"  );
                                 break;
                             case -9:
-                                printf( COLOR_RED "Error: an error occurred while executing the post_install script.\n" COLOR_RESET );
+                                if( colorize )
+                                    fprintf( stderr, COLOR_RED "Error: an error occurred while executing the post_install script.\n" COLOR_RESET );
+                                else
+                                    fprintf( stderr,  "Error: an error occurred while executing the post_install script.\n"  );
                                 break;
                             case -10:
-                                printf( COLOR_RED "Error: an error occurred while updating database.\n" COLOR_RESET );
+                                if( colorize )
+                                    fprintf( stderr, COLOR_RED "Error: an error occurred while updating database.\n" COLOR_RESET );
+                                else
+                                    fprintf( stderr,  "Error: an error occurred while updating database.\n"  );
                                 break;
                         }
                         if( ret != 0 )
@@ -397,7 +443,7 @@ int main( int argc, char **argv )
          * check dependencies, conlicts and so on of package
          */
         case 'c':
-            if( argc < 3 )
+            if( arg_cnt < 1 )
             {
                 err = 1;
             }
@@ -425,34 +471,61 @@ int main( int argc, char **argv )
                     for( i = optind; i < argc; i++)
                     {
                         package_name = argv[i];
-                        printf( "Checking for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  package_name );
+                        if( colorize )
+                            printf( "Checking for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  package_name );
+                        else
+                            printf( "Checking for "  "%s"  " ...\n",  package_name );
                         ret = packages_check_package( pm, package_name, NULL, 0 );
                         switch( ret )
                         {
                             case 3:
-                                printf( COLOR_GREEN "Can be upgraded.\n" COLOR_RESET );
+                                if( colorize )
+                                    printf( COLOR_GREEN "Can be upgraded.\n" COLOR_RESET );
+                                else
+                                    printf(  "Can be upgraded.\n"  );
                                 break;
                             case 1:
                             case 2:
-                                printf( COLOR_WHILE "The latest version has installed.\n" COLOR_RESET );
+                                if( colorize )
+                                    printf( COLOR_WHILE "The latest version has installed.\n" COLOR_RESET );
+                                else
+                                    printf(  "The latest version has installed.\n"  );
                                 break;
                             case 0:
-                                printf( COLOR_GREEN "Ready.\n" COLOR_RESET );
+                                if( colorize )
+                                    printf( COLOR_GREEN "Ready.\n" COLOR_RESET );
+                                else
+                                    printf(  "Ready.\n"  );
                                 break;
                             case -1:
-                                printf( COLOR_RED "Error: invalid format or file not found.\n" COLOR_RESET );
+                                if( colorize )
+                                    fprintf( stderr, COLOR_RED "Error: invalid format or file not found.\n" COLOR_RESET );
+                                else
+                                    fprintf( stderr,  "Error: invalid format or file not found.\n"  );
                                 break;
                             case -2:
-                                printf( COLOR_RED "Error: architecture mismatched.\n" COLOR_RESET );
+                                if( colorize )
+                                    fprintf( stderr, COLOR_RED "Error: architecture mismatched.\n" COLOR_RESET );
+                                else
+                                    fprintf( stderr,  "Error: architecture mismatched.\n"  );
                                 break;
                             case -3:
-                                printf( COLOR_RED "Error: missing runtime dependency.\n" COLOR_RESET );
+                                if( colorize )
+                                    fprintf( stderr, COLOR_RED "Error: missing runtime dependency.\n" COLOR_RESET );
+                                else
+                                    fprintf( stderr,  "Error: missing runtime dependency.\n"  );
                                 break;
                             case -4:
-                                printf( COLOR_RED "Error: conflicting dependency.\n" COLOR_RESET );
+                                if( colorize )
+                                    fprintf( stderr, COLOR_RED "Error: conflicting dependency.\n" COLOR_RESET );
+                                else
+                                    fprintf( stderr,  "Error: conflicting dependency.\n"  );
                                 break;
                             default:
-                                printf( COLOR_RED "Error: unknown error.\n" COLOR_RESET );
+                                if( colorize )
+                                    fprintf( stderr, COLOR_RED "Error: unknown error.\n" COLOR_RESET );
+                                else
+                                    fprintf( stderr,  "Error: unknown error.\n"  );
                         }
 
                         if( ret != 0 )
@@ -466,7 +539,7 @@ int main( int argc, char **argv )
          * list all files of installed package
          */
         case 'l':
-            if( argc < 3 )
+            if( arg_cnt < 1 )
             {
                 err = 1;
             }
@@ -527,7 +600,10 @@ int main( int argc, char **argv )
 
                     if( pkg_file )
                     {
-                        printf( COLOR_YELLO "Contents of %s %s:\n" COLOR_RESET, package_name, version );
+                        if( colorize )
+                            printf( COLOR_YELLO "Contents of %s %s:\n" COLOR_RESET, package_name, version );
+                        else
+                            printf(  "Contents of %s %s:\n" , package_name, version );
                         for( j = 0; j < pkg_file->cnt; j++ )
                         {
                             file_type = packages_get_package_file_attr( pkg_file, j, "type");
@@ -536,13 +612,19 @@ int main( int argc, char **argv )
                         }
 
                         printf( "\nFile: %d, Dir: %d, Link: %d, Size: %dK\n", pkg_file->cnt_file,  pkg_file->cnt_dir, pkg_file->cnt_link, pkg_file->size );
-                        printf( COLOR_YELLO "Contents of %s %s\n" COLOR_RESET, package_name, version );
+                        if( colorize )
+                            printf( COLOR_YELLO "Contents of %s %s\n" COLOR_RESET, package_name, version );
+                        else
+                            printf(  "Contents of %s %s\n" , package_name, version );
 
                         packages_free_package_file( pkg_file );
                     }
                     else if( !err )
                     {
-                        printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                        if( colorize )
+                            printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                        else
+                            printf(  "* %s not found\n" ,  package_name );
                         err = 3;
                     }
                 }
@@ -560,7 +642,7 @@ int main( int argc, char **argv )
          * show dependency of package
          */
         case 'k':
-            if( argc != 3 )
+            if( arg_cnt != 1 )
             {
                 err = 1;
             }
@@ -594,7 +676,10 @@ int main( int argc, char **argv )
                     }
                     else
                     {
-                        printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                        if( colorize )
+                            printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                        else
+                            printf(  "* %s not found\n" ,  package_name );
                         err = 3;
                         break;
                     }
@@ -604,29 +689,44 @@ int main( int argc, char **argv )
 
                         for( i = 0; i < pkg_data->cnt; i++ )
                         {
-                            printf( COLOR_WHILE "%s_%s" COLOR_RESET ":\n",  package_name, version );
+                            if( colorize )
+                                printf( COLOR_WHILE "%s_%s" COLOR_RESET ":\n",  package_name, version );
+                            else
+                                printf(  "%s_%s"  ":\n",  package_name, version );
                             bdepend = packages_get_package_data_attr( pkg_data, i, "data_bdepend");
                             if( bdepend )
                             {
-                                printf( COLOR_GREEN "Build-dependencies:"  COLOR_RESET  "\n%s\n",  util_chr_replace( bdepend, ',', ' ' ) );
+                                if( colorize )
+                                    printf( COLOR_GREEN "Build-dependencies:"  COLOR_RESET  "\n%s\n",  util_chr_replace( bdepend, ',', ' ' ) );
+                                else
+                                    printf(  "Build-dependencies:"    "\n%s\n",  util_chr_replace( bdepend, ',', ' ' ) );
                             }
 
                             depend = packages_get_package_data_attr( pkg_data, i, "data_depend");
                             if( depend )
                             {
-                                printf( COLOR_GREEN "Run-dependencies:"  COLOR_RESET  "\n%s\n",  util_chr_replace( depend, ',', ' ' ) );
+                                if( colorize )
+                                    printf( COLOR_GREEN "Run-dependencies:"  COLOR_RESET  "\n%s\n",  util_chr_replace( depend, ',', ' ' ) );
+                                else
+                                    printf(  "Run-dependencies:"    "\n%s\n",  util_chr_replace( depend, ',', ' ' ) );
                             }
 
                             recommended = packages_get_package_data_attr( pkg_data, i, "data_recommended");
                             if( recommended )
                             {
-                                printf( COLOR_GREEN "Recommended:"  COLOR_RESET  "\n%s\n",  util_chr_replace( recommended, ',', ' ' ) );
+                                if( colorize )
+                                    printf( COLOR_GREEN "Recommended:"  COLOR_RESET  "\n%s\n",  util_chr_replace( recommended, ',', ' ' ) );
+                                else
+                                    printf(  "Recommended:"    "\n%s\n",  util_chr_replace( recommended, ',', ' ' ) );
                             }
 
                             conflict = packages_get_package_data_attr( pkg_data, i, "data_conflict");
                             if( conflict )
                             {
-                                printf( COLOR_GREEN "Conflict:"  COLOR_RESET  "\n%s\n",  conflict );
+                                if( colorize )
+                                    printf( COLOR_GREEN "Conflict:"  COLOR_RESET  "\n%s\n",  conflict );
+                                else
+                                    printf(  "Conflict:"    "\n%s\n",  conflict );
                             }
                         }
                         packages_free_package_data( pkg_data );
@@ -673,7 +773,10 @@ int main( int argc, char **argv )
                         else
                             install_time = NULL;
 
-                        printf( COLOR_GREEN "[I] "  COLOR_RESET  "%s\t%s\t%s\t%s\n", packages_get_list_attr( pkg_list, i, "name"), packages_get_list_attr( pkg_list, i, "version"), install_time ? install_time : "0", packages_get_list_attr( pkg_list, i, "description") );
+                        if( colorize )
+                            printf( COLOR_GREEN "[I] "  COLOR_RESET  "%s\t%s\t%s\t%s\n", packages_get_list_attr( pkg_list, i, "name"), packages_get_list_attr( pkg_list, i, "version"), install_time ? install_time : "0", packages_get_list_attr( pkg_list, i, "description") );
+                        else
+                            printf(  "[I] "    "%s\t%s\t%s\t%s\n", packages_get_list_attr( pkg_list, i, "name"), packages_get_list_attr( pkg_list, i, "version"), install_time ? install_time : "0", packages_get_list_attr( pkg_list, i, "description") );
 
                         if( install_time )
                             free( install_time );
@@ -688,7 +791,7 @@ int main( int argc, char **argv )
          * show which package needs package
          */
         case 's':
-            if( argc != 3 )
+            if( arg_cnt != 1 )
             {
                 err = 1;
             }
@@ -714,77 +817,111 @@ int main( int argc, char **argv )
                 else
                 {
                     package_name = argv[optind];
-                    //depend
-                    printf( "[R] stand for runtime depend, [B] for build time, [A] for recommoneded, [C] for conflict.\n" );
-                    pkg_list = packages_get_list_by_depend( pm, 2000, 0, package_name, 1 );
-                    if( pkg_list )
+                    if( !packages_exists( pm, package_name, NULL ) )
                     {
-                        if( !flag )
-                        {
-                            flag = 1;
-                            printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
-                        }
-                        for( i = 0; i < pkg_list->cnt; i++ )
-                        {
-                            printf( COLOR_BLUE "[R]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                        }
-                        packages_free_list( pkg_list );
-                    }
-
-                    //bdepend
-                    pkg_list = packages_get_list_by_bdepend( pm, 2000, 0, package_name, 1 );
-                    if( pkg_list )
-                    {
-                        if( !flag )
-                        {
-                            flag = 1;
-                            printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
-                        }
-                        for( i = 0; i < pkg_list->cnt; i++ )
-                        {
-                            printf( COLOR_BLUE "[B]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                        }
-                        packages_free_list( pkg_list );
-                    }
-
-                    //recommoneded
-                    pkg_list = packages_get_list_by_recommended( pm, 2000, 0, package_name, 1 );
-                    if( pkg_list )
-                    {
-                        if( !flag )
-                        {
-                            flag = 1;
-                            printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
-                        }
-                        for( i = 0; i < pkg_list->cnt; i++ )
-                        {
-                            printf( COLOR_BLUE "[A]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                        }
-                        packages_free_list( pkg_list );
-                    }
-
-                    //conflict
-                    pkg_list = packages_get_list_by_conflict( pm, 2000, 0, package_name, 1 );
-                    if( pkg_list )
-                    {
-                        if( !flag )
-                        {
-                            flag = 1;
-                            printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
-                        }
-                        for( i = 0; i < pkg_list->cnt; i++ )
-                        {
-                            printf( COLOR_BLUE "[C]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
-                        }
-                        packages_free_list( pkg_list );
-                    }
-
-                    if( !flag )
-                    {
-                        printf( COLOR_RED "%s not found\n" COLOR_RESET,  package_name );
+                        if( colorize )
+                            printf( COLOR_RED "%s not found.\n" COLOR_RESET,  package_name );
+                        else
+                            printf(  "%s not found.\n" ,  package_name );
                         err = 3;
                     }
+                    else
+                    {
+                        //depend
+                        printf( "[R] stand for runtime depend, [B] for build time, [A] for recommoneded, [C] for conflict.\n" );
+                        pkg_list = packages_get_list_by_depend( pm, 2000, 0, package_name, 1 );
+                        if( pkg_list )
+                        {
+                            if( !flag )
+                            {
+                                flag = 1;
+                                if( colorize )
+                                    printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
+                                else
+                                    printf(  "%s is related with:\n" ,  package_name );
+                            }
+                            for( i = 0; i < pkg_list->cnt; i++ )
+                            {
+                                if( colorize )
+                                    printf( COLOR_BLUE "[R]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                                else
+                                    printf(  "[R]"  " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                            }
+                            packages_free_list( pkg_list );
+                        }
 
+                        //bdepend
+                        pkg_list = packages_get_list_by_bdepend( pm, 2000, 0, package_name, 1 );
+                        if( pkg_list )
+                        {
+                            if( !flag )
+                            {
+                                flag = 1;
+                                if( colorize )
+                                    printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
+                                else
+                                    printf(  "%s is related with:\n" ,  package_name );
+                            }
+                            for( i = 0; i < pkg_list->cnt; i++ )
+                            {
+                                if( colorize )
+                                    printf( COLOR_BLUE "[B]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                                else
+                                    printf(  "[B]"  " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                            }
+                            packages_free_list( pkg_list );
+                        }
+
+                        //recommoneded
+                        pkg_list = packages_get_list_by_recommended( pm, 2000, 0, package_name, 1 );
+                        if( pkg_list )
+                        {
+                            if( !flag )
+                            {
+                                flag = 1;
+                                if( colorize )
+                                    printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
+                                else
+                                    printf(  "%s is related with:\n" ,  package_name );
+                            }
+                            for( i = 0; i < pkg_list->cnt; i++ )
+                            {
+                                if( colorize )
+                                    printf( COLOR_BLUE "[A]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                                else
+                                    printf(  "[A]"  " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                            }
+                            packages_free_list( pkg_list );
+                        }
+
+                        //conflict
+                        pkg_list = packages_get_list_by_conflict( pm, 2000, 0, package_name, 1 );
+                        if( pkg_list )
+                        {
+                            if( !flag )
+                            {
+                                flag = 1;
+                                if( colorize )
+                                    printf( COLOR_YELLO "%s is related with:\n" COLOR_RESET,  package_name );
+                                else
+                                    printf(  "%s is related with:\n" ,  package_name );
+                            }
+                            for( i = 0; i < pkg_list->cnt; i++ )
+                            {
+                                if( colorize )
+                                    printf( COLOR_BLUE "[C]" COLOR_RESET " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                                else
+                                    printf(  "[C]"  " %s\n",  packages_get_list_attr( pkg_list, i, "name") );
+                            }
+                            packages_free_list( pkg_list );
+                        }
+
+                        if( !flag )
+                        {
+                            puts(  "\nNone." );
+                        }
+
+                    }
                     packages_manager_cleanup2( pm );
                 }
             }
@@ -795,7 +932,7 @@ int main( int argc, char **argv )
          * search which package provide this file
          */
         case 'S':
-            if( argc < 3 )
+            if( arg_cnt < 1 )
             {
                 err = 1;
             }
@@ -831,14 +968,20 @@ int main( int argc, char **argv )
                     else
                     {
 
-                        printf( "Searching for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  file_name );
-                        pkg_list = packages_get_list_by_file( pm, 2000, 0, file_name );
+                        if( colorize )
+                            printf( "Searching for " COLOR_WHILE "%s" COLOR_RESET " ...\n",  file_name );
+                        else
+                            printf( "Searching for "  "%s"  " ...\n",  file_name );
+                        pkg_list = packages_get_list_by_file( pm, 2000, 0, file_name, absolute );
                         if( pkg_list )
                         {
                             for( j = 0; j < pkg_list->cnt; j++ )
                             {
                                 file_type = packages_get_list_attr( pkg_list, j, "type");
-                                printf( "%s_%s: %s, " COLOR_WHILE "%s" COLOR_RESET,  packages_get_list_attr( pkg_list, j, "name"), packages_get_list_attr( pkg_list, j, "version"), file_type, packages_get_list_attr( pkg_list, j, "file") );
+                                if( colorize )
+                                    printf( "%s_%s: %s, " COLOR_WHILE "%s" COLOR_RESET,  packages_get_list_attr( pkg_list, j, "name"), packages_get_list_attr( pkg_list, j, "version"), file_type, packages_get_list_attr( pkg_list, j, "file") );
+                                else
+                                    printf( "%s_%s: %s, "  "%s" ,  packages_get_list_attr( pkg_list, j, "name"), packages_get_list_attr( pkg_list, j, "version"), file_type, packages_get_list_attr( pkg_list, j, "file") );
                                 if( file_type[0] == 'S' )
                                     printf( " -> %s", packages_get_list_attr( pkg_list, j, "extra") );
                                 printf( "\n" );
@@ -847,7 +990,10 @@ int main( int argc, char **argv )
                         }
                         else
                         {
-                            printf( COLOR_RED "%s not owned by any packages.\n" COLOR_RESET,  file_name );
+                            if( colorize )
+                                printf( COLOR_RED "%s not owned by any packages.\n" COLOR_RESET,  file_name );
+                            else
+                                printf(  "%s not owned by any packages.\n" ,  file_name );
                             err = 3;
                         }
                         printf( "\n" );
@@ -859,31 +1005,38 @@ int main( int argc, char **argv )
             }
             break;
 
+
         /*
          * unpack ypk package
          */
         case 'x':
-            if( argc < 3 && argc > 4 )
+            if( arg_cnt < 1 && arg_cnt > 2 )
             {
                 err = 1;
             }
             else
             {
-                ypk_path = argv[2];
-                tmp = argc == 4 ? argv[3] : NULL;
+                ypk_path = argv[optind];
+                tmp = arg_cnt == 2 ? argv[optind+1] : NULL;
                 unpack_path = NULL;
                 pkg = NULL;
 
                 if( access( ypk_path, R_OK ) )
                 {
-                    printf( COLOR_RED "%s not found\n" COLOR_RESET,  ypk_path );
+                    if( colorize )
+                        printf( COLOR_RED "%s not found\n" COLOR_RESET,  ypk_path );
+                    else
+                        printf(  "%s not found\n" ,  ypk_path );
                     err = 3;
                     break;
                 }
 
                 if( packages_check_package( pm, ypk_path, NULL, 0 ) == -1 )
                 {
-                    printf( COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
+                    if( colorize )
+                        fprintf( stderr, COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
+                    else
+                        fprintf( stderr,  "Error: invalid format[%s]\n" , ypk_path );
                     err = 3;
                     break;
                 }
@@ -892,7 +1045,10 @@ int main( int argc, char **argv )
                 {
                     if( packages_get_package_from_ypk( ypk_path, &pkg, NULL ) )
                     {
-                        printf( COLOR_RED "Error: Invalid format[%s]\n" COLOR_RESET, ypk_path );
+                        if( colorize )
+                            fprintf( stderr, COLOR_RED "Error: Invalid format[%s]\n" COLOR_RESET, ypk_path );
+                        else
+                            fprintf( stderr,  "Error: Invalid format[%s]\n" , ypk_path );
                         err = 3;
                         break;
                     }
@@ -918,27 +1074,33 @@ int main( int argc, char **argv )
          * unpack ypkinfo
          */
         case 'X':
-            if( argc < 3 && argc > 4 )
+            if( arg_cnt < 1 && arg_cnt > 2 )
             {
                 err = 1;
             }
             else
             {
-                ypk_path = argv[2];
-                tmp = argc == 4 ? argv[3] : NULL;
+                ypk_path = argv[optind];
+                tmp = arg_cnt == 2 ? argv[optind+1] : NULL;
                 unpack_path = NULL;
                 pkg = NULL;
 
                 if( access( ypk_path, R_OK ) )
                 {
-                    printf( COLOR_RED "%s not found\n" COLOR_RESET,  ypk_path );
+                    if( colorize )
+                        printf( COLOR_RED "%s not found\n" COLOR_RESET,  ypk_path );
+                    else
+                        printf(  "%s not found\n" ,  ypk_path );
                     err = 3;
                     break;
                 }
 
                 if( packages_check_package( pm, ypk_path, NULL, 0 ) == -1 )
                 {
-                    printf( COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
+                    if( colorize )
+                        fprintf( stderr, COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
+                    else
+                        fprintf( stderr,  "Error: invalid format[%s]\n" , ypk_path );
                     err = 3;
                     break;
                 }
@@ -947,7 +1109,10 @@ int main( int argc, char **argv )
                 {
                     if( packages_get_package_from_ypk( ypk_path, &pkg, NULL ) )
                     {
-                        printf( COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
+                        if( colorize )
+                            fprintf( stderr, COLOR_RED "Error: invalid format[%s]\n" COLOR_RESET, ypk_path );
+                        else
+                            fprintf( stderr,  "Error: invalid format[%s]\n" , ypk_path );
                         err = 3;
                         break;
                     }
@@ -973,38 +1138,53 @@ int main( int argc, char **argv )
          * pack directory to package
          */
         case 'b':
-            if( argc < 3 && argc > 4 )
+            if( arg_cnt < 1 && arg_cnt > 2 )
             {
                 err = 1;
             }
             else
             {
-                pack_path = argv[2];
-                ypk_path = argc == 4 ? argv[3] : NULL;
+                pack_path = argv[optind];
+                ypk_path = arg_cnt == 2 ? argv[optind+1] : NULL;
 
                 ret = packages_pack_package( pack_path, ypk_path, ypkg_pack_callback, NULL );
                 if( !ret )
                 {
-                    printf( COLOR_GREEN "Package successful.\n" COLOR_RESET );
+                    if( colorize )
+                        printf( COLOR_GREEN "Package successful.\n" COLOR_RESET );
+                    else
+                        printf(  "Package successful.\n"  );
                 }
                 else if( ret == -1 )
                 {
-                    printf( COLOR_RED "Error: cannot access control.xml in the %s directory.\n" COLOR_RESET, pack_path );
+                    if( colorize )
+                        fprintf( stderr, COLOR_RED "Error: cannot access control.xml in the %s directory.\n" COLOR_RESET, pack_path );
+                    else
+                        fprintf( stderr,  "Error: cannot access control.xml in the %s directory.\n" , pack_path );
                     err = 3;
                 }
                 else if( ret == -2 )
                 {
-                    printf( COLOR_RED "Error: missing some required configuration in control.xml.\n" COLOR_RESET );
+                    if( colorize )
+                        fprintf( stderr, COLOR_RED "Error: missing some required configuration in control.xml.\n" COLOR_RESET );
+                    else
+                        fprintf( stderr,  "Error: missing some required configuration in control.xml.\n"  );
                     err = 3;
                 }
                 else if( ret == -3 )
                 {
-                    printf( COLOR_RED "Error: cannot access filelist in the %s directory.\n" COLOR_RESET, pack_path );
+                    if( colorize )
+                        fprintf( stderr, COLOR_RED "Error: cannot access filelist in the %s directory.\n" COLOR_RESET, pack_path );
+                    else
+                        fprintf( stderr,  "Error: cannot access filelist in the %s directory.\n" , pack_path );
                     err = 3;
                 }
                 else if( ret < 0 )
                 {
-                    printf( COLOR_RED "Error: an error occurred while packaging.\n" COLOR_RESET );
+                    if( colorize )
+                        fprintf( stderr, COLOR_RED "Error: an error occurred while packaging.\n" COLOR_RESET );
+                    else
+                        fprintf( stderr,  "Error: an error occurred while packaging.\n"  );
                     err = 3;
                 }
             }
@@ -1014,7 +1194,7 @@ int main( int argc, char **argv )
          * comprare two version strings
          */
         case 'm':
-            if( argc != 4 )
+            if( arg_cnt != 2 )
             {
                 err = 1;
             }
@@ -1073,13 +1253,19 @@ int main( int argc, char **argv )
                     }
                     else
                     {
-                        printf( COLOR_RED "Error: invalid format or file not found[%s]\n" COLOR_RESET, argv[optind + 1] );
+                        if( colorize )
+                            fprintf( stderr, COLOR_RED "Error: invalid format or file not found[%s]\n" COLOR_RESET, argv[optind + 1] );
+                        else
+                            fprintf( stderr,  "Error: invalid format or file not found[%s]\n" , argv[optind + 1] );
                         err = 3;
                     }
                 }
                 else
                 {
-                    printf( COLOR_RED "Error: invalid format or file not found[%s]\n" COLOR_RESET, argv[optind] );
+                    if( colorize )
+                        fprintf( stderr, COLOR_RED "Error: invalid format or file not found[%s]\n" COLOR_RESET, argv[optind] );
+                    else
+                        fprintf( stderr,  "Error: invalid format or file not found[%s]\n" , argv[optind] );
                     err = 3;
                 }
 
@@ -1098,13 +1284,26 @@ int main( int argc, char **argv )
     if( err == 1 )
         usage();
     else if( err == 2 )
-        fprintf( stderr, COLOR_RED "Permission Denied!\n" COLOR_RESET );
+        if( colorize )
+            fprintf( stderr, COLOR_RED "Permission Denied!\n" COLOR_RESET );
+        else
+            fprintf( stderr,  "Permission Denied!\n"  );
     //else if( err == 3 )
         //fprintf( stderr, COLOR_RED "Failed!\n" COLOR_RESET );
     else if( err == 4 )
-        fprintf( stderr, COLOR_RED "Error: open database failed.\n" COLOR_RESET );
+    {
+        if( colorize )
+            fprintf( stderr, COLOR_RED "Error: open database failed.\n" COLOR_RESET );
+        else
+            fprintf( stderr,  "Error: open database failed.\n"  );
+    }
     else if( err == 5 )
-        fprintf( stderr, COLOR_RED "Error: database is locked.\n" COLOR_RESET );
+    {
+        if( colorize )
+            fprintf( stderr, COLOR_RED "Error: database is locked.\n" COLOR_RESET );
+        else
+            fprintf( stderr,  "Error: database is locked.\n"  );
+    }
 
     if( err )
         exit_code = err;

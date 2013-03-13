@@ -1,25 +1,14 @@
 /* Database operating functions
  *
- * Copyright (c) 2012 StartOS
+ * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Version: 0.1
- * Date: 2011.11.23
+ * Date: 2013.3.5
  */
 #ifndef DB_H
 #define DB_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sqlite3.h>
-#include <stdarg.h>
-
-#ifndef __USE_GNU
-#define __USE_GNU
-#endif
-
-#include <search.h>
 
 #define OPEN_READ       1
 #define OPEN_WRITE      2
@@ -57,5 +46,6 @@ void db_destory_hash_table( DB *db );
 sqlite3_int64 db_last_insert_rowid( DB *db );
 
 int db_create_collation( DB *db, const char *name, int(*cmp_func)(void*,int,const void*,int,const void*), void *arg );
+int db_create_function( DB *db, const char *name, int argc, void (*xFunc)(sqlite3_context*,int,sqlite3_value**), void (*xStep)(sqlite3_context*,int,sqlite3_value**), void (*xFinal)(sqlite3_context*) );
 
 #endif /* !DB_H */

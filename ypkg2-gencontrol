@@ -2,11 +2,11 @@
 #
 # ypk control.xml generator
 #
-# Copyright (c) 2012 StartOS
+# Copyright (c) 2013 StartOS
 #
 # Written by: 0o0<0o0zzyz@gmail.com>
 # Version: 0.1
-# Date: 2012.3.30
+# Date: 2013.1.31
 #
 # Usage:
 #       ypkg2-gencontrol [--desktop] [DIR] ...
@@ -20,6 +20,7 @@ use File::Find;
 use File::Copy;
 use POSIX qw/uname/;
 use Digest::MD5 qw/md5_hex/;
+use Cwd;
 
 my ( $desktop, $install, $exec, $total_size, $disk_usage, $dir_count, $file_count, $link_count ) = ( 0, '', '', 0, 0, 0, 0, 0 );
 
@@ -151,7 +152,7 @@ sub generate_control
         return -1;
     }
 
-    my $pwd = $ENV{'PWD'};
+    my $pwd = getcwd;
 
     chdir $_[0];
 
