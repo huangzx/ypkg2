@@ -5530,6 +5530,16 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
                     goto exception_handler;
                 }
             }
+            else
+            {
+                ret = db_exec( &db, "update world set can_update='0', version_available='' where name=? and can_update='1'", package_name, NULL );  
+                if( ret != SQLITE_DONE )
+                {
+                    db_exec( &db, "rollback", NULL );  
+                    return_code = -10; 
+                    goto exception_handler;
+                }
+            }
         }
 
     }

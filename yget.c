@@ -876,16 +876,21 @@ int main( int argc, char **argv )
 
                     if( (pkg = packages_get_package( pm, package_name, 0 )) )
                     {
-                        version = packages_get_package_attr( pkg, "version" );
                         if( !force )
                         {
-                            if( packages_has_installed( pm, package_name, version ) )
+                            version = packages_get_package_attr( pkg, "version" );
+                            tmp = util_strcat( ">=", version, NULL );
+                            if( packages_has_installed( pm, package_name, tmp ) )
                             {
                                 printf( "%s_%s is already the newest version.\n", package_name, version );
                                 packages_free_package( pkg );
                                 pkg = NULL;
+                                free( tmp );
+                                tmp = NULL;
                                 continue;
                             }
+                            free( tmp );
+                            tmp = NULL;
                         }
                     }
                     else
