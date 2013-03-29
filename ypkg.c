@@ -3,7 +3,7 @@
  * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
- * Date: 2013.3.11
+ * Date: 2013.3.20
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -103,9 +103,9 @@ int ypkg_progress_callback( void *cb_arg, char *package_name, int action, double
 
         if( progress == 1 )
         {
-            if( action == 3)
+            if( action == 3 || action == 4 )
             {
-                printf( "\n%s\n", msg );
+                fprintf( stderr, "\n%s\n", msg );
                 packages_log( pm, package_name, msg );
             }
             else 
@@ -116,6 +116,7 @@ int ypkg_progress_callback( void *cb_arg, char *package_name, int action, double
     }
 
     fflush( stdout );
+    fflush( stderr );
     return 0;
 }
 
@@ -388,16 +389,20 @@ int main( int argc, char **argv )
                                     fprintf( stderr,  "Error: architecture mismatched.\n"  );
                                 break;
                             case -3:
+                                /*
                                 if( colorize )
                                     fprintf( stderr, COLOR_RED "Error: missing runtime dependencies.\n" COLOR_RESET );
                                 else
                                     fprintf( stderr,  "Error: missing runtime dependencies.\n"  );
+                                    */
                                 break;
                             case -4:
+                                /*
                                 if( colorize )
                                     fprintf( stderr, COLOR_RED "Error: conflicting dependencies found.\n" COLOR_RESET );
                                 else
                                     fprintf( stderr,  "Error: conflicting dependencies found.\n"  );
+                                    */
                                 break;
                             case -5:
                             case -6:
@@ -622,9 +627,9 @@ int main( int argc, char **argv )
                     else if( !err )
                     {
                         if( colorize )
-                            printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                            fprintf( stderr, COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
                         else
-                            printf(  "* %s not found\n" ,  package_name );
+                            fprintf( stderr,  "* %s not found\n" ,  package_name );
                         err = 3;
                     }
                 }
@@ -677,9 +682,9 @@ int main( int argc, char **argv )
                     else
                     {
                         if( colorize )
-                            printf( COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
+                            fprintf( stderr, COLOR_RED "* %s not found\n" COLOR_RESET,  package_name );
                         else
-                            printf(  "* %s not found\n" ,  package_name );
+                            fprintf( stderr, "* %s not found\n" ,  package_name );
                         err = 3;
                         break;
                     }
@@ -820,9 +825,9 @@ int main( int argc, char **argv )
                     if( !packages_exists( pm, package_name, NULL ) )
                     {
                         if( colorize )
-                            printf( COLOR_RED "%s not found.\n" COLOR_RESET,  package_name );
+                            fprintf( stderr, COLOR_RED "%s not found.\n" COLOR_RESET,  package_name );
                         else
-                            printf(  "%s not found.\n" ,  package_name );
+                            fprintf( stderr,  "%s not found.\n" ,  package_name );
                         err = 3;
                     }
                     else
@@ -1024,9 +1029,9 @@ int main( int argc, char **argv )
                 if( access( ypk_path, R_OK ) )
                 {
                     if( colorize )
-                        printf( COLOR_RED "%s not found\n" COLOR_RESET,  ypk_path );
+                        fprintf( stderr, COLOR_RED "%s not found\n" COLOR_RESET,  ypk_path );
                     else
-                        printf(  "%s not found\n" ,  ypk_path );
+                        fprintf( stderr, "%s not found\n" ,  ypk_path );
                     err = 3;
                     break;
                 }
@@ -1088,9 +1093,9 @@ int main( int argc, char **argv )
                 if( access( ypk_path, R_OK ) )
                 {
                     if( colorize )
-                        printf( COLOR_RED "%s not found\n" COLOR_RESET,  ypk_path );
+                        fprintf( stderr, COLOR_RED "%s not found\n" COLOR_RESET,  ypk_path );
                     else
-                        printf(  "%s not found\n" ,  ypk_path );
+                        fprintf( stderr, "%s not found\n" ,  ypk_path );
                     err = 3;
                     break;
                 }

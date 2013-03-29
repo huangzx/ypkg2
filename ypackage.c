@@ -5201,8 +5201,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
 
         }
 
-        //cb( cb_arg, ypk_path, 3, 1, msg ? msg : "done" );
-        cb( cb_arg, ypk_path, 4, 1, NULL );
+        cb( cb_arg, ypk_path, 4, 1, msg );
 
         if( msg )
         {
