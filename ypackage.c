@@ -5180,7 +5180,8 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
         {
             case 1:
             case 2:
-                msg = util_strcat( "Newer or same version installed", NULL );
+                if( !force )
+                    msg = util_strcat( "Newer or same version installed", NULL );
                 break;
 
             case -1:
@@ -5257,7 +5258,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     //get package infomations
     if( cb )
     {
-        cb( cb_arg, ypk_path, 4, -1, "Reading package information" );
+        cb( cb_arg, ypk_path, 4, -1, "Reading package information." );
     }
 
 
@@ -5279,13 +5280,13 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     }
 
     //exec pre_x script
-    if( cb )
-    {
-        cb( cb_arg, ypk_path, 5, -1, "Executing pre_install script\n" );
-    }
-
     if( !access( tmp_ypk_install, R_OK ) )
     {
+        if( cb )
+        {
+            cb( cb_arg, ypk_path, 5, -1, "Executing pre_install script." );
+        }
+
         if( !upgrade )
         {
             if( packages_exec_script( tmp_ypk_install, package_name, version, NULL, "pre_install" ) == -1 )
@@ -5312,17 +5313,18 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
                 goto exception_handler;
             }
         }
+
+        if( cb )
+        {
+            cb( cb_arg, ypk_path, 5, 1, NULL );
+        }
     }
 
-    if( cb )
-    {
-        cb( cb_arg, ypk_path, 5, 1, NULL );
-    }
 
     //copy files 
     if( cb )
     {
-        cb( cb_arg, ypk_path, 6, -1, "Copying files" );
+        cb( cb_arg, ypk_path, 6, -1, "Copying files." );
     }
 
     if( (ret = packages_unpack_package( ypk_path, dest_dir, 0, "~ypk" )) != 0 )
@@ -5342,7 +5344,7 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
     //update db
     if( cb )
     {
-        cb( cb_arg, ypk_path, 8, -1, "Updating database" );
+        cb( cb_arg, ypk_path, 8, -1, "Updating database." );
     }
 
     ret = db_init( &db, pm->db_name, OPEN_WRITE );
@@ -5665,13 +5667,13 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
 
 
     //exec post_x script
-    if( cb )
-    {
-        cb( cb_arg, ypk_path, 7, -1, "Executing post_install script\n" );
-    }
-
     if( !access( tmp_ypk_install, R_OK ) )
     {
+        if( cb )
+        {
+            cb( cb_arg, ypk_path, 7, -1, "Executing post_install script." );
+        }
+
         if( !upgrade )
         {
             if( packages_exec_script( tmp_ypk_install, package_name, version, NULL, "post_install" ) == -1 )
@@ -5698,12 +5700,13 @@ int packages_install_local_package( YPackageManager *pm, char *ypk_path, char *d
                 goto exception_handler;
             }
         }
+
+        if( cb )
+        {
+            cb( cb_arg, ypk_path, 7, 1, NULL );
+        }
     }
 
-    if( cb )
-    {
-        cb( cb_arg, ypk_path, 7, 1, NULL );
-    }
 
     if( !strcmp( package_name, "ypkg2" ) )
     {
@@ -5837,10 +5840,12 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
         cb( cb_arg, package_name, 1, 1, NULL );
     }
 
+    /*
     if( cb )
     {
         cb( cb_arg, package_name, 5, -1, "Executing pre_remove script\n" );
     }
+    */
 
     //exec pre_remove script
     if( install_file && strlen( install_file ) > 8 )
@@ -5848,19 +5853,25 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
         install_file_path = util_strcat( PACKAGE_DB_DIR, "/", package_name, "/", install_file, NULL );
         if( !access( install_file_path, R_OK ) )
         {
+            if( cb )
+            {
+                cb( cb_arg, package_name, 5, -1, "Executing pre_remove script." );
+            }
             //printf( "running pre remove script ...\n" );
             if( packages_exec_script( install_file_path, package_name, version, NULL, "pre_remove" ) == -1 )
             {
                 return_code = -3; 
                 goto exception_handler;
             }
+
+            if( cb )
+            {
+                cb( cb_arg, package_name, 5, 1, NULL );
+            }
         }
+
     }
 
-    if( cb )
-    {
-        cb( cb_arg, package_name, 5, 1, NULL );
-    }
 
     if( cb )
     {
@@ -5920,19 +5931,25 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
         cb( cb_arg, package_name, 6, 1, NULL );
     }
 
-    if( cb )
-    {
-        cb( cb_arg, package_name, 7, -1, "Executing post_remove script\n" );
-    }
 
     //exec post_remove script
     if( install_file_path && !access( install_file_path, R_OK ) )
     {
+        if( cb )
+        {
+            cb( cb_arg, package_name, 7, -1, "Executing post_remove script." );
+        }
+
         //printf( "running post remove script ...\n" );
         if( packages_exec_script( install_file_path, package_name, version, NULL, "post_remove" ) == -1 )
         {
             return_code = -5; 
             goto exception_handler;
+        }
+
+        if( cb )
+        {
+            cb( cb_arg, package_name, 7, 1, NULL );
         }
     }
 
@@ -5943,10 +5960,6 @@ int packages_remove_package( YPackageManager *pm, char *package_name, ypk_progre
     util_remove_dir( file_path );
     free( file_path );
 
-    if( cb )
-    {
-        cb( cb_arg, package_name, 7, 1, NULL );
-    }
 
     if( cb )
     {

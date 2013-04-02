@@ -89,8 +89,11 @@ int yget_progress_callback( void *cb_arg, char *package_name, int action, double
 
     if( !action )
     {
-        printf( "%s %s \n", msg, package_name );
-        packages_log( pm, package_name, msg );
+        if( msg )
+        {
+            printf( "%s %s \n", msg, package_name );
+            packages_log( pm, package_name, msg );
+        }
 
     }
     else if( action == 9 )
@@ -101,20 +104,33 @@ int yget_progress_callback( void *cb_arg, char *package_name, int action, double
     {
         if( progress == 0 || progress == -1 )
         {
-            printf( "%s... ", msg );
-            packages_log( pm, package_name, msg );
+            if( msg )
+            {
+                printf( "%s ", msg );
+                packages_log( pm, package_name, msg );
+            }
         }
 
         if( progress == 1 )
         {
             if( action == 3 || action == 4 )
             {
-                fprintf( stderr, "\n%s\n", msg );
-                packages_log( pm, package_name, msg );
+                if( msg )
+                {
+                    fprintf( stderr, "\n%s\n", msg );
+                    packages_log( pm, package_name, msg );
+                }
+                else
+                {
+                    printf( "%s\n", "Done." );
+                }
             }
             else 
             {
-                printf( "%s\n", "done" );
+                if( msg )
+                    printf( "%s\n", msg );
+                else
+                    printf( "%s\n", "Done." );
             }
         }
     }
@@ -864,6 +880,7 @@ int main( int argc, char **argv )
             {
                 install_list = NULL;
                 missing_list = NULL;
+                version = NULL;
                 for( i = optind; i < argc; i++)
                 {
                     package_name = argv[i];
