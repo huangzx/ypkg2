@@ -3,7 +3,7 @@
  * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com> ChenYu_Xiao<yunsn0303@gmail.com>
- * Date: 2013.3.20
+ * Date: 2013.4.07
  */
 #include <stdio.h>
 #include <getopt.h>
@@ -1065,7 +1065,11 @@ int main( int argc, char **argv )
                     }
                 }
 
-                packages_unpack_package( ypk_path, tmp ? tmp : unpack_path , 1, NULL );
+                if( packages_unpack_package( ypk_path, tmp ? tmp : unpack_path , 1, NULL ) )
+                {
+                    fprintf( stderr,  "Error: Can't extract files. Check available space on your computer and the write privileges on the destination folder.\n" );
+                    err = 3;
+                }
 
                 if( pkg )
                     packages_free_package( pkg );
@@ -1129,7 +1133,11 @@ int main( int argc, char **argv )
                     }
                 }
 
-                packages_unpack_package( ypk_path, tmp ? tmp : unpack_path , 2, NULL );
+                if( packages_unpack_package( ypk_path, tmp ? tmp : unpack_path , 2, NULL ) )
+                {
+                    fprintf( stderr,  "Error: Can't extract files. Check available space on your computer and the write privileges on the destination folder.\n" );
+                    err = 3;
+                }
 
                 if( pkg )
                     packages_free_package( pkg );
