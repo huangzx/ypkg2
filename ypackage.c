@@ -3,7 +3,7 @@
  * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Date: 2013.3.11
+ * Date: 2013.4.8
  */
 
 #include <stdio.h>
@@ -986,7 +986,7 @@ int packages_check_update( YPackageManager *pm )
 int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg )
 {
     int             timestamp, len, cnt;
-    char            *sql, *source_select, *tmp, *package_name, *version_installed, *version, *target_url, *list_line, *last_checksum, update_file[32], sum[48], buf[256];
+    char            *sql, *source_select, *tmp, *package_name, *version_installed, *version, *target_url, *list_line, *last_checksum, *msg, update_file[32], sum[48], buf[256];
     char            tmp_sql[] = "/tmp/tmp_sql.XXXXXX";
     FILE            *fp;
     DownloadContent content;
@@ -1024,10 +1024,29 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
         }
 
         target_url = util_strcat( source->source_uri, "/", UPDATE_DIR "/" LIST_FILE, NULL );
+
+        if( cb )
+        {
+            msg = util_strcat( "Get: ", target_url, NULL );
+
+            cb( cb_arg, "*", 2, -1, msg ? msg : NULL );
+
+            if( msg )
+            {
+                free( msg );
+                msg = NULL;
+            }
+        }
+
         content.text = malloc(256);
         content.size = 0;
         if( get_content( target_url, &content ) != 0 )
         {
+            if( cb )
+            {
+                cb( cb_arg, "*", 2, 1, "Download failed." );
+            }
+
             free( content.text );
             free( target_url );
             target_url = NULL;
@@ -1278,7 +1297,7 @@ int packages_update_single_xml( YPackageManager *pm, YPackageSource *source, cha
     {
         if( cb )
         {
-            cb( cb_arg, "Download failed.\n", 2, 1, NULL );
+            cb( cb_arg, "*", 2, 1, "Download failed." );
         }
         remove(tmp_bz2);
         return -1; 

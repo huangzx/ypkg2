@@ -98,7 +98,8 @@ int yget_progress_callback( void *cb_arg, char *package_name, int action, double
     }
     else if( action == 9 )
     {
-        packages_log( pm, package_name, "Finish" );
+        //puts( "Finish." );
+        packages_log( pm, package_name, "Finish." );
     }
     else
     {
@@ -106,7 +107,7 @@ int yget_progress_callback( void *cb_arg, char *package_name, int action, double
         {
             if( msg )
             {
-                printf( "%s ", msg );
+                printf( "%s\n", msg );
                 packages_log( pm, package_name, msg );
             }
         }
