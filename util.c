@@ -1,12 +1,12 @@
 /* Libypk utility functions
  *
- * Copyright (c) 2012 StartOS
+ * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Version: 0.1
- * Date: 2012.3.6
+ * Date: 2013.4.10
  */
 
+#include <sys/utsname.h>
 #include "util.h"
 #include "sha1.h"
 
@@ -484,6 +484,37 @@ char *util_time_to_str( time_t time )
     return result;
 }
 
+char *util_arch()
+{
+    int                 len;
+    char                *arch, *p, line[32];
+    struct utsname      buf;
+    FILE                *fp;
+
+    arch = NULL;
+
+    if( ( fp = fopen( "/var/ypkg/modules/kernel", "r" ) ) != NULL )
+    {
+        if( fgets( line, 32, fp ) != NULL ) 
+        {
+            p = util_rtrim( strrchr( line, ' ' ) + 1, 0 );
+            len = strlen( p );
+            arch = malloc( len + 1 );
+            strncpy( arch, p, len );
+            arch[len] = 0;
+        }
+        fclose( fp );
+    }
+    else if( !uname( &buf ) )
+    {
+        len = strlen( buf.machine );
+        arch = malloc( len + 1 );
+        strncpy( arch, buf.machine, len );
+        arch[len] = 0;
+    }
+
+    return arch;
+}
 
 char *util_sha1( char *file )
 {

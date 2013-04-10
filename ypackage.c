@@ -3,7 +3,7 @@
  * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Date: 2013.4.8
+ * Date: 2013.4.10
  */
 
 #include <stdio.h>
@@ -14,7 +14,6 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/wait.h>
-#include <sys/utsname.h>
 #include <sqlite3.h>
 
 #include "download.h"
@@ -986,7 +985,7 @@ int packages_check_update( YPackageManager *pm )
 int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg )
 {
     int             timestamp, len, cnt;
-    char            *sql, *source_select, *tmp, *package_name, *version_installed, *version, *target_url, *list_line, *last_checksum, *msg, update_file[32], sum[48], buf[256];
+    char            *sql, *source_select, *tmp, *package_name, *version_installed, *version, *target_url, *list_line, *last_checksum, *msg, *arch, update_file[32], sum[48], buf[256];
     char            tmp_sql[] = "/tmp/tmp_sql.XXXXXX";
     FILE            *fp;
     DownloadContent content;
@@ -1023,7 +1022,17 @@ int packages_update( YPackageManager *pm, ypk_progress_callback cb, void *cb_arg
             }
         }
 
-        target_url = util_strcat( source->source_uri, "/", UPDATE_DIR "/" LIST_FILE, NULL );
+        arch = util_arch();
+        if( arch )
+        {
+            target_url = util_strcat( source->source_uri, "/" UPDATE_DIR "-", arch, "/" LIST_FILE, NULL );
+            free( arch );
+            arch = NULL;
+        }
+        else
+        {
+            target_url = util_strcat( source->source_uri, "/" UPDATE_DIR "/" LIST_FILE, NULL );
+        }
 
         if( cb )
         {
@@ -4452,9 +4461,7 @@ int packages_check_package( YPackageManager *pm, char *ypk_path, char *extra, in
 int packages_check_package2( YPackageManager *pm, YPackage *pkg, YPackageData *pkg_data, char *extra, int extra_max_len )
 {
     int                 ret, return_code = 0;
-    char                *package_name, *arch, *arch2, *version, *version2, *repo, *repo2, line[32];
-    struct utsname      buf;
-    FILE                *fp;
+    char                *package_name, *arch, *arch2, *version, *version2, *repo, *repo2;
     YPackage            *pkg2 = NULL;
 
 
@@ -4469,38 +4476,22 @@ int packages_check_package2( YPackageManager *pm, YPackage *pkg, YPackageData *p
     //check arch
     if( arch && ( arch[0] != 'a' || arch[1] != 'n' || arch[2] != 'y' ) )
     {
-        if( ( fp = fopen( "/var/ypkg/modules/kernel", "r" ) ) != NULL )
+        arch2 = util_arch();
+        if( arch2 )
         {
-            if( fgets( line, 32, fp ) != NULL ) 
-            {
-                arch2 = util_rtrim( strrchr( line, ' ' ) + 1, 0 );
-                if( strcmp( arch, arch2 ) )
-                {
-                    return_code = -2;
-
-                    if( extra && extra_max_len > 0 )
-                    {
-                        strncpy( extra, arch2, extra_max_len );
-                    }
-
-                    goto exception_handler;
-                }
-            }
-            fclose( fp );
-        }
-        else if( !uname( &buf ) )
-        {
-            if( strcmp( buf.machine, arch ) )
+            if( strcmp( arch, arch2 ) )
             {
                 return_code = -2;
 
                 if( extra && extra_max_len > 0 )
                 {
-                    strncpy( extra, buf.machine, extra_max_len );
+                    strncpy( extra, arch2, extra_max_len );
                 }
 
                 goto exception_handler;
             }
+            free( arch2 );
+            arch2 = NULL;
         }
     }
 

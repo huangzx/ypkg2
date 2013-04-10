@@ -1,10 +1,9 @@
 /* Libypk utility functions
  *
- * Copyright (c) 2012 StartOS
+ * Copyright (c) 2013 StartOS
  *
  * Written by: 0o0<0o0zzyz@gmail.com>
- * Version: 0.1
- * Date: 2012.3.6
+ * Date: 2013.4.10
  */
 #ifndef UTIL_H
 #define UTIL_H
@@ -45,6 +44,7 @@ char    *util_strcat2( char *dest, int size, char *first, ...);
 char    *util_int_to_str( int i );
 char    *util_time_to_str( time_t time );
 int     util_ends_with( char *str, char *suffix );
+char    *util_arch();
 
 
 /*
