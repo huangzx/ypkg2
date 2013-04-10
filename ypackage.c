@@ -1269,7 +1269,7 @@ void packages_free_upgrade_list( YPackageChangeList *list )
 int packages_update_single_xml( YPackageManager *pm, YPackageSource *source, char *update_file, char *sum, ypk_progress_callback cb, void *cb_arg )
 {
     int                 i, xml_ret, db_ret;
-    char                *xml_sha, *target_url, *msg, *sql, *sql_data, *package_name, *version, *is_desktop, *repo, *idx, *data_key,*data_name, *data_format, *data_size, *data_install_size, *data_depend, *data_bdepend, *data_recommended, *data_conflict, *data_replace;
+    char                *xml_sha, *target_url, *msg, *sql, *sql_data, *package_name, *version, *is_desktop, *repo, *idx, *data_key,*data_name, *data_format, *data_size, *data_install_size, *data_depend, *data_bdepend, *data_recommended, *data_conflict, *data_replace, *arch;
     char                tmp_bz2[] = "/tmp/tmp_bz2.XXXXXX";
     char                tmp_xml[] = "/tmp/tmp_xml.XXXXXX";
     char                *xml_attrs[] = {"name", "type", "lang", "id", NULL};
@@ -1282,7 +1282,17 @@ int packages_update_single_xml( YPackageManager *pm, YPackageSource *source, cha
         return -1;
 
     //donload xml
-    target_url = util_strcat( source->source_uri, "/", UPDATE_DIR, "/", update_file, NULL );
+    arch = util_arch();
+    if( arch )
+    {
+        target_url = util_strcat( source->source_uri, "/" UPDATE_DIR "-", arch, "/", update_file, NULL );
+        free( arch );
+        arch = NULL;
+    }
+    else
+    {
+        target_url = util_strcat( source->source_uri, "/" UPDATE_DIR "/", update_file, NULL );
+    }
 
     if( cb )
     {
